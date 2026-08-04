@@ -1,0 +1,21 @@
+# Normalize text files for consistent Windows/Linux development.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary media: never inspect or transform line endings.
+*.mp4 binary
+*.webm binary
+*.webp binary
+*.avif binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Generated lockfile remains text with LF endings.
+pnpm-lock.yaml text eol=lf

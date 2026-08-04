@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+apps/web/public/media/
+pnpm-lock.yaml
+docs/
+AGENTS.md
+PLANS.md
+*.patch

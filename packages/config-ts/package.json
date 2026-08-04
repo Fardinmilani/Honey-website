@@ -1,0 +1,14 @@
+{
+  "name": "@honey/config-ts",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "*.json"
+  ],
+  "exports": {
+    "./base.json": "./base.json",
+    "./browser.json": "./browser.json",
+    "./node.json": "./node.json",
+    "./library.json": "./library.json"
+  }
+}

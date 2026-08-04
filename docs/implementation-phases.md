@@ -146,7 +146,8 @@ logic yet in either.
 **Deliverables**
 
 - **`packages/backend`** — the package skeleton: the `src/modules/` layout, the
-  four-layer conventions, the `platform` module (config, health, outbox and
+  three internal layers — `domain`, `application`, and `infrastructure` — plus a
+  public `index.ts` barrel, the `platform` module (config, health, outbox and
   idempotency primitives), the `AppError` taxonomy, the transaction helper wired
   to `packages/db`, and the DI conventions from
   [ADR-0021](adr/0021-shared-backend-package.md). No domain modules yet.

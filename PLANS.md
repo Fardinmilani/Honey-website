@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 1 — Architecture & Documentation (complete)
-**Next phase:** Phase 2 — Workspace Foundation (**not started; requires explicit go-ahead**)
+**Current phase:** Phase 2 — Workspace Foundation (implementation prepared; dependency install and full tool verification pending)
+**Next phase:** Phase 3 — Local Environment (**blocked until Phase 2 verification is green**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.

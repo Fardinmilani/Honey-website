@@ -1,0 +1,20 @@
+{
+  "name": "@honey/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
+    "lint": "eslint src --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@honey/backend": "workspace:*",
+    "@honey/core": "workspace:*",
+    "@honey/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@honey/config-ts": "workspace:*"
+  }
+}
