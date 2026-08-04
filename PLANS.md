@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 2 — Workspace Foundation (implementation prepared; dependency install and full tool verification pending)
-**Next phase:** Phase 3 — Local Environment (**blocked until Phase 2 verification is green**)
+**Current phase:** Phase 3 — Local Environment (**not started**)
+**Completed phase:** Phase 2 — Workspace Foundation (**complete 2026-08-05**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -63,8 +63,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | # | Phase | Outcome |
 |---|---|---|
 | 1 | Architecture & Documentation | This document set. No code. |
-| 2 | Workspace Foundation | pnpm + Turborepo + TS config + lint + CI skeleton |
-| 3 | Local Environment | Docker Compose: Postgres, Redis, MinIO, mail catcher |
+| 2 | Workspace Foundation | **Complete 2026-08-05** — pnpm + Turborepo + TS config + lint + CI skeleton |
+| 3 | Local Environment | **Not started** — Docker Compose: Postgres, Redis, MinIO, mail catcher |
 | 4 | Database Foundation | Prisma schema core, first migration, seed harness |
 | 5 | Backend Library & API Foundation | `packages/backend` skeleton + Nest/Fastify bootstrap, config, logging, errors, OpenAPI, health |
 | 6 | Identity & Authorization | Users, sessions, RBAC, admin 2FA, audit log |

@@ -11,7 +11,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | # | Phase | Status | Completed |
 |---|---|---|---|
 | 1 | Architecture & Documentation | âœ… Complete (corrected 2026-08-05) | 2026-08-04 |
-| 2 | Workspace Foundation | ðŸŸ¡ Implementation prepared; verification pending | â€” |
+| 2 | Workspace Foundation | ✅ Complete | 2026-08-05 |
 | 3 | Local Environment | â¬œ Not started | â€” |
 | 4 | Database Foundation | â¬œ Not started | â€” |
 | 5 | Backend Library & API Foundation | â¬œ Not started | â€” |
@@ -31,14 +31,14 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 2 â€” implementation prepared. Dependency installation, lockfile generation, and the full pinned-toolchain verification remain pending.
-**Next phase:** Phase 3 â€” **blocked until every Phase 2 command is green and `pnpm-lock.yaml` is committed.**
+**Current phase:** Phase 3 — Local Environment (**not started**).
+**Previous phase:** Phase 2 — Workspace Foundation (**complete 2026-08-05**).
 
 ---
 
-## Phase 2 â€” Workspace Foundation
+## Phase 2 — Workspace Foundation
 
-**Prepared:** 2026-08-05 Â· **Status:** ðŸŸ¡ Implementation prepared; full dependency-backed verification pending
+**Completed:** 2026-08-05 · **Status:** ✅ Complete
 
 ### Scope delivered
 
@@ -59,7 +59,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | Node.js | `22.17.0` | Current production LTS runtime selected for the workspace |
 | pnpm | `11.20.0` | Pinned workspace package manager |
 | Turborepo | `2.10.0` | Deterministic workspace task orchestration and caching |
-| TypeScript | `6.0.0` | Strict compilation and declaration output |
+| TypeScript | `5.9.3` | Strict compilation and declaration output |
 | ESLint | `10.7.0` | Flat-config static analysis with zero warnings |
 | `@eslint/js` | `10.0.1` | Official JavaScript recommended rules |
 | `typescript-eslint` | `8.65.0` | TypeScript parsing and strict TypeScript lint rules |
@@ -89,48 +89,35 @@ After removing the probes, the repository check passed with no forbidden edges
 or cycles. The Node test suite for the checker passed **6 / 6** tests, including
 all four required violations, one allowed graph, and one cycle case.
 
-### Verification actually run in the patch-building environment
+### Final verification (2026-08-05)
 
-| Check | Result |
+All required Phase 2 gates passed on the pinned local toolchain and committed
+lockfile. The GitHub Actions CI workflow also completed successfully.
+
+| Gate | Result |
 |---|---|
-| Parse all JSON files | passed |
-| Parse `pnpm-workspace.yaml` and `.github/workflows/ci.yml` | passed |
-| `node --check` for every JavaScript module | passed |
-| Type-check all ten TypeScript skeletons with available TypeScript `5.8.3` | passed |
-| `node --test tools/boundaries/checker.test.mjs` | passed â€” 6 tests |
-| `node scripts/check-boundaries.mjs` after probe cleanup | passed |
-| `node scripts/verify-phase2.mjs` | passed |
-| Hero assets modified by the Phase 2 diff | no â€” the patch contains no Hero media changes |
+| `pnpm install` | passed |
+| `pnpm install --frozen-lockfile` | passed |
+| `pnpm format:check` | passed |
+| `pnpm lint` | passed — all workspace lint tasks successful |
+| `pnpm boundaries` | passed — no forbidden edges or workspace cycles |
+| `pnpm typecheck` | passed — all workspace type-check tasks successful |
+| `pnpm test` | passed — boundary suite 6 / 6 and all package test tasks successful |
+| `pnpm build` | passed — all workspace build tasks successful |
+| `node scripts/verify-phase2.mjs` | passed — structural verification successful |
+| GitHub Actions CI | passed |
+| Hero assets | unchanged and outside the Phase 2 documentation closeout diff |
 
-### Verification still required after applying the patch
-
-The patch-building runtime cannot reach an npm registry, and it provides Node
-`22.16.0` rather than the pinned Node `22.17.0`. Therefore it could not honestly
-run `pnpm install`, generate `pnpm-lock.yaml`, or execute the installed versions
-of Turborepo, ESLint, Prettier, and TypeScript 6.
-
-Run the included bootstrap script on a machine with registry access:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-phase2.ps1
-```
-
-The script activates the pinned pnpm version, runs an initial install to create
-`pnpm-lock.yaml`, repeats installation with `--frozen-lockfile`, and then runs
-formatting, lint, boundary checks, type-checking, tests, build, and the Phase 2
-scope verifier. Phase 2 must not be marked complete and Phase 3 must not start
-until that script is green and the generated lockfile is reviewed and committed.
+The generated `pnpm-lock.yaml` is present and records TypeScript `5.9.3`,
+ESLint `10.7.0`, `@eslint/js` `10.0.1`, `typescript-eslint` `8.65.0`,
+Prettier `3.9.0`, Turborepo `2.10.0`, and pnpm `11.20.0`.
 
 ### Known limitations
 
-- `pnpm-lock.yaml` is intentionally absent from this patch because producing a
-  trustworthy lockfile requires resolving package metadata and integrity hashes
-  from a registry. A fabricated or incomplete lockfile would make
-  `--frozen-lockfile` misleading and unsafe.
-- CI is expected to stay red until the bootstrap script generates and commits the
-  lockfile.
 - No browser, API, worker, database, queue, or Docker process exists yet by
-  design.
+  design; those belong to later phases.
+- Phase 3 has not started. Its local Docker environment requires a separate,
+  explicit instruction.
 
 ### Acceptance checklist
 
@@ -143,10 +130,10 @@ until that script is green and the generated lockfile is reviewed and committed.
 - [x] Hero paths untouched by the diff
 - [x] No Docker, Prisma, or application framework added
 - [x] No business logic or fake UI/API added
-- [ ] Registry-backed `pnpm install` completed
-- [ ] `pnpm-lock.yaml` generated and reviewed
-- [ ] Pinned-tool `format:check`, `lint`, `typecheck`, `test`, and `build` all green
-- [ ] CI green
+- [x] Registry-backed `pnpm install` completed
+- [x] `pnpm-lock.yaml` generated and reviewed
+- [x] Pinned-tool `format:check`, `lint`, `boundaries`, `typecheck`, `test`, and `build` all green
+- [x] CI green
 
 
 ## Phase 1 â€” Architecture & Documentation
@@ -301,8 +288,8 @@ architecture kept portable to managed services later
 Questions 1â€“7, 9, and 10 remain open and are **not** affected by this decision.
 
 **Technical decisions deliberately deferred**, with a default recorded so nothing
-is blocked: exact Node and pnpm versions (Phase 2, current LTS); Tailwind vs.
-CSS Modules for `packages/ui` (Phase 9 â€” either satisfies the logical-properties
+is blocked: Tailwind vs. CSS Modules for `packages/ui` (Phase 9 â€” either
+satisfies the logical-properties
 requirement); search engine beyond Postgres (Phase 19, only if measurement
 demands it); CDN provider (Phase 20 â€” now an optional layer in front of the
 self-hosted proxy rather than a hosting decision); VPS provider and sizing
@@ -310,28 +297,17 @@ self-hosted proxy rather than a hosting decision); VPS provider and sizing
 
 ### Notes for the next phase
 
-Phase 2 creates the workspace skeleton only â€” manifests, Turborepo pipeline,
-strict TypeScript bases, ESLint with the boundary rules from
-[`module-boundaries.md Â§7`](module-boundaries.md), Prettier, `.gitattributes`,
-`.env.example`, and a CI skeleton. **No application code, no Docker, no Prisma.**
+Phase 3 is the **Local Environment** phase and is not started. Its scope is the
+local Docker Compose topology for PostgreSQL, Redis, MinIO, and a mail catcher,
+plus health checks, safe example environment variables, and local-development
+documentation.
 
-`.env.example` does not exist yet â€” it is intentionally a Phase 2 deliverable,
-since Phase 1 was documentation only. The `.gitignore` already guarantees it will
-be tracked while every other env file is ignored.
+Phase 3 must not add application frameworks, Prisma schemas or migrations,
+business logic, application Dockerfiles, or production deployment configuration.
+The existing Hero media under `apps/web/public/media/hero/` remains read-only.
 
-Two things to get right early because they are expensive later: `.gitattributes`
-must normalize line endings (this repository is being developed on Windows) and
-mark the media files as binary; and the ESLint boundary rules must be
-CI-blocking from their first commit, since a boundary rule added after violations
-exist never gets turned on.
-
-**Amended 2026-08-05.** Phase 2 must also create `packages/backend` as a
-placeholder alongside the other packages, and its `dependency-cruiser` rules must
-forbid `apps/worker â†’ apps/api`, `apps/* â†’ packages/db`, and
-`apps/web â†’ packages/backend` from the first commit
-([ADR-0021](adr/0021-shared-backend-package.md)). Proving those rules fail on a
-deliberate violation while the workspace is still empty is a Phase 2 acceptance
-criterion, for exactly the reason in the paragraph above.
+Phase 3 requires a separate explicit instruction before any Docker file or local
+service configuration is created.
 
 ---
 
