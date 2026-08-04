@@ -1,0 +1,397 @@
+# =============================================================================
+# Honey Website — root .gitignore
+# -----------------------------------------------------------------------------
+# Rules are evaluated top to bottom; the LAST matching pattern wins.
+# The "ALWAYS TRACKED" guard block at the bottom is intentionally last so that
+# protected paths (Hero media, Prisma migrations, docs, Cursor rules, the pnpm
+# lockfile and production Docker configuration) can never be excluded by a
+# broader rule added above it.
+#
+# Deliberate exclusion/inclusion pairs worth knowing about:
+#   *.sql        is ignored (local dumps) BUT prisma/migrations/**/*.sql is not.
+#   .env*        is ignored (secrets)     BUT .env.example is not.
+#   .cursor/*    is ignored (scratch)     BUT .cursor/rules/ is not.
+#   raw masters  are ignored (*.mov, ...) BUT apps/web/public/media/ is not.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Dependencies and package-manager caches
+# -----------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.pnpm/
+.npm/
+.yarn/cache/
+.yarn/install-state.gz
+.yarn/unplugged/
+.yarn/build-state.yml
+.node_repl_history
+*.tgz
+package-lock.json
+yarn.lock
+npm-shrinkwrap.json
+
+
+# -----------------------------------------------------------------------------
+# Build outputs — Next.js
+# -----------------------------------------------------------------------------
+.next/
+out/
+.vercel/
+.netlify/
+next-env.d.ts
+apps/web/.next/
+apps/web/out/
+
+
+# -----------------------------------------------------------------------------
+# Build outputs — NestJS / Node / bundlers
+# -----------------------------------------------------------------------------
+dist/
+build/
+.output/
+.nest/
+apps/api/dist/
+apps/worker/dist/
+packages/*/dist/
+
+
+# -----------------------------------------------------------------------------
+# Build outputs — Turborepo
+# -----------------------------------------------------------------------------
+.turbo/
+**/.turbo/
+turbo-*.log
+
+
+# -----------------------------------------------------------------------------
+# Build outputs — TypeScript
+# -----------------------------------------------------------------------------
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+**/*.tsbuildinfo
+.tscache/
+
+
+# -----------------------------------------------------------------------------
+# Generated code that is reproducible from source
+# -----------------------------------------------------------------------------
+.prisma/
+**/node_modules/.prisma/
+**/prisma/generated/
+**/generated/openapi-client/
+storybook-static/
+
+
+# -----------------------------------------------------------------------------
+# Environment files and secrets  (.env.example stays tracked)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+*.env
+.envrc
+secrets/
+.secrets/
+*.secret
+*.secrets.json
+credentials.json
+service-account*.json
+gcp-*.json
+aws-credentials
+.aws/
+.npmrc.local
+!.env.example
+!.env.*.example
+!**/.env.example
+
+
+# -----------------------------------------------------------------------------
+# Local certificates and private keys
+# -----------------------------------------------------------------------------
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.csr
+*.gpg
+*.asc
+id_rsa*
+id_ed25519*
+certs/
+certificates/
+.certs/
+.mkcert/
+localhost+*.pem
+localhost+*-key.pem
+
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+pids/
+*.pid
+*.pid.lock
+*.seed
+
+
+# -----------------------------------------------------------------------------
+# Test coverage
+# -----------------------------------------------------------------------------
+coverage/
+*.lcov
+.nyc_output/
+.vitest/
+vitest-report/
+junit.xml
+test-report.xml
+
+
+# -----------------------------------------------------------------------------
+# Playwright
+# -----------------------------------------------------------------------------
+test-results/
+playwright-report/
+playwright/.cache/
+playwright/.auth/
+blob-report/
+**/__snapshots__/**/*.actual.png
+*.trace.zip
+
+
+# -----------------------------------------------------------------------------
+# Docker development data and local-only compose overrides
+# (production Docker configuration stays tracked — see guard block below)
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.override.yaml
+docker-compose.local.yml
+docker-compose.local.yaml
+.docker/
+docker/data/
+docker/.data/
+infra/docker/data/
+**/docker-data/
+.devcontainer/.data/
+
+
+# -----------------------------------------------------------------------------
+# Local service volumes — PostgreSQL, Redis, MinIO
+# -----------------------------------------------------------------------------
+.data/
+.volumes/
+**/pgdata/
+**/postgres-data/
+**/postgresql-data/
+**/redis-data/
+**/redisdata/
+**/minio-data/
+**/miniodata/
+**/.minio.sys/
+*.rdb
+dump.rdb
+appendonly.aof
+appendonlydir/
+
+
+# -----------------------------------------------------------------------------
+# Temporary uploads, exports and scratch files
+# -----------------------------------------------------------------------------
+uploads/
+.uploads/
+exports/
+.exports/
+tmp/
+temp/
+.tmp/
+.temp/
+.cache/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.scratch/
+
+
+# -----------------------------------------------------------------------------
+# Local database dumps and backups
+# -----------------------------------------------------------------------------
+*.sql
+*.sql.gz
+*.sql.zst
+*.sql.bz2
+*.dump
+*.dump.gz
+*.bak
+*.backup
+backups/
+.backups/
+dumps/
+db-dumps/
+pgbackrest/
+pg_dump*.tar
+
+
+# -----------------------------------------------------------------------------
+# IDE and editor files
+# -----------------------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.recommended.json
+.history/
+.fleet/
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+
+
+# -----------------------------------------------------------------------------
+# Operating system files
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+.directory
+.fuse_hidden*
+.nfs*
+
+
+# -----------------------------------------------------------------------------
+# Local AI-agent scratch state (Cursor / Codex)
+# .cursor/rules/ is intentionally re-included in the guard block below.
+# -----------------------------------------------------------------------------
+.cursor/*
+!.cursor/rules/
+.cursorignore.local
+.cursor-tmp/
+.codex/
+.codex-tmp/
+.claude/
+.aider*
+.agent-tmp/
+.agent-scratch/
+AGENTS.local.md
+CLAUDE.local.md
+
+
+# -----------------------------------------------------------------------------
+# Raw video masters and design source files
+# Delivery formats used by the site (.mp4, .webm, .webp, .avif, .svg) are NOT
+# ignored — the Hero assets under apps/web/public/media/ ship with the repo.
+# -----------------------------------------------------------------------------
+assets/raw/
+**/assets/raw/
+raw-media/
+media-raw/
+footage/
+*.mov
+*.avi
+*.mkv
+*.wmv
+*.flv
+*.m4v
+*.mpg
+*.mpeg
+*.mts
+*.m2ts
+*.mxf
+*.r3d
+*.braw
+*.dng
+*.arw
+*.cr2
+*.cr3
+*.nef
+*.orf
+*.raf
+*.rw2
+*.wav
+*.aif
+*.aiff
+*.prproj
+*.aep
+*.aepx
+*.veg
+*.fcpbundle
+*.drp
+*.psd
+*.psb
+*.ai
+*.indd
+*.idml
+*.sketch
+*.fig
+*.xd
+*.afdesign
+*.afphoto
+*.afpub
+*.blend
+*.blend[0-9]*
+*.c4d
+*.xcf
+
+
+# =============================================================================
+# ALWAYS TRACKED — protected paths (must remain the last block in this file)
+# Adding rules AFTER this block can silently break repository guarantees.
+# =============================================================================
+!.gitignore
+!.gitattributes
+!.editorconfig
+!.env.example
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!AGENTS.md
+!PLANS.md
+!docs/
+!docs/**
+!.cursor/rules/
+!.cursor/rules/**
+!**/prisma/migrations/
+!**/prisma/migrations/**
+!apps/web/public/media/
+!apps/web/public/media/**
+!Dockerfile
+!**/Dockerfile
+!**/Dockerfile.*
+!.dockerignore
+!docker-compose.yml
+!docker-compose.prod.yml
+!docker-compose.prod.yaml
+!docker/prod/
+!docker/prod/**
+!infra/docker/prod/
+!infra/docker/prod/**
