@@ -9,6 +9,14 @@ See [`AGENTS.md`](../AGENTS.md) for the enforcement rules and
 
 ---
 
+**Terminology.** From Phase 5 onward, "the `<name>` module" always means
+`packages/backend/src/modules/<name>/`. A phase that ships a module also ships its
+transport adapters — a controller in `apps/api`, a processor in `apps/worker`, or
+both — but the business logic itself never lives in an app
+([ADR-0021](adr/0021-shared-backend-package.md)).
+
+---
+
 ## Universal exit criteria
 
 Every phase, without exception:
@@ -20,6 +28,8 @@ Every phase, without exception:
 - [ ] No secrets added; `.env.example` updated if new variables were introduced
 - [ ] No marketplace concepts; no lab/moisture/medical vocabulary
 - [ ] No fake buttons, dead links, or non-functional forms
+- [ ] Business logic is in `packages/backend`; `apps/*` contain only composition,
+      transport, and presentation
 - [ ] `docs/progress.md` updated; ADRs written for architectural decisions
 - [ ] No `git add`, `git commit`, or `git push`
 - [ ] Report delivered, then **stop**
@@ -56,9 +66,13 @@ untouched; every required document present and internally consistent.
   `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`)
 - `packages/config-eslint` — shared ESLint flat config including the
   `no-restricted-imports` boundary rules from
-  [`module-boundaries.md §7`](module-boundaries.md)
+  [`module-boundaries.md §7`](module-boundaries.md), and a `dependency-cruiser`
+  configuration expressing the dependency graph from
+  [ADR-0021](adr/0021-shared-backend-package.md)
 - Prettier, EditorConfig, `.gitattributes` (LF normalization, binary media marked)
-- Empty placeholder packages with `package.json` + `tsconfig.json` only
+- Empty placeholder packages with `package.json` + `tsconfig.json` only —
+  including **`packages/backend`**, whose presence from day one is what keeps
+  business logic out of `apps/*`
 - `.env.example` with every planned variable and safe placeholders
 - CI workflow skeleton: install → lint → typecheck → build (no deploy)
 - `.vscode/extensions.json`
@@ -67,7 +81,11 @@ untouched; every required document present and internally consistent.
 beyond tooling.
 
 **Acceptance** — `pnpm install` succeeds from a clean clone; `pnpm lint`,
-`pnpm typecheck`, `pnpm build` all pass on an empty workspace; CI is green.
+`pnpm typecheck`, `pnpm build` all pass on an empty workspace; CI is green; the
+boundary rules are **active and failing on a deliberately introduced violation**
+(`apps/worker` importing `apps/api`, and `apps/web` importing `packages/db`)
+before that test violation is removed. A boundary rule added after violations
+exist never gets turned on, so it is proven working while the workspace is empty.
 
 ---
 
@@ -80,6 +98,11 @@ beyond tooling.
 Postgres init SQL for `citext`, `pg_trgm`, `unaccent`, `pgcrypto`; MinIO bucket
 and policy bootstrap; `.dockerignore`; a documented `docker-compose.override.yml`
 example (not committed); a local-setup runbook.
+
+The local topology deliberately mirrors the production target — the same
+containers behind a reverse proxy on one host
+([ADR-0023](adr/0023-self-hosted-vps-deployment.md)) — so "works locally" carries
+more weight than usual.
 
 **Out of scope** — application Dockerfiles (Phase 5+), production compose
 (Phase 20), any application code.
@@ -102,6 +125,10 @@ triggers from [`database-strategy.md §4`](database-strategy.md); the index set
 from §5; a typed Prisma client export and transaction helper; an idempotent seed;
 integration-test harness with an ephemeral database.
 
+`packages/db` is consumed only by `packages/backend`
+([ADR-0021](adr/0021-shared-backend-package.md)); the lint rule forbidding
+`@honey/db` imports elsewhere is enabled in this phase.
+
 **Out of scope** — API endpoints, business logic, admin UI.
 
 **Acceptance** — migrate from empty to current with no errors; seed runs twice
@@ -111,24 +138,37 @@ matches the forbidden-vocabulary regex.
 
 ---
 
-## Phase 5 — API Foundation
+## Phase 5 — Backend Library & API Foundation
 
-**Goal:** the API boots, is observable, and documents itself. No business logic.
+**Goal:** the shared backend library exists and the API hosts it. No business
+logic yet in either.
 
-**Deliverables** — `apps/api` on NestJS + Fastify; env schema validation that
-refuses to boot on bad config; pino structured logging with request correlation;
-the `AppError` taxonomy mapped to RFC 9457; global validation pipe rejecting
-unknown properties; OpenAPI generation to `packages/contracts/openapi.json` plus
-generated types; `/healthz` and `/readyz`; rate-limit and CSRF middleware;
-security headers; graceful shutdown; `docker/api.Dockerfile`; the OpenAPI drift
-and breaking-change CI checks.
+**Deliverables**
 
-**Out of scope** — any domain module, authentication, database reads beyond the
-readiness probe.
+- **`packages/backend`** — the package skeleton: the `src/modules/` layout, the
+  four-layer conventions, the `platform` module (config, health, outbox and
+  idempotency primitives), the `AppError` taxonomy, the transaction helper wired
+  to `packages/db`, and the DI conventions from
+  [ADR-0021](adr/0021-shared-backend-package.md). No domain modules yet.
+- **`apps/api`** — the HTTP composition root: NestJS + Fastify bootstrap; env
+  schema validation that refuses to boot on bad config; pino structured logging
+  with request correlation; `AppError` mapped to RFC 9457; a global validation
+  pipe rejecting unknown properties; OpenAPI generation to
+  `packages/contracts/openapi.json` plus generated types; `/healthz` and
+  `/readyz` (checking the database through the `platform` health service, not
+  through Prisma); rate-limit and CSRF middleware; security headers; graceful
+  shutdown; `docker/api.Dockerfile`; the OpenAPI drift and breaking-change CI
+  checks.
+
+**Out of scope** — any domain module, authentication, the worker (Phase 16),
+database reads beyond the readiness probe.
 
 **Acceptance** — API boots and serves health; OpenAPI generates and matches the
 committed document; an invalid env var prevents boot; error responses are
-problem+json; `SIGTERM` drains cleanly.
+problem+json; `SIGTERM` drains cleanly; **`apps/api` contains no business logic
+and imports no Prisma**, enforced by lint; `packages/backend` builds and its
+tests run **without starting an HTTP server**, which is the practical proof that
+the library is genuinely transport-independent.
 
 ---
 
@@ -303,23 +343,32 @@ an abandoned checkout releases its reservation.
 
 ## Phase 14 — Payments
 
-**Goal:** money, verified by the provider and never by the browser.
+**Goal:** money, verified by the provider server-to-server and never by the
+browser ([ADR-0022](adr/0022-payment-verification-sources.md)).
 
-**Deliverables** — the `PaymentProvider` port; the first provider adapter (to be
-chosen — see [`PLANS.md §6`](../PLANS.md)); payment, attempt, transaction, and
-refund records; the redirect/return flow with server-side verification; webhook
-endpoint with raw-body signature verification, timestamp window, unique event id,
-raw persistence, immediate `200`, and asynchronous idempotent processing; the
-amount-match check with a reconciliation alert on mismatch; the stuck-payment
-reconciliation job; refunds with step-up authentication and a remaining-amount
-cap; a fake provider for tests.
+**Deliverables** — the `PaymentProvider` port with declared `capabilities`;
+payment, attempt, transaction, and refund records; **one idempotent, monotonic
+`applyPaymentOutcome` state machine** reached identically by all three
+verification paths; the redirect/return flow with server-side `verifyReturn`; a
+webhook endpoint with raw-body signature verification, timestamp window, unique
+event id, raw persistence, immediate `200`, and asynchronous idempotent
+processing — built as an **optional** capability, since not every provider offers
+it; the **mandatory** `getStatus` reconciliation job; verification of
+`providerRef`, amount, and currency with a reconciliation alert on mismatch;
+refunds with step-up authentication and a remaining-amount cap; the first
+provider adapter (to be chosen — see [`PLANS.md §6`](../PLANS.md)); a fake
+provider for tests.
 
 **Out of scope** — multiple providers, saved payment methods, installments.
 
 **Acceptance** — a forged `?status=success` return does not mark an order paid;
-webhook replay is a no-op; an amount mismatch raises an alert instead of marking
-the order paid; a dropped webhook is recovered by reconciliation; refunds cannot
-exceed the remaining refundable amount.
+each of the three verification paths independently drives the payment to the
+same terminal state; applying the same outcome twice is a no-op and a late
+`PENDING` never un-pays a `PAID` payment; a provider adapter with
+`webhooks: false` still reaches a terminal state through `verifyReturn` and
+`getStatus`; an amount, currency, or `providerRef` mismatch raises an alert
+instead of marking the order paid; refunds cannot exceed the remaining refundable
+amount.
 
 ---
 
@@ -345,22 +394,34 @@ change is shown before confirmation; partial fulfilment moves the order to
 
 ## Phase 16 — Background Jobs
 
-**Goal:** the worker, running everything that must not happen in a request.
+**Goal:** the BullMQ composition root, running everything that must not happen in
+a request.
 
-**Deliverables** — `apps/worker` with the queue set from
-[`architecture.md §10`](architecture.md); the transactional outbox dispatcher;
-repeatable jobs (reservation sweep, payment reconciliation, sitemap regeneration,
-inventory reconciliation, backup verification); retry with exponential backoff and
-jitter, bounded attempts, dead-letter capture with alerting; deterministic
-`jobId` deduplication; graceful shutdown that lets active jobs finish;
-`docker/worker.Dockerfile`; queue metrics and a `JobFailure` record.
+**Deliverables** — `apps/worker` as a headless Nest application context over the
+**same** `packages/backend` modules the API hosts
+([ADR-0021](adr/0021-shared-backend-package.md)); the queue set from
+[`architecture.md §10`](architecture.md); processors that deserialize, validate a
+versioned payload schema, and call an existing application service; the
+transactional outbox dispatcher; repeatable jobs (reservation sweep, payment
+`getStatus` reconciliation, sitemap regeneration, inventory reconciliation,
+backup verification); retry with exponential backoff and jitter, bounded attempts,
+dead-letter capture with alerting; deterministic `jobId` deduplication; graceful
+shutdown that lets active jobs finish; `docker/worker.Dockerfile`; queue metrics
+and a `JobFailure` record.
 
-**Out of scope** — new business logic; the worker reuses application services.
+Job **producers** already exist in `packages/backend/**/infrastructure` from the
+phases that needed them; this phase adds only the consumption side.
+
+**Out of scope** — new business logic of any kind. Every rule a processor needs
+already exists as an application service, or the phase that should have created
+it was incomplete.
 
 **Acceptance** — every handler is proven idempotent by a duplicate-delivery test;
 an outbox event is dispatched exactly once from the domain's perspective; a
 failing job lands in the dead-letter set and alerts; `SIGTERM` during a job
-completes it or returns it for redelivery.
+completes it or returns it for redelivery; **`apps/worker` imports neither
+`apps/api` nor the generated API client**, enforced by lint; a payload written by
+the previous release is still readable.
 
 ---
 
@@ -429,22 +490,30 @@ gates CI; load testing shows no oversell and no deadlock under contention.
 
 ## Phase 20 — Hardening & Launch Readiness
 
-**Goal:** safe to operate in production.
+**Goal:** safe to operate in production on a self-hosted VPS
+([ADR-0023](adr/0023-self-hosted-vps-deployment.md)).
 
-**Deliverables** — production Dockerfiles and `docker-compose.prod.yml`; reverse
-proxy with TLS, HSTS, and the security headers, asserted by tests; the secret
-manager wired in with a rotation procedure; automated backups with a **rehearsed
-and timed restore drill**; PITR verified; a documented deployment pipeline with
-pre-deploy migrations and rollback; runbooks in `infra/runbooks/` (incident,
-restore, rollback, oversell, payment reconciliation, key rotation); a dependency
-audit and SBOM; an external penetration test; a full accessibility audit; the SEO
-launch checklist; and a go-live checklist.
+**Deliverables** — production Dockerfiles, `docker-compose.prod.yml`, and
+`docker/prod/`; VPS provisioning documented as code (firewall exposing only the
+proxy, unattended security updates, non-root deploy user, SSH hardening); reverse
+proxy with automatic TLS renewal, HSTS, and the security headers, asserted by
+tests; secret management with a rotation procedure; **off-host** automated
+backups with a **rehearsed and timed restore drill**; PITR verified from WAL
+archives; disk, certificate-expiry, and resource-limit monitoring; a documented
+deployment pipeline with pre-deploy migrations and rollback; runbooks in
+`infra/runbooks/` (incident, restore, rollback, oversell, payment reconciliation,
+key rotation, VPS rebuild); a dependency audit and SBOM; an external penetration
+test; a full accessibility audit; the SEO launch checklist; and a go-live
+checklist.
 
-**Out of scope** — new features. This phase only hardens what exists.
+**Out of scope** — new features, and migration to managed services. This phase
+only hardens what exists.
 
-**Acceptance** — a restore drill completes within the RTO target and is
-documented; security headers verified in production; penetration-test findings
-resolved or accepted in writing; no secrets in any image layer; rollback
+**Acceptance** — a restore drill completes within the RTO target **onto a freshly
+provisioned host** and is documented; backups are verified to exist off the VPS
+and the backup credential is proven unable to delete; security headers verified
+in production; only the reverse proxy has published ports; penetration-test
+findings resolved or accepted in writing; no secrets in any image layer; rollback
 rehearsed successfully; every runbook executed at least once by someone who did
 not write it.
 
@@ -454,7 +523,10 @@ not write it.
 
 The order is driven by dependency, not by visibility. Documentation precedes code
 so the rules exist before there is anything to break them. The database precedes
-the API because a schema mistake is the most expensive kind to unwind. Identity
+the backend library, and the library precedes both of its hosts, because
+`packages/backend` existing from Phase 5 is what makes "the worker reuses the
+same application services" true by construction rather than by discipline.
+Identity
 precedes every feature because retrofitting authorization is how access-control
 bugs are born. Catalog precedes cart, cart precedes checkout, checkout precedes
 payment — money last, when everything it depends on is already proven. The worker

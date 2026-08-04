@@ -18,6 +18,8 @@ introduced only when a measured constraint demands it.
 | Long-lived commerce data | Immutable order snapshots, append-only ledgers ([ADR-0011](adr/0011-immutable-order-snapshots.md)) |
 | Provider churn (payments, shipping) | Ports and adapters at every external boundary |
 | Must stay auditable and safe | Server-side authorization, audit log, no client-supplied money |
+| Same rules must run in a request and in a job | Business logic in a shared library, not in an app ([ADR-0021](adr/0021-shared-backend-package.md)) |
+| Provider-neutral hosting, portable later | Self-hosted VPS + Docker Compose, no vendor APIs ([ADR-0023](adr/0023-self-hosted-vps-deployment.md)) |
 
 ---
 
@@ -36,22 +38,33 @@ introduced only when a measured constraint demands it.
                     └───────────────────┬──────────────────┘
                                         │ HTTPS, internal
                     ┌───────────────────▼──────────────────┐
-                    │   apps/api — NestJS on Fastify        │
-                    │   modular monolith · REST + OpenAPI   │
-                    │   sole owner of the database          │
+                    │   apps/api — HTTP composition root    │
+                    │   NestJS on Fastify · REST + OpenAPI  │
+                    │   controllers · guards · DTO mapping  │
+                    └───────────────────┬──────────────────┘
+                                        │ in-process import
+                    ┌───────────────────▼──────────────────┐
+                    │   packages/backend                    │
+                    │   ALL business logic — modular        │
+                    │   domain · application · infrastructure│
                     └──┬─────────┬─────────┬─────────┬─────┘
-                       │         │         │         │
+                       │ via packages/db   │         │
               ┌────────▼──┐ ┌────▼────┐ ┌──▼─────┐ ┌─▼──────────────┐
               │PostgreSQL │ │  Redis  │ │   S3    │ │ External:      │
               │  primary  │ │ cache + │ │ MinIO   │ │ payment PSP    │
               │           │ │ BullMQ  │ │ locally │ │ shipping       │
-              └────────▲──┘ └────▲────┘ └──▲─────┘ │ email / SMS    │
-                       │         │         │       └─▲──────────────┘
-                    ┌──┴─────────┴─────────┴─────────┴──┐
-                    │   apps/worker — BullMQ consumers   │
-                    │   no HTTP surface                  │
-                    └────────────────────────────────────┘
+              └───────────┘ └────▲────┘ └────────┘ │ email / SMS    │
+                                 │                 └────────────────┘
+                    ┌────────────┴─────────────────────────┐
+                    │   apps/worker — BullMQ composition    │
+                    │   root · queue processors             │
+                    │   imports packages/backend            │
+                    │   no HTTP surface, never calls the API│
+                    └───────────────────────────────────────┘
 ```
+
+`apps/api` and `apps/worker` are two process shapes over **one** body of business
+logic. Neither imports the other; both import `packages/backend`.
 
 ---
 
@@ -63,9 +76,10 @@ introduced only when a measured constraint demands it.
 direction, SEO metadata, structured data, session cookie handling, and the thin
 BFF route handlers that proxy the browser to the API.
 
-**Must not:** connect to PostgreSQL or Redis, import Prisma, hold business rules,
-compute prices/discounts/shipping/tax/totals, or make an authorization decision
-that is not also enforced by the API.
+**Must not:** import `packages/backend` or `packages/db`, connect to PostgreSQL or
+Redis, hold business rules, compute prices/discounts/shipping/tax/totals, or make
+an authorization decision that is not also enforced by the API. The web app
+reaches business logic over HTTP or not at all.
 
 - Server Components fetch from the API server-to-server, forwarding the caller's
   session; secrets and internal tokens never reach the browser.
@@ -83,38 +97,64 @@ that is not also enforced by the API.
 | Search and filtered listings | Server-rendered, short-lived, `no-store` beyond the edge |
 | Cart, checkout, account, admin | Dynamic, `private, no-store`, never cached |
 
-### 3.2 `apps/api` — business logic and system of record
+### 3.2 `packages/backend` — business logic and system of record
 
 **Owns:** every business rule, all persistence, authentication, authorization,
 validation, transactions, domain events, and outbound integrations.
 
-**Must not:** render HTML, contain locale-specific copy, or depend on how the web
-app is structured.
+**Must not:** bootstrap a process, know about HTTP or queue transport, render
+anything, or contain locale-specific copy.
 
-- One process, many modules ([`module-boundaries.md`](module-boundaries.md)).
-- The **only** component with database credentials.
+- Modular: `src/modules/<module>/{domain,application,infrastructure}` plus a
+  public `index.ts` ([`module-boundaries.md`](module-boundaries.md)).
+- The **only** consumer of `packages/db`, and therefore the only holder of
+  database access.
+- Exposes application services that both composition roots call. There is exactly
+  one implementation of every rule ([ADR-0021](adr/0021-shared-backend-package.md)).
+- Never calls `NestFactory`. DI decorators are metadata; hosting is the app's job.
+
+### 3.3 `apps/api` — HTTP composition root
+
+**Owns:** the NestJS + Fastify bootstrap, controllers, guards, HTTP DTO mapping,
+the REST surface, and the OpenAPI document.
+
+**Must not:** contain business rules, import `packages/db` directly, or be
+imported by any other app.
+
+- Thin by design: a controller validates, maps, calls one application service
+  from `packages/backend`, and maps the result back.
 - REST with an OpenAPI 3.1 document as the contract ([`api-strategy.md`](api-strategy.md)).
 - Enqueues jobs; never performs slow or unreliable work inline in a request.
+- Its readiness probe checks the database through the `platform` health service,
+  not by importing Prisma.
 
-### 3.3 `apps/worker` — asynchronous execution
+### 3.4 `apps/worker` — BullMQ composition root
 
-**Owns:** BullMQ consumers, repeatable/scheduled jobs, retries, and dead-letter
-handling.
+**Owns:** the headless Nest application context, queue processors, scheduling,
+and retry, backoff, and concurrency configuration.
 
-- Shares `packages/db` and `packages/core` with the API and reuses the same
-  application services; it does not re-implement business rules.
-- No HTTP server beyond a health/metrics endpoint for the orchestrator.
+**Must not:** duplicate business logic, import `apps/api`, or call the API over
+HTTP.
+
+- Imports `packages/backend` and calls the **same** application services the API
+  calls. A processor is a thin adapter from a job payload to a use case.
+- No HTTP server beyond a health/metrics endpoint for the operator.
 - Scales independently of the API.
 - Every handler is **idempotent** — jobs can and will be delivered more than once.
 
-### 3.4 Boundary rules
+### 3.5 Boundary rules
 
 | From → To | Allowed? |
 |---|---|
 | `web` → `api` (HTTP) | Yes — the only path |
+| `web` → `packages/backend` or `packages/db` | **No** |
 | `web` → PostgreSQL / Redis / S3 | **No** |
-| `worker` → `api` (HTTP) | No — shares application services in-process |
-| `api` / `worker` → PostgreSQL | Yes, via `packages/db` only |
+| `api` → `packages/backend` | Yes — the only way it reaches business logic |
+| `worker` → `packages/backend` | Yes — the only way it reaches business logic |
+| `worker` → `api` (HTTP or import) | **No** — both are composition roots over the same library |
+| `api` / `worker` → `packages/db` | **No** — only `packages/backend` may |
+| `packages/backend` → PostgreSQL | Yes, via `packages/db` only |
+| `packages/backend` → any app | **No** — a library never imports its host |
 | module → another module's tables | **No** — public service interface or domain event |
 | `packages/core` → any framework | **No** — pure TypeScript |
 
@@ -130,11 +170,14 @@ Honey-website/
 │   │   ├── src/app/[locale]/(admin)/admin/…
 │   │   ├── src/app/api/…       BFF route handlers
 │   │   └── public/media/hero/  PROTECTED — existing hero assets
-│   ├── api/                    NestJS + Fastify
-│   │   └── src/modules/<module>/{domain,application,infrastructure,http}
-│   └── worker/                 BullMQ consumers
+│   ├── api/                    HTTP composition root — NestJS + Fastify
+│   │   └── src/modules/<module>/  controller · DTOs · guards · OpenAPI decorators
+│   └── worker/                 BullMQ composition root
+│       └── src/processors/<queue>/  job payload → application service
 │
 ├── packages/
+│   ├── backend/                ALL business logic, shared by api and worker
+│   │   └── src/modules/<module>/{domain,application,infrastructure}/ + index.ts
 │   ├── core/                   framework-free domain primitives: Money, Locale,
 │   │                           Slug, Quantity, result types, domain errors
 │   ├── db/                     Prisma schema, migrations, generated client,
@@ -156,15 +199,20 @@ Honey-website/
 **Dependency direction** (never reversed):
 
 ```
-apps/web ─▶ packages/{ui, i18n, contracts, core, utils}
-apps/api ─▶ packages/{db, contracts, core, utils}
-apps/worker ─▶ packages/{db, core, utils}
-packages/core ─▶ (nothing)
+apps/web         ─▶ packages/{ui, i18n, contracts, core, utils}
+apps/api         ─▶ packages/{backend, contracts, core, utils}
+apps/worker      ─▶ packages/{backend, core, utils}
+packages/backend ─▶ packages/{db, core, utils}
+packages/db      ─▶ (Prisma only)
+packages/core    ─▶ (nothing)
 ```
 
-`packages/ui` must not import `packages/db`. `packages/core` imports nothing from
-the workspace and no framework — it is the only place a rule can live that both
-the API and the web app need to agree on.
+No app imports another app. `packages/db` is reachable only through
+`packages/backend`, so database access has exactly one owner. `packages/ui` must
+not import `packages/db` or `packages/backend`. `packages/core` imports nothing
+from the workspace and no framework — it is the only place a rule can live that
+both the backend and the web app need to agree on
+([ADR-0021](adr/0021-shared-backend-package.md)).
 
 ---
 
@@ -176,7 +224,8 @@ the API and the web app need to agree on.
 GET /fa/products/asal-konar
   → web: resolve locale=fa, dir=rtl
   → RSC fetch: GET {API}/v1/products/asal-konar?locale=fa
-      → api: catalog module → Redis cache (public read, 60s) → Postgres on miss
+      → api controller → backend catalog service
+          → Redis cache (public read, 60s) → Postgres on miss via packages/db
       → returns localized content + price in minor units + availability band
   → web: format money/dates with Intl for fa-IR, render RTL, emit metadata,
          hreflang alternates and Product JSON-LD
@@ -188,7 +237,8 @@ GET /fa/products/asal-konar
 ```
 POST /api/checkout/confirm            (browser → web BFF)
   → POST {API}/v1/checkout/{id}/confirm, Idempotency-Key required
-  → api, single Postgres transaction:
+  → api controller validates and maps, then calls the backend
+     checkout.confirm use case — one Postgres transaction:
       1. load cart, re-price every line from current server data
       2. revalidate coupon eligibility and recompute discounts
       3. recompute shipping cost from the chosen method + address
@@ -203,8 +253,10 @@ POST /api/checkout/confirm            (browser → web BFF)
   → worker: outbox dispatch → confirmation email, admin notification, cache purge
 ```
 
-Client-supplied totals are never read. The payment result is accepted only from
-the provider's verified callback or webhook, never from the browser.
+Client-supplied totals are never read. The payment result is accepted only from a
+**server-to-server, provider-verified outcome** — a verified webhook, a
+server-side `verifyReturn` after redirect, or a reconciliation poll — never from
+the browser ([ADR-0022](adr/0022-payment-verification-sources.md)).
 
 ---
 
@@ -291,22 +343,23 @@ directory, with the vendor SDK confined to `infrastructure/`.
 
 | Port | Purpose | Notes |
 |---|---|---|
-| `PaymentProvider` | authorize, capture, verify, refund, parse webhook | [`domain-model.md §11`](domain-model.md) |
+| `PaymentProvider` | create, verify return, capture, refund, parse webhook, poll status | Webhooks are optional per provider ([ADR-0022](adr/0022-payment-verification-sources.md)) |
 | `ShippingProvider` | quote, create shipment, label, track, parse webhook | manual/flat-rate adapter first |
 | `StorageService` | put, signed get, delete, copy | S3 / MinIO |
 | `MailSender` / `SmsSender` | transactional messaging | locale-aware templates |
 | `SearchIndex` | index, query | Postgres-backed first; swappable later |
 
-Rules: no vendor type crosses a module boundary; every adapter has a fake used in
-tests; every webhook is signature-verified, replay-protected, and logged raw
-before interpretation; every outbound call has a timeout, a retry policy with
-jitter, and a circuit breaker.
+Rules: ports live in `packages/backend`, and no vendor type crosses a module
+boundary; every adapter has a fake used in tests; every webhook is
+signature-verified, replay-protected, and logged raw before interpretation; every
+outbound call has a timeout, a retry policy with jitter, and a circuit breaker.
 
 ---
 
 ## 10. Background processing
 
-BullMQ on Redis, consumed by `apps/worker`.
+BullMQ on Redis. Producers live in `packages/backend/**/infrastructure` so both
+composition roots can enqueue; consumers live only in `apps/worker`.
 
 | Queue | Responsibility |
 |---|---|
@@ -314,7 +367,7 @@ BullMQ on Redis, consumed by `apps/worker`.
 | `email`, `sms` | Transactional messaging |
 | `inventory` | Reservation expiry, low-stock alerts, ledger reconciliation |
 | `orders` | Post-order workflow, invoice generation, status timeouts |
-| `payments` | Provider reconciliation, abandoned-payment expiry, refund polling |
+| `payments` | Provider status reconciliation, abandoned-payment expiry, refund polling |
 | `media` | Image derivatives, poster extraction, metadata |
 | `search` | Index maintenance |
 | `cache` | Targeted purge and revalidation |
@@ -323,6 +376,8 @@ BullMQ on Redis, consumed by `apps/worker`.
 Conventions: deterministic `jobId` for deduplication; exponential backoff with
 jitter; bounded attempts then dead-letter with an alert; per-queue concurrency and
 rate limits; no unbounded fan-out; every handler idempotent and safe to replay.
+A processor never contains a business rule — it deserializes, validates, and
+calls the same `packages/backend` application service the API would call.
 
 **Transactional outbox** — domain events are written inside the same transaction
 as the state change and dispatched afterwards. This is what makes "the order was
@@ -340,41 +395,52 @@ created but the email never sent" impossible.
 | `staging` | Pre-production verification, e2e, migration rehearsal | Anonymized or synthetic |
 | `production` | Live | Real, backed up, restore-tested |
 
-### 11.2 Production shape
+### 11.2 Production shape — self-hosted VPS
+
+The initial target is a **single self-hosted Linux VPS running Docker Compose
+behind a reverse proxy with TLS**, provider-neutral and portable to managed
+services later ([ADR-0023](adr/0023-self-hosted-vps-deployment.md)).
 
 ```
             Internet
                │
-        ┌──────▼───────┐
-        │ Reverse proxy│  TLS termination, HSTS, security headers,
-        │  + CDN edge  │  static/media caching, WAF-style rate limiting
-        └──┬────────┬──┘
-           │        │
-   ┌───────▼──┐  ┌──▼───────────┐
-   │ web × N  │  │  api × N     │   stateless, horizontally scalable,
-   │ Next.js  │  │  Nest/Fastify│   rolling deploys, readiness-gated
-   └──────────┘  └──┬───────┬───┘
-                    │       │
-             ┌──────▼──┐ ┌──▼──────┐    ┌──────────────┐
-             │Postgres │ │  Redis  │    │ worker × M   │
-             │ primary │ │ managed │◀───│  BullMQ      │
-             │ +replica│ │  + AOF  │    └──────────────┘
-             └─────────┘ └─────────┘
-                    │
-             ┌──────▼──────────┐
-             │ S3-compatible   │  media, invoices, exports, backups
-             │ object storage  │  versioned, lifecycle-managed
-             └─────────────────┘
+        ┌──────▼────────────────────────────────────┐
+        │ Reverse proxy (Caddy / Nginx)              │  TLS + auto-renewal, HSTS,
+        │ the only container with published ports    │  security headers, gzip/brotli,
+        └──┬─────────────────────────────────────┬──┘  edge rate limiting
+           │                                     │
+   ┌───────▼──┐                          ┌───────▼──────┐
+   │   web    │                          │     api      │   stateless containers
+   │ Next.js  │─────── HTTP, private ───▶│ Nest/Fastify │   readiness-gated restarts
+   └──────────┘                          └───────┬──────┘
+                                                 │ imports
+                                        ┌────────▼─────────┐
+                                        │ packages/backend │◀──┐
+                                        └────────┬─────────┘   │ imports
+                       private Docker network    │             │
+             ┌──────────┬────────────────────────┼──────┐  ┌───┴──────┐
+        ┌────▼────┐ ┌───▼───┐ ┌──────────────┐   │      │  │  worker  │
+        │Postgres │ │ Redis │ │ MinIO        │   │      └──│  BullMQ  │
+        │ primary │ │ + AOF │ │ S3-compatible│   │         └──────────┘
+        └────┬────┘ └───────┘ └──────────────┘   │
+             │                                    │
+             └── nightly pg_dump + WAL archiving ─┴──▶ OFF-HOST object storage
+                 (encrypted, different account)          media · invoices · backups
 ```
 
 - `web`, `api`, and `worker` are stateless containers; all state is in Postgres,
   Redis, or object storage.
-- `worker` scales on queue depth, independently of request traffic.
-- Postgres runs managed where possible, with a read replica used only for
-  reporting and admin exports — never for read-your-writes paths.
+- Only the reverse proxy publishes ports. Postgres, Redis, and MinIO are reachable
+  only on the private Docker network.
+- **No read replica initially.** Reporting and admin exports run against the
+  primary with a generous `statement_timeout`. A replica arrives with managed
+  Postgres, if and when that migration happens.
+- `worker` scales on queue depth; on one node that means process concurrency
+  rather than replicas.
 - Health endpoints: `/healthz` (liveness, no dependencies) and `/readyz`
-  (readiness, checks DB, Redis, storage). The orchestrator only routes traffic to
-  ready instances.
+  (readiness, checks DB, Redis, storage). Restarts are gated on readiness.
+- **Backups leave the machine.** A backup stored on the VPS it protects is not a
+  backup ([`database-strategy.md §10`](database-strategy.md)).
 
 ### 11.3 Release process
 
@@ -383,12 +449,19 @@ created but the email never sent" impossible.
 2. Migrations run as a **separate pre-deploy job**, never on application boot.
 3. Schema changes follow **expand → migrate → contract**: additive migration,
    deploy code that tolerates both shapes, backfill, then a later contracting
-   migration. This keeps rolling deploys safe.
-4. Rolling deploy gated on readiness; automatic rollback to the previous image if
-   readiness fails. Because migrations are backwards-compatible within a release
-   pair, rollback never requires a down-migration.
-5. Post-deploy smoke checks on health, a catalog read, and a synthetic checkout in
-   staging.
+   migration.
+4. Deploy is a readiness-gated rolling restart of the Compose services. On a
+   single node this means a brief downtime window per service rather than a
+   zero-downtime rolling deploy — accepted at launch volume. Rollback is a
+   redeploy of the previous image digest, and is always safe because migrations
+   are backwards-compatible within a release pair, so no down-migration is ever
+   required.
+5. Post-deploy smoke checks on health, a catalog read in each locale, and a
+   synthetic checkout in staging.
+
+Because the applications assume nothing about co-location, a local filesystem, a
+shared in-process cache, or a single instance, moving any dependency to a managed
+service later is a connection-string change rather than a code change.
 
 ### 11.4 Observability
 Structured logs shipped centrally with correlation ids; OpenTelemetry traces;
@@ -420,8 +493,8 @@ when `prefers-reduced-motion: reduce` is set.
 
 | Level | Tool | Scope |
 |---|---|---|
-| Unit | Vitest | Domain logic in `packages/core` and module `domain/` — pure, fast, no I/O |
-| Integration | Vitest + ephemeral Postgres/Redis | Repositories, transactions, reservation concurrency, job handlers |
+| Unit | Vitest | Domain logic in `packages/core` and `packages/backend/**/domain` — pure, fast, no I/O |
+| Integration | Vitest + ephemeral Postgres/Redis | `packages/backend` repositories, transactions, reservation concurrency, job handlers — no HTTP server required |
 | Contract | Vitest | Handlers validated against the OpenAPI document; the document is diffed in CI |
 | Component | Vitest + Testing Library | `packages/ui` and web components, in both directions |
 | End-to-end | Playwright | Critical journeys in `fa` and `en`, including RTL layout and axe accessibility checks |
@@ -441,6 +514,9 @@ recorded fixtures — never live in CI.
 - **Event sourcing** — snapshots and append-only ledgers where they matter, not
   everywhere.
 - **A separate admin app** — the admin console is a route group in `apps/web`.
+- **Business logic inside an app** — `apps/*` are composition roots; the rules
+  live in `packages/backend` ([ADR-0021](adr/0021-shared-backend-package.md)).
+- **Worker-to-API HTTP calls** — both are hosts for the same library.
 - **Client-side business logic** — the browser renders, it does not decide.
 - **A second database engine** — Postgres does search, queues-of-record, and JSON
   until it measurably cannot.

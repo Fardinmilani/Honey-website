@@ -32,14 +32,24 @@ for the full in-scope / out-of-scope contract.
 pnpm workspace + Turborepo
 │
 ├── apps/web      Next.js App Router — storefront + admin console (RSC, i18n, RTL/LTR)
-├── apps/api      NestJS on Fastify — modular monolith, REST + OpenAPI, sole owner of the DB
-├── apps/worker   BullMQ worker — background jobs, no HTTP surface
+│                 never touches the database or the backend library
+├── apps/api      HTTP composition root — NestJS on Fastify, controllers, guards,
+│                 DTO mapping, REST + OpenAPI
+├── apps/worker   BullMQ composition root — queue processors, scheduling, retries
+│                 never imports apps/api, never calls it over HTTP
 │
-└── packages/     core domain types, db (Prisma), contracts, i18n, ui, config, utils
+└── packages/
+    ├── backend   ALL business logic — modular monolith, shared by api and worker
+    ├── db        Prisma schema, migrations, client, transaction helper
+    └── core · contracts · i18n · ui · config · utils
 
 PostgreSQL · Redis · S3-compatible object storage (MinIO locally) · Docker Compose
 TypeScript strict · Vitest · Playwright
 ```
+
+`apps/api` and `apps/worker` are two process shapes over **one** body of business
+logic. There is exactly one implementation of every rule, and it lives in
+`packages/backend` ([ADR-0021](docs/adr/0021-shared-backend-package.md)).
 
 Details: [`docs/architecture.md`](docs/architecture.md).
 
@@ -56,7 +66,7 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 2 | Workspace Foundation | pnpm + Turborepo + TS config + lint + CI skeleton |
 | 3 | Local Environment | Docker Compose: Postgres, Redis, MinIO, mail catcher |
 | 4 | Database Foundation | Prisma schema core, first migration, seed harness |
-| 5 | API Foundation | Nest+Fastify bootstrap, config, logging, errors, OpenAPI, health |
+| 5 | Backend Library & API Foundation | `packages/backend` skeleton + Nest/Fastify bootstrap, config, logging, errors, OpenAPI, health |
 | 6 | Identity & Authorization | Users, sessions, RBAC, admin 2FA, audit log |
 | 7 | Media & Storage | S3 abstraction, MinIO adapter, upload pipeline |
 | 8 | Catalog & Content Model | Products, variants, translations, categories |
@@ -65,9 +75,9 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 11 | Sourcing, Procurement & Inventory | Suppliers, purchase orders, batches, stock ledger |
 | 12 | Cart & Pricing | Server-authoritative cart and price engine |
 | 13 | Checkout & Orders | Reservations, checkout transaction, immutable order snapshots |
-| 14 | Payments | Provider abstraction, first provider, webhooks, reconciliation |
+| 14 | Payments | Provider abstraction, first provider, server-verified outcomes, reconciliation |
 | 15 | Shipping & Fulfilment | Provider abstraction, rates, shipments, tracking |
-| 16 | Background Jobs | Worker queues, scheduling, retries, dead letters |
+| 16 | Background Jobs | Worker composition root, queues, scheduling, retries, dead letters |
 | 17 | Admin Console | Catalog, inventory, orders, procurement, content administration |
 | 18 | Content, Reviews & Notifications | CMS pages, moderated reviews, transactional messaging |
 | 19 | Observability & Performance | Tracing, metrics, caching layers, Core Web Vitals budget |
@@ -108,6 +118,9 @@ not rendered.
 | Copy | No translated strings inline in components. Catalogs only. |
 | Hero assets | `apps/web/public/media/hero/` is read-only. |
 | Architecture | Modular monolith. No microservices before there is a measured reason. |
+| Code placement | Business logic in `packages/backend`. `apps/*` are composition roots only. No app imports another app. |
+| Payment state | Changes only on a server-to-server, provider-verified outcome. Never from the browser. |
+| Hosting | Self-hosted Linux VPS + Docker Compose, provider-neutral, portable to managed services later. |
 | Types | TypeScript strict everywhere. No `any`. |
 
 ---
@@ -130,8 +143,14 @@ These block or shape later phases and need a human decision. Tracked in
 6. **Legal entity and invoicing** — invoice format, numbering, and any statutory
    fields required. *Shapes Phase 13.*
 7. **Reviews** — are customer reviews in scope for launch? *Shapes Phase 18.*
-8. **Hosting target** — self-hosted containers vs. managed platform for `web`.
-   *Shapes Phases 3 and 20.*
+8. **Production domain** — the domain name, and whether the canonical host is the
+   apex or `www`. *Shapes Phase 10.*
+9. **Brand fonts** — licensed Persian and Latin webfonts. *Shapes Phase 9.*
+
+**Resolved:** ~~Hosting target~~ — decided on 2026-08-05 as a self-hosted Linux
+VPS running Docker Compose behind a reverse proxy with TLS, provider-neutral and
+portable to managed services later
+([ADR-0023](docs/adr/0023-self-hosted-vps-deployment.md)). Phase 3 is unblocked.
 
 ---
 

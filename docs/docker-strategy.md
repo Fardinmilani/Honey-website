@@ -4,8 +4,10 @@
 the same image definitions produce small, non-root, reproducible production
 containers.
 
-**Decision record:** [ADR-0006](adr/0006-redis-bullmq.md),
-[ADR-0007](adr/0007-s3-storage-abstraction.md)
+**Decision record:** [ADR-0023](adr/0023-self-hosted-vps-deployment.md),
+[ADR-0006](adr/0006-redis-bullmq.md),
+[ADR-0007](adr/0007-s3-storage-abstraction.md),
+[ADR-0021](adr/0021-shared-backend-package.md)
 
 ---
 
@@ -55,8 +57,8 @@ containers.
 | `minio` | `minio/minio` | 9000 API, 9001 console | `miniodata` | S3-compatible storage |
 | `minio-init` | `minio/mc` | — | — | One-shot bucket + policy creation, then exits |
 | `mailpit` | `axllent/mailpit` | 1025 SMTP, 8025 UI | — | Catches all outbound mail |
-| `api` | built from `docker/api.Dockerfile` | 3001 | source bind | NestJS in watch mode |
-| `worker` | built from `docker/worker.Dockerfile` | — | source bind | BullMQ consumers |
+| `api` | built from `docker/api.Dockerfile` | 3001 | source bind | HTTP composition root, watch mode |
+| `worker` | built from `docker/worker.Dockerfile` | — | source bind | BullMQ composition root, watch mode |
 | `web` | built from `docker/web.Dockerfile` | 3000 | source bind | Next.js dev server |
 
 Buckets created by `minio-init`: `honey-media` (public read via CDN in
@@ -149,6 +151,12 @@ Every application image follows the same four-stage shape:
 #             USER node · read-only rootfs · tini as PID 1 · HEALTHCHECK
 ```
 
+The `api` and `worker` images both build `packages/backend` and differ only in
+their entrypoint and which workspace they build last
+([ADR-0021](adr/0021-shared-backend-package.md)). Scoped builds use
+`pnpm deploy --filter` (or `turbo prune`) so each image ships only the workspace
+subgraph it needs rather than the whole monorepo.
+
 Rules:
 
 - Base images pinned **by digest**, not by tag, and rebuilt weekly for patches.
@@ -187,55 +195,83 @@ redeliver.
 
 ---
 
-## 7. Production topology
+## 7. Production topology — self-hosted VPS
+
+The initial production target is a **single self-hosted Linux VPS running Docker
+Compose behind a reverse proxy with TLS**, provider-neutral and portable to
+managed services later ([ADR-0023](adr/0023-self-hosted-vps-deployment.md)).
 
 ```
                          Internet
                             │
-                 ┌──────────▼──────────┐
-                 │  CDN (media, static, ISR HTML)
-                 └──────────┬──────────┘
-                            │
-                 ┌──────────▼──────────┐
-                 │ Reverse proxy       │  TLS (auto-renew), HSTS,
-                 │ Caddy or Nginx      │  security headers, gzip/brotli,
-                 └───┬─────────────┬───┘  edge rate limiting
-                     │             │
-           ┌─────────▼──┐    ┌─────▼──────┐    ┌──────────────┐
-           │  web × N   │    │  api × N   │    │  worker × M  │
-           │ standalone │    │ Nest/Fastify│   │  BullMQ      │
-           └────────────┘    └──┬──────┬──┘    └──────┬───────┘
-                                │      │              │
-                     ┌──────────▼─┐ ┌──▼──────┐ ┌─────▼────────┐
-                     │ PostgreSQL │ │  Redis  │ │  S3-compat.  │
-                     │  managed   │ │ managed │ │   storage    │
-                     │  +replica  │ │  + AOF  │ │  + CDN       │
-                     └────────────┘ └─────────┘ └──────────────┘
+                 ┌──────────▼─────────────────────────────┐
+                 │ Reverse proxy — Caddy or Nginx          │  TLS + auto-renewal,
+                 │ THE ONLY CONTAINER WITH PUBLISHED PORTS │  HSTS, security headers,
+                 └───┬──────────────────────────────┬─────┘  brotli, edge rate limiting
+                     │                              │
+           ┌─────────▼──┐                    ┌──────▼──────┐    ┌──────────────┐
+           │    web     │                    │     api     │    │    worker    │
+           │ standalone │───── private ─────▶│ Nest/Fastify│    │    BullMQ    │
+           └────────────┘                    └──────┬──────┘    └──────┬───────┘
+                                                    │  both host       │
+                                             ┌──────▼──────────────────▼──────┐
+                                             │      packages/backend           │
+                                             └──────┬──────────────────────────┘
+                     ┌──────────────────────────────┼──────────────┐
+              ┌──────▼─────┐  ┌────────┐  ┌─────────▼────┐         │
+              │ PostgreSQL │  │ Redis  │  │    MinIO     │         │
+              │  + WAL     │  │ + AOF  │  │ S3-compatible│         │
+              └──────┬─────┘  └────────┘  └──────────────┘         │
+                     │                                             │
+                     └──── encrypted, off-host ────────────────────┘
+                                     ▼
+                        Object storage in a DIFFERENT account
+                        nightly dumps · WAL archive · media backup
 ```
 
-**Managed vs. self-hosted.** Postgres, Redis, and object storage are managed
-services in production wherever available. Backups, patching, failover, and
-point-in-time recovery are exactly the work we do not want to own by hand. If a
-managed option is unavailable, `docker/prod/` contains a self-hosted definition
-with the same interfaces, plus explicit backup and failover runbooks.
+All services share a private Docker network. Only the reverse proxy publishes
+ports; PostgreSQL, Redis, and MinIO are unreachable from the internet.
+
+**Why self-hosted first.** Predictable cost, no vendor lock-in before we have
+operational data to choose with, full control over data residency in the primary
+market, and near-identical local and production topologies. The trade is that we
+own patching, backups, monitoring, and recovery — which is why the Phase 20
+acceptance criteria are written around a rehearsed restore rather than a
+configured one.
+
+**Portability is a design constraint.** Every stateful dependency sits behind a
+standard protocol or a port, so moving one to a managed service is a
+connection-string change: object storage via `StorageService`
+([ADR-0007](adr/0007-s3-storage-abstraction.md)), PostgreSQL and Redis over the
+wire. No code may assume co-location, a local filesystem, a shared in-process
+cache, or a single instance of any application container.
 
 **Production differences from local**
 
-| Aspect | Local | Production |
+| Aspect | Local | Production (VPS) |
 |---|---|---|
-| Object storage | MinIO container | Managed S3-compatible + CDN |
+| Object storage | MinIO container | MinIO container; managed S3 + CDN is the first planned migration |
 | Mail | Mailpit, nothing leaves | Real transactional provider |
-| TLS | Plain HTTP on localhost | Enforced, HSTS preload |
-| Data | Seeded synthetic | Real, backed up, restore-tested |
-| Replicas | 1 of each | Horizontally scaled, rolling deploys |
+| TLS | Plain HTTP on localhost | Enforced at the proxy, auto-renewed, HSTS preload |
+| Exposed ports | Convenient direct ports | Reverse proxy only |
+| Data | Seeded synthetic | Real, backed up off-host, restore-tested |
+| Replicas | 1 of each | 1 of each; `worker` scales by process concurrency |
+| Deploys | `pnpm dev` | Readiness-gated rolling restart, brief downtime per service |
 | Migrations | `pnpm db:migrate` by hand | Separate pre-deploy job |
 | Logs | Pretty-printed to stdout | Structured JSON shipped centrally |
-| Secrets | `.env` file | Secret manager, injected at runtime |
+| Secrets | `.env` file | Injected at runtime, never in an image layer |
 
-**Resource limits** — every production container declares CPU and memory limits
-and requests. Node's heap is capped below the container limit
-(`--max-old-space-size`) so the process fails with a JS heap error, which is
-debuggable, rather than an opaque OOM kill.
+**Single-node consequences.** No read replica: reporting and admin exports run
+against the primary with a generous `statement_timeout`. Deploys are brief-
+downtime rolling restarts rather than zero-downtime. The VPS is a single point of
+failure, accepted at launch volume, with a tested restore as the mitigation
+rather than a hot standby.
+
+**Resource limits** — every production container declares CPU and memory limits.
+On one shared host this matters more than usual: a runaway container must not
+starve PostgreSQL. Node's heap is capped below the container limit
+(`--max-old-space-size`) so the process fails with a debuggable JS heap error
+rather than an opaque OOM kill.
 
 ---
 
@@ -243,14 +279,21 @@ debuggable, rather than an opaque OOM kill.
 
 ```
 1. CI builds and pushes immutable, digest-tagged images
-2. Pre-deploy job: run migrations (expand phase only — backwards-compatible)
-3. Rolling deploy api  → readiness-gated, one instance at a time
-4. Rolling deploy worker → drains queues gracefully
-5. Rolling deploy web  → readiness-gated
-6. Post-deploy smoke: /readyz, a catalog read in each locale, a synthetic
+2. Pull images on the VPS; fail the deploy here if a pull fails, before anything
+   is stopped
+3. Pre-deploy job: run migrations (expand phase only — backwards-compatible)
+4. Recreate api    → readiness-gated
+5. Recreate worker → SIGTERM first, active jobs drain, then replace
+6. Recreate web    → readiness-gated
+7. Post-deploy smoke: /readyz, a catalog read in each locale, a synthetic
    checkout in staging
-7. Contract migrations (drops) ship in a later release, never with the expand
+8. Contract migrations (drops) ship in a later release, never with the expand
 ```
+
+On a single node each recreate is a short downtime window for that service rather
+than a zero-downtime rolling deploy; the reverse proxy holds or retries during
+the gap. Pulling before stopping (step 2) is what keeps a registry problem from
+turning into an outage.
 
 Rollback is a redeploy of the previous digest. It is always safe because
 migrations within a release pair are backwards-compatible — no down-migration is
@@ -273,7 +316,13 @@ Backup jobs run in a dedicated container with credentials scoped to
 write-and-list only — **no delete**. A compromised application credential
 therefore cannot destroy the backups.
 
-Monthly restore drill: provision a throwaway stack, restore the latest dump, run
+**Backups must leave the host.** Self-hosting co-locates the database with the
+applications it serves ([ADR-0023](adr/0023-self-hosted-vps-deployment.md)), so a
+dump written to a local volume dies with the machine it was protecting. Every
+backup target above is off-host object storage in a different account, including
+the MinIO bucket contents themselves.
+
+Monthly restore drill: provision a throwaway host, restore the latest dump, run
 migrations, run smoke tests, record the measured RTO. A drill that fails is a P1
 incident. Details in [`database-strategy.md §10`](database-strategy.md).
 

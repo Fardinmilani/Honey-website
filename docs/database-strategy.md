@@ -2,7 +2,11 @@
 
 **Engine:** PostgreSQL 16+
 **Access:** Prisma ORM, exclusively via `packages/db`
-**Owner:** `apps/api` and `apps/worker`. Nothing else has credentials.
+**Owner:** `packages/backend` — the only consumer of `packages/db` and the only
+holder of database credentials. `apps/api` and `apps/worker` host that library in
+two different process shapes; neither imports Prisma itself
+([ADR-0021](adr/0021-shared-backend-package.md)). `apps/web` has no database
+access of any kind.
 
 ---
 
@@ -263,7 +267,10 @@ Release N+2   drop the old column
 **Connection pooling** — PgBouncer in transaction mode in production, with
 Prisma configured accordingly (no prepared-statement reliance). Pool sizes are
 budgeted so that `api_replicas × pool + worker_replicas × pool` stays under
-`max_connections` with headroom for migrations and operators.
+`max_connections` with headroom for migrations and operators. On the single-node
+VPS topology ([ADR-0023](adr/0023-self-hosted-vps-deployment.md)) that budget is
+small and easy to satisfy, but it is stated in terms of replicas so it stays
+correct when the deployment grows.
 
 ---
 
@@ -294,6 +301,12 @@ procedure is a documented, tested, admin-triggered job, not an ad-hoc SQL script
 
 **Targets:** RPO ≤ 15 minutes, RTO ≤ 2 hours.
 
+On the self-hosted VPS topology ([ADR-0023](adr/0023-self-hosted-vps-deployment.md))
+we own this entirely — there is no managed provider doing it for us, and the
+database shares a machine with the applications it serves. The rule that follows
+from that is absolute: **backups are written off the host**, to object storage in
+a different account, with write-and-list credentials that cannot delete.
+
 | Layer | Mechanism | Frequency | Retention |
 |---|---|---|---|
 | Continuous | WAL archiving to object storage (PITR) | streaming | 14 days |
@@ -306,7 +319,8 @@ procedure is a documented, tested, admin-triggered job, not an ad-hoc SQL script
 
 - Backups are encrypted at rest and in transit; keys live in the secret manager.
 - Backups are written to a **different account/region** than the primary database
-  so a single compromised credential cannot delete both.
+  so a single compromised credential cannot delete both. A backup stored on the
+  VPS it protects is not a backup.
 - Dumps are never written into the repository — `.gitignore` blocks `*.sql`,
   `*.dump`, `backups/`, and friends. Verified in the Phase 1 gitignore run.
 - **A backup that has not been restored is not a backup.** A monthly automated
@@ -340,9 +354,16 @@ procedure is a documented, tested, admin-triggered job, not an ad-hoc SQL script
 
 Watched continuously: connection-pool saturation, slow queries via
 `pg_stat_statements` (p95 and p99 per statement), index bloat and unused indexes,
-table bloat and autovacuum lag, replication lag, transaction age (wraparound
-risk), lock waits and deadlock count, WAL generation rate, and backup job success.
+table bloat and autovacuum lag, transaction age (wraparound risk), lock waits and
+deadlock count, WAL generation rate, **free disk space on the database volume**,
+and backup job success.
 
-Alerts fire on: replication lag > 30 s, pool saturation > 85 % for 5 minutes, any
-deadlock, a query exceeding `statement_timeout` in the API role, autovacuum
-falling behind on a hot table, a failed backup, or a failed restore drill.
+Alerts fire on: pool saturation > 85 % for 5 minutes, any deadlock, a query
+exceeding `statement_timeout` in the API role, autovacuum falling behind on a hot
+table, disk usage above 75 %, a failed backup, or a failed restore drill.
+
+Disk space is listed explicitly because the initial topology co-locates Postgres,
+Redis, MinIO, and the applications on one VPS
+([ADR-0023](adr/0023-self-hosted-vps-deployment.md)): a full volume takes down
+everything at once, and WAL archiving makes it a live risk rather than a slow one.
+Replication lag joins this list when a replica exists; there is none at launch.

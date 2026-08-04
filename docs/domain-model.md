@@ -433,18 +433,24 @@ interface PaymentProvider {
   readonly code: string;                       // 'zarinpal' | 'stripe' | …
   readonly capabilities: {
     redirect: boolean; capture: boolean;
-    partialRefund: boolean; webhooks: boolean;
+    partialRefund: boolean;
+    webhooks: boolean;        // MAY be false — many domestic providers have none
+    verifyReturn: boolean;    // redirect-then-server-verify support
   };
 
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   //   → { providerRef, redirectUrl?, clientSecret?, expiresAt }
-  verifyReturn(input: ProviderReturnInput): Promise<PaymentOutcome>;
+  verifyReturn?(input: ProviderReturnInput): Promise<PaymentOutcome>;
   capture?(input: CaptureInput): Promise<PaymentOutcome>;
   refund(input: RefundInput): Promise<RefundOutcome>;
-  parseWebhook(raw: RawWebhook): Promise<VerifiedWebhookEvent>;   // verifies signature
-  getStatus(providerRef: string): Promise<PaymentOutcome>;        // reconciliation
+  parseWebhook?(raw: RawWebhook): Promise<VerifiedWebhookEvent>;  // verifies signature
+  getStatus(providerRef: string): Promise<PaymentOutcome>;        // MANDATORY
 }
 ```
+
+`getStatus` is required of every adapter; `verifyReturn` and `parseWebhook` are
+optional and declared through `capabilities`. A provider that supports neither is
+not integrable ([ADR-0022](adr/0022-payment-verification-sources.md)).
 
 ```
 Payment
@@ -466,19 +472,26 @@ ProviderEvent       provider · eventId(unique) · type · signatureValid
 **Rules**
 
 - The domain never imports a PSP SDK. Adapters live in
-  `payments/infrastructure/providers/<code>/` and map vendor payloads into
-  `PaymentOutcome`. Adding a PSP is a new adapter plus configuration
-  ([ADR-0013](adr/0013-payment-provider-abstraction.md)).
-- **The browser never determines payment state.** A redirect back from the PSP
-  triggers a server-side `verifyReturn`; the webhook is the durable source of
-  truth. A "success" query parameter is treated as an untrusted hint.
-- Webhooks: signature-verified, replay-protected via a unique `eventId` and a
-  timestamp window, persisted raw before interpretation, then processed
-  idempotently by the worker.
-- `Payment.amountMinor` must equal `Order.grandTotalMinor`. A mismatch does not
+  `packages/backend/src/modules/payments/infrastructure/providers/<code>/` and map
+  vendor payloads into `PaymentOutcome`. Adding a PSP is a new adapter plus
+  configuration ([ADR-0022](adr/0022-payment-verification-sources.md), superseding
+  [ADR-0013](adr/0013-payment-provider-abstraction.md)).
+- **The browser never determines payment state.** Payment state changes only on a
+  server-to-server, provider-verified outcome. A "success" query parameter is an
+  untrusted hint that triggers verification.
+- Three sources are equally authoritative: a **verified webhook**, a server-side
+  **`verifyReturn`** after redirect, or a reconciliation **`getStatus`** poll.
+  All three call the same `applyPaymentOutcome` function — one idempotent,
+  monotonic state machine, so a terminal state is never walked back by a late
+  message and concurrent arrivals serialize on a row lock.
+- Webhooks, where the provider supports them: signature-verified, replay-protected
+  via a unique `eventId` and a timestamp window, persisted raw before
+  interpretation, then processed idempotently by the worker.
+- **`providerRef`, `amountMinor`, and `currency` are verified** on every outcome.
+  `Payment.amountMinor` must equal `Order.grandTotalMinor`. A mismatch does not
   mark the order paid — it raises a reconciliation alert.
-- A reconciliation job polls `getStatus` for payments stuck in `PENDING` beyond a
-  threshold, so a dropped webhook can never strand an order.
+- Reconciliation polling is mandatory for every provider, so neither a dropped
+  webhook nor an abandoned redirect can strand an order.
 - Card data never touches our infrastructure; only tokens and provider references
   are stored. Raw payloads are redacted before persistence.
 

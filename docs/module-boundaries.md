@@ -8,29 +8,46 @@ allowed to talk, and how the rules are checked in CI.
 
 ## 1. Anatomy of a module
 
-Every module in `apps/api/src/modules/<module>/` has the same four layers:
+Every module lives in `packages/backend/src/modules/<module>/` and has the same
+three layers plus a public barrel:
 
 ```
 <module>/
 ├── domain/            entities, value objects, policies, PORT interfaces
-│                      pure TypeScript — no Nest, no Prisma, no HTTP
+│                      pure TypeScript — no Nest, no Prisma, no HTTP, no BullMQ
 ├── application/       use cases / services; orchestrates domain + ports;
 │                      owns transaction boundaries
-├── infrastructure/    Prisma repositories, provider adapters, queue producers
+├── infrastructure/    Prisma repositories, provider adapters, queue PRODUCERS
 │                      — implements the ports declared in domain/
-├── http/              controllers, DTOs, request/response schemas, guards
 └── index.ts           the module's PUBLIC surface — nothing else is importable
+```
+
+**Transport layers live in the applications, not in the module.** Each
+composition root keeps a thin adapter that maps its transport onto the same
+application services ([ADR-0021](adr/0021-shared-backend-package.md)):
+
+```
+apps/api/src/modules/<module>/        controller · DTOs · guards · OpenAPI decorators
+apps/worker/src/processors/<queue>/   job payload → validate → application service
 ```
 
 **Dependency direction is one way:**
 
 ```
-http ──▶ application ──▶ domain ◀── infrastructure
+apps/api  ─┐
+           ├─▶ application ──▶ domain ◀── infrastructure
+apps/worker┘
 ```
 
-`domain` depends on nothing. `infrastructure` implements `domain` ports and is
-wired in by the Nest module definition. A `domain` file that imports Prisma, Nest,
-or a vendor SDK is a bug and fails lint.
+`domain` depends on nothing. `infrastructure` implements `domain` ports. A
+`domain` file that imports Prisma, Nest, BullMQ, or a vendor SDK is a bug and
+fails lint. `application` and `infrastructure` may carry Nest DI decorators —
+metadata only; `packages/backend` never calls `NestFactory`.
+
+**Why the split.** The worker must run the same rules as the API without
+importing it and without calling it over HTTP. Putting the modules in a library
+that both apps depend on is the only arrangement in which "reuse the same
+application services" and "no app imports another app" are both true.
 
 ---
 
@@ -107,9 +124,13 @@ table. Anything else goes through that module's public service or a domain event
 | `orders` → live `catalog` for rendering | Orders render from their own snapshots |
 | `payments` → `cart` | Payment operates on an order, never a cart |
 | any module → another module's Prisma models | Ownership violation |
-| `domain/` → Nest, Prisma, or a vendor SDK | Breaks purity and testability |
-| `packages/ui` → `packages/db` | UI must never see persistence |
-| `apps/web` → `packages/db` | Web has no database access at all |
+| `domain/` → Nest, Prisma, BullMQ, or a vendor SDK | Breaks purity and testability |
+| `packages/backend` → `apps/*` | A library never imports its host |
+| `apps/api` ↔ `apps/worker` | Both are composition roots over the same library |
+| `apps/worker` → the API over HTTP | A network hop for work that is already in-process |
+| `apps/api` / `apps/worker` → `packages/db` | Database access belongs to `packages/backend` alone |
+| `apps/web` → `packages/backend` or `packages/db` | Web reaches business logic over HTTP or not at all |
+| `packages/ui` → `packages/db` or `packages/backend` | UI must never see persistence or business rules |
 
 Cycles are forbidden outright. If two modules need each other, one of them is
 wrong or a third concept is missing.
@@ -123,10 +144,10 @@ wrong or a third concept is missing.
 Inside a request, when a caller needs an answer now:
 
 ```ts
-// checkout/application/confirm-checkout.use-case.ts
-import { PricingService } from '@/modules/pricing';       // ✅ barrel only
-import { InventoryService } from '@/modules/inventory';   // ✅
-// import { PrismaCouponRepo } from '@/modules/pricing/infrastructure/…'  ❌
+// packages/backend/src/modules/checkout/application/confirm-checkout.use-case.ts
+import { PricingService } from '../../pricing';       // ✅ barrel only
+import { InventoryService } from '../../inventory';   // ✅
+// import { PrismaCouponRepo } from '../../pricing/infrastructure/…'  ❌
 ```
 
 Only what a module re-exports from its `index.ts` is callable. That barrel
@@ -167,8 +188,9 @@ need to call back for context, and adding a field must never break a consumer.
 
 ## 5. Transaction ownership
 
-- A transaction is opened by an **application-layer use case**, never by a
-  repository, never by a controller.
+- A transaction is opened by an **application-layer use case** in
+  `packages/backend`, never by a repository, never by a controller, never by a
+  queue processor.
 - One business operation, one transaction. Nested transactions are not used.
 - Only the module that owns a table may write to it inside a transaction. When a
   cross-module write is genuinely needed (checkout writes orders, reservations,
@@ -193,7 +215,53 @@ transaction; it does not reach past the service into someone else's data.
 
 ---
 
-## 6. Web application boundaries
+## 6. Application boundaries (composition roots)
+
+### 6.1 `apps/api` — HTTP composition root
+
+```
+apps/api/src/
+├── main.ts                      NestFactory.create() with the Fastify adapter
+├── app.module.ts                imports the backend modules it exposes
+├── modules/<module>/            controller · DTOs · guards · OpenAPI decorators
+└── common/                      filters, interceptors, pipes, correlation id
+```
+
+Rules:
+
+- A controller does four things: validate input, map to an application command,
+  call **one** application service from `packages/backend`, and map the result to
+  a response DTO. Anything more is a business rule in the wrong place.
+- No Prisma import, no `packages/db` import, no SQL. The readiness probe uses the
+  `platform` health service.
+- HTTP DTOs are separate types from application commands. The wire format is
+  allowed to change without touching a use case, and vice versa.
+- `apps/api` is never imported by anything — not by the worker, not by tests of
+  the backend.
+
+### 6.2 `apps/worker` — BullMQ composition root
+
+```
+apps/worker/src/
+├── main.ts                      NestFactory.createApplicationContext() — headless
+├── worker.module.ts             imports the same backend modules
+├── processors/<queue>/          job payload → validate → application service
+└── schedules/                   repeatable job registration
+```
+
+Rules:
+
+- A processor is an adapter, not a place for logic: deserialize, validate the
+  payload against a schema, call the application service, map failures to retry
+  or dead-letter.
+- Job payload schemas are versioned and validated on consumption — a payload
+  enqueued by the previous release must still be readable.
+- Never imports `apps/api`. Never calls the API over HTTP.
+- Every handler is idempotent; duplicate delivery is expected, not exceptional.
+- Owns retry, backoff, concurrency, rate limits, and dead-letter policy. The
+  backend library has no opinion about how often a job is retried.
+
+### 6.3 `apps/web` — presentation and BFF
 
 ```
 apps/web/src/
@@ -218,6 +286,8 @@ Rules:
   i18n hook, so a component is never coupled to a language.
 - The `(admin)` group's layout applies stricter cache headers and session policy,
   but the real gate is the API's permission check on every call.
+- **Never** imports `packages/backend` or `packages/db`. Business logic is reached
+  over HTTP or not at all, including from Server Components and server actions.
 
 ---
 
@@ -227,11 +297,15 @@ These are not guidelines. CI fails on violation.
 
 | Rule | Mechanism |
 |---|---|
-| No deep imports across modules | `eslint no-restricted-imports` with `@/modules/*/!(index)` patterns |
-| No layer inversion inside a module | `eslint-plugin-boundaries` element types: `domain` may not import `application`/`infrastructure`/`http` |
+| No deep imports across modules | `eslint no-restricted-imports` with `@honey/backend/modules/*/!(index)` patterns |
+| No layer inversion inside a module | `eslint-plugin-boundaries` element types: `domain` may not import `application` or `infrastructure` |
 | No cycles between modules | `dependency-cruiser` `no-circular` |
-| `domain/` stays pure | `no-restricted-imports` for `@nestjs/*`, `@prisma/*`, `axios`, vendor SDKs |
-| `apps/web` has no DB access | `no-restricted-imports` for `@honey/db`, `@prisma/client` |
+| `domain/` stays pure | `no-restricted-imports` for `@nestjs/*`, `@prisma/*`, `bullmq`, `axios`, vendor SDKs |
+| `packages/backend` never imports an app | `dependency-cruiser` rule: `packages/**` → `apps/**` forbidden |
+| `apps/api` and `apps/worker` never import each other | `dependency-cruiser` forbidden edge, both directions |
+| `apps/worker` never calls the API over HTTP | `no-restricted-imports` for the generated API client, plus a lint rule banning `API_BASE_URL` in the worker |
+| Only `packages/backend` touches the database | `no-restricted-imports` for `@honey/db` and `@prisma/client` outside `packages/backend` |
+| `apps/web` has no business logic or DB access | `no-restricted-imports` for `@honey/backend`, `@honey/db`, `@prisma/client` |
 | `packages/core` imports nothing local | `dependency-cruiser` orphan/allowed-dependency rule |
 | One module per table | Generated ownership map diffed against the Prisma schema in a CI test |
 | No supplier data in public responses | Contract test scanning the public OpenAPI document for forbidden field names |
@@ -247,12 +321,15 @@ generated ownership map, so the documentation and the check cannot drift.
 
 1. Confirm the capability is in [`product-scope.md`](product-scope.md).
 2. Write an ADR if it introduces a new concept, dependency, or external system.
-3. Create the four-layer skeleton and `module.meta.ts`.
+3. Create the three-layer skeleton under `packages/backend/src/modules/` plus
+   `module.meta.ts`.
 4. Declare owned tables — they must not already be owned by anyone else.
-5. Define the public barrel first: what other modules may call.
+5. Define the public barrel first: what other modules and composition roots may call.
 6. Define ports before adapters.
-7. Add the module to the dependency graph in this document.
-8. Add tests: domain unit tests, repository integration tests, contract tests.
+7. Add the transport adapters only where the module is actually reachable: a
+   controller in `apps/api`, a processor in `apps/worker`, or both.
+8. Add the module to the dependency graph in this document.
+9. Add tests: domain unit tests, repository integration tests, contract tests.
 
 If a new module would need to read another module's tables, the boundary is
 wrong. Stop and redesign.

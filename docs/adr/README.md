@@ -32,7 +32,7 @@ that costs, and what was rejected.
 | [0010](0010-single-seller-no-marketplace.md) | Single-seller domain; marketplace concepts forbidden | Accepted |
 | [0011](0011-immutable-order-snapshots.md) | Orders are immutable snapshots | Accepted |
 | [0012](0012-stock-reservation-strategy.md) | Checkout-time reservations with TTL and row locks | Accepted |
-| [0013](0013-payment-provider-abstraction.md) | Payment provider port; webhook is the source of truth | Accepted |
+| [0013](0013-payment-provider-abstraction.md) | Payment provider port; webhook is the source of truth | **Superseded by [ADR-0022](0022-payment-verification-sources.md)** |
 | [0014](0014-shipping-provider-abstraction.md) | Shipping provider port; manual flat-rate first | Accepted |
 | [0015](0015-session-auth.md) | Opaque server-side sessions in cookies, not JWTs | Accepted |
 | [0016](0016-money-minor-units.md) | Money as integer minor units + currency code | Accepted |
@@ -40,6 +40,19 @@ that costs, and what was rejected.
 | [0018](0018-caching-and-invalidation.md) | Layered caching with event-driven invalidation | Accepted |
 | [0019](0019-hero-media-preservation.md) | Hero media is an immutable, in-repo static asset | Accepted |
 | [0020](0020-no-lab-moisture-medical-claims.md) | No laboratory, moisture, or medical claims | Accepted |
+| [0021](0021-shared-backend-package.md) | Business logic in `packages/backend`, shared by API and worker | Accepted |
+| [0022](0022-payment-verification-sources.md) | Payment state changes only on a server-verified provider outcome | Accepted |
+| [0023](0023-self-hosted-vps-deployment.md) | Initial deployment: self-hosted Linux VPS + Docker Compose | Accepted |
+
+### Supersession chain
+
+| Original | Replaced by | What changed |
+|---|---|---|
+| [0013](0013-payment-provider-abstraction.md) | [0022](0022-payment-verification-sources.md) | The webhook is no longer *the* source of truth. Any server-to-server provider-verified outcome is authoritative, because some providers do not offer reliable webhooks. The `PaymentProvider` port and the "never trust the browser" rule from 0013 are unchanged. |
+
+ADR-0013 is left byte-for-byte as written, per the historical-record rule at the
+top of this file. Its supersession is recorded here in the index rather than by
+editing the original.
 
 ---
 

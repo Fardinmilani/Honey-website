@@ -250,7 +250,14 @@ an arbitrary `X-Forwarded-For`.
 
 ---
 
-## 10. Webhooks (inbound)
+## 10. Provider-verified inbound paths
+
+A payment outcome reaches us through one of three server-verified channels, none
+of which is guaranteed to exist for a given provider
+([ADR-0022](adr/0022-payment-verification-sources.md)). Two of them are HTTP
+endpoints; all three converge on the same idempotent state machine.
+
+### 10.1 Webhook — when the provider supports one
 
 ```
 POST /webhooks/payments/{provider}
@@ -267,9 +274,29 @@ Processing order is fixed and non-negotiable:
 
 Rationale: providers retry aggressively and time out quickly. Acknowledging fast
 and processing asynchronously is the only shape that survives contact with a real
-PSP. Unverified webhooks are logged and dropped, never processed. A dropped
-webhook is caught by the reconciliation job that polls provider status for
-payments stuck in `PENDING`.
+PSP. Unverified webhooks are logged and dropped, never processed.
+
+### 10.2 Customer return — redirect-then-server-verify
+
+```
+GET|POST /v1/payments/{id}/return
+```
+
+The customer's browser lands here after the gateway redirect. **Nothing in that
+request is trusted** — not a `status` parameter, not an amount, not a referrer.
+The endpoint's only job is to trigger an outbound server-to-server `verifyReturn`
+call to the provider and then redirect the customer to the order page reflecting
+whatever the provider actually said. A forged return achieves nothing beyond a
+verification that returns the real, unchanged outcome.
+
+This is the primary path for several domestic providers, which offer no reliable
+webhook at all.
+
+### 10.3 Reconciliation — mandatory, no HTTP surface
+
+A scheduled worker job polls `getStatus` for every payment not in a terminal
+state. This is required of every adapter and is the backstop for a dropped
+webhook, an abandoned redirect, and a provider outage alike.
 
 ---
 

@@ -21,20 +21,33 @@ with no exceptions for "internal" pages.
 └─────────────────────────┬──────────────────────────────────────────┘
                           │  session + permission check on every call
 ┌─────────────────────────▼──────────────────────────────────────────┐
-│ TRUSTED: apps/api                                                   │
-│ Sole holder of DB credentials, provider keys, signing secrets.      │
-│ Owns every business rule, every money computation, every authz.     │
+│ TRUSTED: apps/api  and  apps/worker                                 │
+│ Composition roots that host packages/backend. Hold provider keys    │
+│ and signing secrets. api authenticates and authorizes every request;│
+│ worker runs only work the domain itself scheduled.                  │
+└─────────────────────────┬──────────────────────────────────────────┘
+                          │  in-process
+┌─────────────────────────▼──────────────────────────────────────────┐
+│ TRUSTED: packages/backend                                           │
+│ Sole holder of DB access (via packages/db).                         │
+│ Owns every business rule, every money computation, every authz      │
+│ decision. Identical whether reached from HTTP or from a job.        │
 └─────────────────────────┬──────────────────────────────────────────┘
                           │  private network only
 ┌─────────────────────────▼──────────────────────────────────────────┐
 │ DATA: PostgreSQL · Redis · object storage                           │
-│ No public ingress. Reachable only from api and worker.              │
+│ No public ingress. Reachable only from packages/backend, running    │
+│ inside the api or worker process.                                   │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
 Anything crossing a boundary inward is validated at that boundary. "It came from
 our own frontend" is not a security property — the frontend runs on the
 attacker's machine.
+
+Because authorization lives in `packages/backend` rather than in the HTTP layer,
+a job that performs a privileged operation passes through the same checks a
+request would, with an explicit system principal rather than an implicit bypass.
 
 ---
 
@@ -239,20 +252,30 @@ credentialed wildcard, no origin reflection.
 
 ## 8. Payment security
 
+Governing decision: [ADR-0022](adr/0022-payment-verification-sources.md).
+
 - **Card data never touches our infrastructure.** Redirect or hosted-field flows
   only; we store provider references and tokens.
-- The browser is never believed about payment state. A redirect carrying
-  `?status=success` is an untrusted hint that triggers a server-side
-  `verifyReturn` against the provider.
-- Webhooks are signature-verified against the raw body, timestamp-checked
-  (≤ 5 min skew), deduplicated by a unique provider event id, stored raw, and
-  processed asynchronously and idempotently.
-- The captured amount is compared to `order.grandTotalMinor`. A mismatch does not
-  mark the order paid — it raises a reconciliation alert.
+- **Payment state changes only on a server-to-server, provider-verified
+  outcome.** The browser is never believed. A redirect carrying `?status=success`
+  is an untrusted hint that triggers verification and nothing else.
+- Three sources are equally authoritative, and **no provider is required to
+  support all of them**: a signature-verified webhook, a server-side
+  `verifyReturn` after redirect, or a reconciliation `getStatus` poll. Several
+  domestic providers use redirect-then-verify and offer no reliable webhook.
+- All three converge on one idempotent, monotonic payment state machine. A
+  terminal state is never walked back by a late or duplicate message.
+- Webhooks, where supported, are signature-verified against the raw body,
+  timestamp-checked (≤ 5 min skew), deduplicated by a unique provider event id,
+  stored raw, and processed asynchronously and idempotently.
+- **Provider reference, amount, and currency are all verified** against the
+  payment record before any state change. A mismatch does not mark the order
+  paid — it records `payment.amount_mismatch` and raises a reconciliation alert.
 - Refunds require `order:refund` plus step-up authentication, are capped at the
   remaining refundable amount by a database constraint, and are always audited.
-- A reconciliation job polls provider status for payments stuck in `PENDING`, so
-  a lost webhook cannot strand an order or a customer's money.
+- Reconciliation polling is mandatory for every adapter, so neither a lost
+  webhook nor a customer who closes the tab can strand an order or a customer's
+  money.
 
 ---
 
