@@ -1,7 +1,9 @@
 # Local Development Environment
 
-Phase 3 provides infrastructure only. It does not contain a web application,
-API, worker, Prisma schema, migrations, queues, or business data.
+Phase 3 provides the infrastructure stack. Phase 4 adds the Prisma schema,
+committed migration, deterministic development seed, and disposable database
+integration harness. It still does not contain a web application, API, worker,
+queue processor, or business service.
 
 ## Prerequisites
 
@@ -140,7 +142,37 @@ The result must contain `citext`, `pg_trgm`, `pgcrypto`, and `unaccent`.
 is missing.
 
 The initialization file only enables extensions. It creates no application
-tables, extra users, seed data, Prisma migration, or business record.
+tables, extra users, seed data, or business record. Prisma migrations create the
+application schema separately.
+
+## Database development
+
+With PostgreSQL healthy, validate and generate the Prisma client, apply the
+committed migration, and seed deterministic development fixtures:
+
+```sh
+pnpm db:validate
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
+pnpm db:migrate:status
+```
+
+The seed refuses production mode and non-local database hosts. Set
+`SEED_STAFF_EMAIL` to a synthetic local address. `SEED_STAFF_PASSWORD_HASH` is
+optional; when omitted, the seeded staff fixture has no usable credential.
+
+Run the database-level integration suite with:
+
+```sh
+pnpm db:test
+```
+
+The harness connects through `TEST_DATABASE_ADMIN_URL`, creates a unique
+`honey_phase4_test_*` database, applies the complete migration history, runs the
+seed twice, proves database rejection of invalid rows and mutations, and drops
+only that temporary database in a `finally` path. It never resets or drops
+`POSTGRES_DB` or the database named by `DATABASE_URL`.
 
 ## Redis verification
 

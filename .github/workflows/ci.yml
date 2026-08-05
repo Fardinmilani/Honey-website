@@ -17,6 +17,22 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16.14-alpine3.23
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
 
     steps:
       - name: Checkout
@@ -67,5 +83,5 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Verify Phase 2 scope
-        run: pnpm phase2:verify
+      - name: Verify Phase 4 database foundation
+        run: pnpm phase4:verify

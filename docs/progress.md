@@ -13,7 +13,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 1 | Architecture & Documentation | âœ… Complete (corrected 2026-08-05) | 2026-08-04 |
 | 2 | Workspace Foundation | ✅ Complete | 2026-08-05 |
 | 3 | Local Environment | ✅ Complete | 2026-08-05 |
-| 4 | Database Foundation | â¬œ Not started | â€” |
+| 4 | Database Foundation | ✅ Complete | 2026-08-06 |
 | 5 | Backend Library & API Foundation | â¬œ Not started | â€” |
 | 6 | Identity & Authorization | â¬œ Not started | â€” |
 | 7 | Media & Storage | â¬œ Not started | â€” |
@@ -31,8 +31,177 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 4 — Database Foundation (**not started**).
-**Previous phase:** Phase 3 — Local Environment (**complete 2026-08-05**).
+**Current phase:** Phase 5 — Backend Library & API Foundation (**not started**).
+**Previous phase:** Phase 4 — Database Foundation (**complete 2026-08-06**).
+
+---
+
+## Phase 4 — Database Foundation
+
+**Completed:** 2026-08-06 · **Status:** ✅ Complete
+
+### Scope delivered
+
+- `@honey/db` as the exclusive Prisma/PostgreSQL package, using the current
+  Prisma ESM generator and configuration pattern
+- 73 mapped Prisma models and 29 PostgreSQL enums across identity, catalog,
+  media records needed by catalog, sourcing, procurement, inventory, pricing,
+  cart, checkout, orders, payments, shipping, content, and platform
+- first migration `20260805231327_initial_foundation`, including all extensions,
+  foreign keys, checks, custom partial/specialized indexes, immutable-order
+  triggers, append-only triggers, and cross-row payment/refund enforcement
+- typed Prisma client construction, transaction handle/work types, transaction
+  helper, and UUID v7 identifier helper
+- deterministic, idempotent development seed with Persian and English records,
+  own-production and selected-supplier sourcing examples, internal-only supplier
+  data, roles and permissions, inventory, pricing, shipping, content, locale, and
+  currency fixtures
+- disposable integration harness that creates a unique database, applies the
+  complete migration history, verifies migration status, runs the seed twice,
+  proves database rejection behaviour, checks every foreign key has a leading
+  index, and drops the temporary database on success or failure
+- permanent forbidden-vocabulary verification and expanded boundary enforcement
+  for both `@honey/db` and direct Prisma imports
+- PostgreSQL 16 CI service isolated from developer data; obsolete permanent
+  Phase 2 scope verification removed while the historical script remains intact
+- database commands and local-development documentation
+
+### Dependency decisions
+
+| Dependency | Version | Need and repository check |
+|---|---:|---|
+| `prisma` | `7.9.0` | Stable CLI and migration engine; no existing schema/migration tool was present |
+| `@prisma/client` | `7.9.0` | Matching generated type-safe client required by ADR-0005 |
+| `@prisma/adapter-pg` | `7.9.0` | Mandatory PostgreSQL driver adapter for Prisma 7 direct connections |
+| `pg` | `8.22.0` | PostgreSQL driver used by the adapter and disposable test harness |
+| `dotenv` | `17.4.2` | Loads the documented local environment for Prisma configuration |
+| `tsx` | `4.20.6` | Runs TypeScript seed and integration harness without adding an application framework |
+| `@types/node` | `22.18.0` | Node 22 types for database package source and tooling |
+| `@types/pg` | `8.16.0` | Strict types for direct harness diagnostics and database setup/teardown |
+
+Prisma `7.9.0` declares Node `^22.12` support and TypeScript `>=5.4`; the
+repository pins Node `22.17.0` and TypeScript `5.9.3`. PostgreSQL 16 is supported
+by the PostgreSQL connector. The new packages were registry-resolved and the
+lockfile changed only for this approved Phase 4 dependency set. pnpm build-script
+approval is limited to Prisma's engine/CLI and esbuild.
+
+### Files created
+
+- `packages/db/README.md`
+- `packages/db/prisma.config.ts`
+- `packages/db/prisma/schema.prisma`
+- `packages/db/prisma/migrations/migration_lock.toml`
+- `packages/db/prisma/migrations/20260805231327_initial_foundation/migration.sql`
+- `packages/db/seed/data.ts`
+- `packages/db/seed/index.ts`
+- `packages/db/src/client.ts`
+- `packages/db/src/transaction.ts`
+- `packages/db/src/uuid-v7.ts`
+- `packages/db/test/constraints.ts`
+- `packages/db/test/harness.ts`
+- `packages/db/test/run-integration.ts`
+- `packages/db/tsconfig.build.json`
+- `scripts/verify-forbidden-vocabulary.mjs`
+- `scripts/verify-phase4.mjs`
+
+### Files modified
+
+- `.env.example` — test-administration URL and optional deterministic staff-seed inputs
+- `.github/workflows/ci.yml` — isolated PostgreSQL 16 service, Phase 4 gate, obsolete Phase 2 step removed
+- `.gitignore` — generated Prisma ESM client output ignored above the protected guard
+- `README.md` — Phase 4 state and database commands
+- `PLANS.md` — Phase 4 complete; Phase 5 current but explicitly not started
+- `docs/local-development.md` — migration, seed, test database, and safety workflow
+- `docs/progress.md` — this completion record
+- `package.json` — root database and Phase 4 verification scripts
+- `packages/config-eslint/index.mjs` — direct Prisma import restriction outside `packages/db`
+- `packages/db/package.json` — pinned Prisma/runtime/tooling dependencies and package scripts
+- `packages/db/src/index.ts` — typed public exports
+- `packages/db/tsconfig.json` — strict checking for source, config, seed, and tests
+- `pnpm-lock.yaml` — approved, pinned Phase 4 dependencies
+- `pnpm-workspace.yaml` — narrow build-script approvals for Prisma and esbuild
+- `tools/boundaries/checker.mjs` — direct Prisma import enforcement outside `packages/db`
+- `tools/boundaries/checker.test.mjs` — direct Prisma negative-boundary test
+
+### Decisions made
+
+- No new ADR was required. The implementation follows accepted
+  [ADR-0005](adr/0005-postgresql-prisma.md),
+  [ADR-0009](adr/0009-locale-prefixed-routing.md),
+  [ADR-0010](adr/0010-single-seller-no-marketplace.md),
+  [ADR-0011](adr/0011-immutable-order-snapshots.md),
+  [ADR-0012](adr/0012-stock-reservation-strategy.md),
+  [ADR-0016](adr/0016-money-minor-units.md),
+  [ADR-0017](adr/0017-testing-strategy.md),
+  [ADR-0020](adr/0020-no-lab-moisture-medical-claims.md),
+  [ADR-0021](adr/0021-shared-backend-package.md), and
+  [ADR-0022](adr/0022-payment-verification-sources.md).
+- Prisma-generated TypeScript is reproducible and untracked; each build and test
+  regenerates it from the committed schema.
+- The test harness uses a unique database on an explicit local/CI PostgreSQL
+  administration connection, never the normal development database.
+- `scripts/verify-phase2.mjs` remains unchanged as a historical/manual verifier;
+  only its obsolete permanent CI invocation was removed.
+
+### Unresolved decisions
+
+No Phase 4 decision is unresolved. The existing business questions below remain
+open for their documented later phases. Phase 5 is current but explicitly not
+started.
+
+### Risks
+
+- Prisma-generated code increases cold build time and remains a required
+  generation step before direct package consumption.
+- The integration harness requires PostgreSQL 16 and database-creation
+  privileges on an approved local/CI host; it intentionally refuses remote hosts.
+- The schema is deliberately broad because Phase 4 establishes later bounded
+  contexts. Later schema changes remain forward-only migrations; this initial
+  applied migration must not be edited after human acceptance.
+- `SEED_STAFF_PASSWORD_HASH` is optional. Without it, the development staff row
+  is intentionally not usable for authentication until Phase 6 supplies a hash.
+
+### Acceptance checklist
+
+- [x] Complete Phase 4 schema: 73 models, singular mapped tables, 29 enums
+- [x] First migration applies from an empty PostgreSQL 16 database
+- [x] Required checks, partial/specialized indexes, and explicit foreign-key behavior exist
+- [x] Every foreign key has a leading index, verified against PostgreSQL catalogs
+- [x] Orders/order lines immutable; stock ledger, audit log, and order status history append-only
+- [x] Typed Prisma client, transaction types/helper, and UUID v7 helper exported
+- [x] Deterministic seed runs twice with an identical logical fingerprint
+- [x] 24 PostgreSQL rejection proofs cover the required database invariants
+- [x] Forbidden-vocabulary gate passes
+- [x] `@honey/db`/Prisma boundary gate passes and a temporary violation was rejected then removed
+- [x] Permanent CI no longer runs the obsolete Phase 2 scope verifier
+- [x] CI retains frozen install, format, lint, boundaries, typecheck, tests, and build
+- [x] CI database work uses an isolated PostgreSQL 16 service and disposable database
+- [x] No Phase 5 dependencies, endpoints, controllers, services, or processors added
+- [x] Hero assets unchanged; no secrets, Git staging, commit, or push
+
+### Verification performed
+
+| Gate | Result |
+|---|---|
+| Prisma format / validate / generate | passed with Prisma `7.9.0` ESM output |
+| Empty migration + migration status | passed in a unique disposable PostgreSQL 16 database |
+| Seed twice | passed; identical logical fingerprint and no duplicate rows |
+| Database integration | passed; 73 domain tables, 29 enums, 24 rejection proofs |
+| Foreign-key index catalog audit | passed; no uncovered foreign key |
+| Forbidden vocabulary | passed across 37 scoped schema/API/contract/i18n/SEO files |
+| Temporary boundary violation | correctly failed for `apps/web` importing `@honey/db`; proof file removed |
+| Clean boundary check | passed; no forbidden edge, direct Prisma import, or cycle |
+| `pnpm install` | passed |
+| `pnpm install --frozen-lockfile` | passed |
+| `pnpm format` / `pnpm format:check` | passed |
+| `pnpm lint` | passed; all 10 applicable workspace tasks successful |
+| `pnpm typecheck` | passed; all 10 applicable workspace tasks successful |
+| `pnpm test` | passed; boundary tests 7/7 and all 17 workspace tasks successful |
+| `pnpm build` | passed; all 10 applicable workspace tasks successful |
+| `pnpm phase4:verify` | passed |
+| CI YAML parse and scope check | passed; obsolete Phase 2 step absent, required gates retained |
+| Phase 5+ scope scan | passed; no Next.js, NestJS, BullMQ, endpoint, controller, service, or processor |
+| Hero integrity | passed; Git status and diff-stat empty for all eight files |
 
 ---
 

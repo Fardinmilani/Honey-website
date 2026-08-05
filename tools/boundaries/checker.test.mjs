@@ -36,6 +36,19 @@ for (const [name, path, source] of requiredFailures) {
   });
 }
 
+test('rejects Prisma outside packages/db', async () => {
+  const root = await fixture({
+    'packages/backend/src/probe.ts': "import { PrismaClient } from '@prisma/client';",
+  });
+  try {
+    const result = await analyzeWorkspace(root);
+    assert.equal(result.violations.length, 1);
+    assert.equal(result.violations[0]?.code, 'forbidden-prisma-import');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('accepts the documented dependency direction', async () => {
   const root = await fixture({
     'apps/web/src/index.ts': "import '@honey/ui'; import '@honey/contracts';",

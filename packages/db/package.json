@@ -4,10 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
-    "lint": "eslint src --max-warnings=0",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "build": "pnpm prisma:generate && tsc -p tsconfig.build.json --noEmit false --outDir dist",
+    "lint": "eslint src seed test prisma.config.ts --max-warnings=0",
+    "typecheck": "pnpm prisma:generate && tsc -p tsconfig.json --noEmit",
+    "test": "pnpm prisma:generate && tsx test/run-integration.ts",
+    "prisma:format": "prisma format --config prisma.config.ts",
+    "prisma:validate": "prisma validate --config prisma.config.ts",
+    "prisma:generate": "prisma generate --config prisma.config.ts",
+    "db:migrate": "prisma migrate deploy --config prisma.config.ts",
+    "db:migrate:status": "prisma migrate status --config prisma.config.ts",
+    "db:seed": "prisma db seed --config prisma.config.ts",
+    "db:test": "pnpm test",
+    "db:verify": "pnpm prisma:validate && pnpm prisma:generate && pnpm db:test"
   },
   "exports": {
     ".": {
@@ -18,7 +26,17 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "@prisma/adapter-pg": "7.9.0",
+    "@prisma/client": "7.9.0",
+    "pg": "8.22.0"
+  },
   "devDependencies": {
-    "@honey/config-ts": "workspace:*"
+    "@honey/config-ts": "workspace:*",
+    "@types/node": "22.18.0",
+    "@types/pg": "8.16.0",
+    "dotenv": "17.4.2",
+    "prisma": "7.9.0",
+    "tsx": "4.20.6"
   }
 }

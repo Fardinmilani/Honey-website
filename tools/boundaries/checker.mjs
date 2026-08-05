@@ -143,6 +143,20 @@ export async function analyzeWorkspace(rootDirectory) {
     for (const file of files) {
       const source = await readFile(file, 'utf8');
       for (const specifier of importedSpecifiers(source)) {
+        if (
+          sourceId !== 'db' &&
+          (specifier === 'prisma' ||
+            specifier.startsWith('prisma/') ||
+            specifier.startsWith('@prisma/'))
+        ) {
+          violations.push({
+            code: 'forbidden-prisma-import',
+            file: slash(relative(root, file)),
+            specifier,
+            message: 'Prisma may be imported only inside packages/db',
+          });
+          continue;
+        }
         let target;
         let targetAbsolute;
         if (specifier.startsWith('.')) {

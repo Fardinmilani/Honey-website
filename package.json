@@ -24,7 +24,16 @@
     "docker:logs": "docker compose logs --follow",
     "docker:status": "docker compose ps -a",
     "docker:reset": "node scripts/docker-reset.mjs",
-    "docker:verify": "node scripts/docker-verify.mjs"
+    "docker:verify": "node scripts/docker-verify.mjs",
+    "db:format": "pnpm --filter @honey/db prisma:format",
+    "db:validate": "pnpm --filter @honey/db prisma:validate",
+    "db:generate": "pnpm --filter @honey/db prisma:generate",
+    "db:migrate": "pnpm --filter @honey/db db:migrate",
+    "db:migrate:status": "pnpm --filter @honey/db db:migrate:status",
+    "db:seed": "pnpm --filter @honey/db db:seed",
+    "db:test": "pnpm --filter @honey/db db:test",
+    "forbidden-vocabulary": "node scripts/verify-forbidden-vocabulary.mjs",
+    "phase4:verify": "pnpm db:validate && pnpm db:generate && pnpm forbidden-vocabulary && pnpm boundaries && node scripts/verify-phase4.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

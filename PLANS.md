@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 4 — Database Foundation (**not started**)
-**Completed phase:** Phase 3 — Local Environment (**complete 2026-08-05**)
+**Current phase:** Phase 5 — Backend Library & API Foundation (**not started**)
+**Completed phase:** Phase 4 — Database Foundation (**complete 2026-08-06**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -65,8 +65,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 1 | Architecture & Documentation | This document set. No code. |
 | 2 | Workspace Foundation | **Complete 2026-08-05** — pnpm + Turborepo + TS config + lint + CI skeleton |
 | 3 | Local Environment | **Complete 2026-08-05** — Docker Compose: Postgres, Redis, MinIO, Mailpit |
-| 4 | Database Foundation | **Not started** — Prisma schema core, first migration, seed harness |
-| 5 | Backend Library & API Foundation | `packages/backend` skeleton + Nest/Fastify bootstrap, config, logging, errors, OpenAPI, health |
+| 4 | Database Foundation | **Complete 2026-08-06** — Prisma schema core, first migration, seed harness |
+| 5 | Backend Library & API Foundation | **Not started** — `packages/backend` skeleton + Nest/Fastify bootstrap, config, logging, errors, OpenAPI, health |
 | 6 | Identity & Authorization | Users, sessions, RBAC, admin 2FA, audit log |
 | 7 | Media & Storage | S3 abstraction, MinIO adapter, upload pipeline |
 | 8 | Catalog & Content Model | Products, variants, translations, categories |

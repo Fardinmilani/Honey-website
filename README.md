@@ -6,9 +6,10 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 3 provides a local Docker infrastructure stack: PostgreSQL 16, Redis 7,
-MinIO, and Mailpit. There is still no Next.js, NestJS, Prisma, BullMQ, API, UI,
-or business implementation. The existing Hero media under
+Phase 4 provides the PostgreSQL 16 / Prisma database foundation, committed
+migration, deterministic seed, database-level constraints and triggers, and a
+disposable integration-test database harness. There is still no Next.js,
+NestJS, BullMQ, API, UI, or business implementation. The existing Hero media under
 `apps/web/public/media/hero/` is protected and must remain byte-identical.
 
 ## Requirements
@@ -64,7 +65,13 @@ troubleshooting.
 | `pnpm format`        | Format supported files with Prettier                    |
 | `pnpm format:check`  | Verify formatting without writing                       |
 | `pnpm clean`         | Remove generated build and Turborepo output             |
-| `pnpm phase2:verify` | Assert that later-phase frameworks/files are absent     |
+| `pnpm phase2:verify` | Run the historical/manual Phase 2 scope verifier        |
+| `pnpm phase4:verify` | Verify the current database-foundation structure        |
+| `pnpm db:validate`   | Validate the Prisma schema and configuration            |
+| `pnpm db:generate`   | Generate the typed ESM Prisma client                    |
+| `pnpm db:migrate`    | Apply committed database migrations                     |
+| `pnpm db:seed`       | Run the deterministic development seed                  |
+| `pnpm db:test`       | Test a migrated, seeded disposable PostgreSQL database  |
 | `pnpm docker:up`     | Validate Compose and start local services detached      |
 | `pnpm docker:down`   | Stop services and preserve named volumes                |
 | `pnpm docker:logs`   | Follow local service logs                               |
@@ -82,7 +89,7 @@ apps/
 packages/
   backend/   future shared business logic
   core/      framework-free primitives
-  db/        future persistence adapter
+  db/        Prisma schema, migrations, typed client, seed, test harness
   contracts/ shared transport contracts
   i18n/      locale configuration and formatting
   ui/        future design-system package

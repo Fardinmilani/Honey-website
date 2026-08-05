@@ -80,6 +80,7 @@ tsconfig.tsbuildinfo
 .prisma/
 **/node_modules/.prisma/
 **/prisma/generated/
+**/src/generated/prisma/
 **/generated/openapi-client/
 storybook-static/
 

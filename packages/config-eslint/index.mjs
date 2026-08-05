@@ -5,6 +5,7 @@ const workspaceGroups = {
   apps: ['@honey/web', '@honey/api', '@honey/worker'],
   backend: ['@honey/backend', '@honey/backend/*'],
   db: ['@honey/db', '@honey/db/*'],
+  prisma: ['@prisma/client', '@prisma/client/*', '@prisma/*', 'prisma', 'prisma/*'],
   frontend: ['@honey/ui', '@honey/ui/*', '@honey/i18n', '@honey/i18n/*'],
   contracts: ['@honey/contracts', '@honey/contracts/*'],
   core: ['@honey/core', '@honey/core/*'],
@@ -36,6 +37,7 @@ const ignores = [
   '**/dist/**',
   '**/.turbo/**',
   '**/coverage/**',
+  'packages/db/src/generated/prisma/**',
   'apps/web/public/media/**',
   'pnpm-lock.yaml',
 ];
@@ -91,7 +93,7 @@ export function createHoneyEslintConfig() {
       files: ['apps/web/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['backend', 'db', 'apps', 'configs'],
+          ['backend', 'db', 'prisma', 'apps', 'configs'],
           'apps/web may import only @honey/ui, @honey/i18n, @honey/contracts, @honey/core, and @honey/utils.',
         ),
       },
@@ -100,7 +102,7 @@ export function createHoneyEslintConfig() {
       files: ['apps/api/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['db', 'frontend', 'apps', 'configs'],
+          ['db', 'prisma', 'frontend', 'apps', 'configs'],
           'apps/api is an HTTP composition root and may reach business logic only through the public @honey/backend entry point.',
         ),
       },
@@ -109,7 +111,7 @@ export function createHoneyEslintConfig() {
       files: ['apps/worker/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['db', 'frontend', 'contracts', 'apps', 'configs'],
+          ['db', 'prisma', 'frontend', 'contracts', 'apps', 'configs'],
           'apps/worker may import only @honey/backend, @honey/core, and @honey/utils.',
         ),
       },
@@ -118,7 +120,7 @@ export function createHoneyEslintConfig() {
       files: ['packages/backend/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['frontend', 'contracts', 'apps', 'configs'],
+          ['prisma', 'frontend', 'contracts', 'apps', 'configs'],
           'packages/backend may import only @honey/db, @honey/core, and @honey/utils. Cross-module access must use public module entry points.',
         ),
       },
@@ -127,7 +129,7 @@ export function createHoneyEslintConfig() {
       files: ['packages/core/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['apps', 'backend', 'db', 'frontend', 'contracts', 'utils', 'configs'],
+          ['apps', 'backend', 'db', 'prisma', 'frontend', 'contracts', 'utils', 'configs'],
           'packages/core is framework-free and may not import another workspace package.',
         ),
       },
@@ -145,7 +147,7 @@ export function createHoneyEslintConfig() {
       files: ['packages/ui/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['apps', 'backend', 'db', 'configs'],
+          ['apps', 'backend', 'db', 'prisma', 'configs'],
           'packages/ui may not import application, backend, or database code.',
         ),
       },
@@ -157,7 +159,7 @@ export function createHoneyEslintConfig() {
       ],
       rules: {
         'no-restricted-imports': restriction(
-          ['apps', 'backend', 'db', 'configs'],
+          ['apps', 'backend', 'db', 'prisma', 'configs'],
           'Shared contracts and i18n packages may not depend on applications, backend, or persistence.',
         ),
       },
@@ -166,7 +168,7 @@ export function createHoneyEslintConfig() {
       files: ['packages/utils/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['apps', 'backend', 'db', 'frontend', 'contracts', 'core', 'configs'],
+          ['apps', 'backend', 'db', 'prisma', 'frontend', 'contracts', 'core', 'configs'],
           'packages/utils contains dependency-free helpers and may not import another workspace package.',
         ),
       },
