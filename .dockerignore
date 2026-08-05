@@ -1,0 +1,98 @@
+# Version control and dependency caches
+.git
+**/node_modules
+.pnpm-store
+.pnpm
+
+# Generated build and cache output
+.turbo
+**/.turbo
+dist
+**/dist
+build
+**/build
+.next
+**/.next
+coverage
+**/coverage
+
+# Test output
+test-results
+playwright-report
+blob-report
+playwright/.cache
+playwright/.auth
+*.trace.zip
+
+# Logs and process output
+logs
+**/logs
+*.log
+*.pid
+*.pid.lock
+
+# Local environment files and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+secrets
+**/secrets
+
+# Local databases, backups, and exports
+.data
+.volumes
+docker/data
+docker/.data
+backups
+**/backups
+dumps
+db-dumps
+*.sql
+*.sql.gz
+*.sql.zst
+*.dump
+*.dump.gz
+*.bak
+*.backup
+*.rdb
+appendonly.aof
+appendonlydir
+exports
+**/exports
+
+# Applied Prisma migrations must remain available to future image builds.
+!**/prisma/migrations
+!**/prisma/migrations/**
+
+# Raw design/media inputs and temporary uploads
+assets/raw
+**/assets/raw
+raw-media
+media-raw
+uploads
+**/uploads
+tmp
+temp
+.tmp
+.temp
+*.tmp
+*.temp
+*.mov
+*.avi
+*.mkv
+*.psd
+*.psb
+*.ai
+*.fig
+
+# IDE and operating-system metadata
+.idea
+.vscode
+.history
+.fleet
+.DS_Store
+Thumbs.db
+Desktop.ini

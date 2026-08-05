@@ -18,7 +18,13 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "node scripts/clean.mjs",
-    "phase2:verify": "node scripts/verify-phase2.mjs"
+    "phase2:verify": "node scripts/verify-phase2.mjs",
+    "docker:up": "docker compose config --quiet && docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs --follow",
+    "docker:status": "docker compose ps -a",
+    "docker:reset": "node scripts/docker-reset.mjs",
+    "docker:verify": "node scripts/docker-verify.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

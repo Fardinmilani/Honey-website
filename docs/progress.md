@@ -12,7 +12,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 |---|---|---|---|
 | 1 | Architecture & Documentation | âœ… Complete (corrected 2026-08-05) | 2026-08-04 |
 | 2 | Workspace Foundation | ✅ Complete | 2026-08-05 |
-| 3 | Local Environment | â¬œ Not started | â€” |
+| 3 | Local Environment | ✅ Complete | 2026-08-05 |
 | 4 | Database Foundation | â¬œ Not started | â€” |
 | 5 | Backend Library & API Foundation | â¬œ Not started | â€” |
 | 6 | Identity & Authorization | â¬œ Not started | â€” |
@@ -31,8 +31,167 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 3 — Local Environment (**not started**).
-**Previous phase:** Phase 2 — Workspace Foundation (**complete 2026-08-05**).
+**Current phase:** Phase 4 — Database Foundation (**not started**).
+**Previous phase:** Phase 3 — Local Environment (**complete 2026-08-05**).
+
+---
+
+## Phase 3 — Local Environment
+
+**Completed:** 2026-08-05 · **Status:** ✅ Complete
+
+### Scope delivered
+
+- infrastructure-only `docker-compose.yml` with PostgreSQL 16, Redis 7, MinIO,
+  an idempotent MinIO client initializer, and Mailpit
+- health checks for every long-running service and health-gated MinIO bucket
+  initialization
+- one explicitly named bridge network and named persistent volumes for all
+  stateful services
+- loopback-only, environment-configurable host ports
+- idempotent PostgreSQL extension initialization for `citext`, `pg_trgm`,
+  `unaccent`, and `pgcrypto`
+- idempotent MinIO creation of `honey-media` and `honey-private`, with anonymous
+  read-only access on the public bucket, no anonymous writes, and no anonymous
+  access on the private bucket
+- Redis append-only persistence with `appendfsync everysec` and no local
+  authentication, as required by the active architecture
+- persistent Mailpit storage, SMTP capture, and UI/readiness verification
+- safe cross-platform root commands for start, stop, status, logs, verification,
+  and explicitly confirmed destructive reset
+- root `.dockerignore`, required `.gitignore` tracking correction, safe
+  environment placeholders, README commands, and the full local-development
+  runbook
+- no application Dockerfiles, production Compose, Prisma, framework packages,
+  endpoints, application containers, or business logic
+
+### Container images
+
+All selected tags are stable, published, non-floating tags from the official
+image publishers. Their manifests and pulls were verified on 2026-08-05.
+
+| Service | Image |
+|---|---|
+| PostgreSQL | `postgres:16.14-alpine3.23` |
+| Redis | `redis:7.4.10-alpine3.21` |
+| MinIO server | `minio/minio:RELEASE.2025-09-07T16-13-09Z` |
+| MinIO client | `minio/mc:RELEASE.2025-08-13T08-35-41Z` |
+| Mailpit | `axllent/mailpit:v1.30.6` |
+
+### Decisions made
+
+- The documented public bucket name remains `honey-media`; the private bucket
+  is `honey-private`. No third bucket or Hero-media migration was introduced.
+- Host ports bind only to `127.0.0.1`. The network is explicitly named
+  `honey-local-internal`; production ingress rules remain deferred to Phase 20.
+- Mailpit persistence is enabled because it is useful across ordinary local
+  container restarts.
+- The destructive reset is implemented in Node and refuses non-interactive use;
+  it runs `docker compose down --volumes` only after the exact confirmation
+  phrase is entered.
+- No ADR was required. These implement the existing Docker, storage, database,
+  and VPS decisions without changing architecture.
+
+### Files created
+
+- `.dockerignore`
+- `docker-compose.yml`
+- `docker/local/postgres/init-extensions.sql`
+- `docker/local/minio/init-buckets.sh`
+- `docs/local-development.md`
+- `scripts/docker-reset.mjs`
+- `scripts/docker-verify.mjs`
+
+### Files modified
+
+- `.env.example` — local service ports, credentials placeholders, URLs, buckets,
+  database migration URL, and Mailpit variables
+- `.gitignore` — narrow `docker/local/**` re-inclusion above the permanent guard
+  block so the tracked extension SQL is not hidden by the dump rule
+- `package.json` — six root Docker lifecycle and verification scripts
+- `README.md` — infrastructure-only local startup and command summary
+- `PLANS.md` — Phase 3 complete and Phase 4 current but explicitly not started
+- `docs/progress.md` — this Phase 3 completion record
+
+### Verification performed
+
+| Gate | Result |
+|---|---|
+| `docker version` | passed — client/server 29.0.1, Linux containers through Docker Desktop 4.53.0 |
+| `docker compose version` | passed — v2.40.3-desktop.1 |
+| five `docker manifest inspect` checks | passed for every exact tag |
+| `docker compose config` | passed |
+| `docker compose pull` | passed for all five images |
+| `docker compose up -d` | passed |
+| `pnpm docker:down` | passed; all four named volumes remained present |
+| `pnpm docker:up` | passed; configuration validated before detached start |
+| `pnpm docker:status` | passed; four long-running services healthy and `minio-init` exited 0 |
+| `pnpm docker:verify` | passed after a bounded health wait and all resource checks |
+| PostgreSQL connection | passed — `pg_isready` reported accepting connections |
+| PostgreSQL extensions | passed — `citext`, `pg_trgm`, `pgcrypto`, `unaccent` present |
+| Redis | passed — `PONG` |
+| MinIO live endpoint | passed — HTTP 200 |
+| MinIO authentication and buckets | passed — both configured buckets listed |
+| MinIO initializer idempotency | passed — repeated execution exited 0 |
+| MinIO anonymous policy | passed — public `download` with no `PutObject`; private policy `{}` / `private` |
+| Mailpit readiness/UI | passed — HTTP 200 |
+| Mailpit SMTP | passed — TCP connection accepted on host port 1025 |
+| `pnpm format` | passed |
+| `pnpm format:check` | passed |
+| `pnpm lint` | passed — all workspace lint tasks successful |
+| `pnpm boundaries` | passed — no forbidden edges or cycles |
+| `pnpm typecheck` | passed — all workspace type-check tasks successful |
+| `pnpm test` | passed — boundary suite 6 / 6 and all package tasks successful |
+| `pnpm build` | passed — all workspace build tasks successful |
+| `.gitignore` matrix | passed — 8 local-data cases ignored; all 6 Phase 3 deliverable paths visible |
+| MinIO script line endings/syntax | passed — LF, zero CR bytes, `/bin/sh -n` successful |
+| Hero integrity | passed — Git status and diff-stat both empty for all eight files |
+| Scope scan | passed — no application Dockerfile, production Compose, Prisma file/migration/framework dependency, changed app source, API endpoint, business logic, or app Compose service |
+
+The first registry pull attempts encountered transient Docker Hub TLS handshake
+timeouts. Serial and platform-specific retries succeeded, followed by a clean
+exact `docker compose pull`. The first live start also found host port 9001
+reserved by Windows System; an ignored local `.env` override used host port
+19001 for verification while `.env.example` retains the required default 9001.
+
+### Risks
+
+- Local placeholder credentials are intentionally weak and must never be reused
+  outside a developer workstation.
+- Developer volumes are not backups; confirmed reset permanently deletes local
+  PostgreSQL, Redis, MinIO, and Mailpit data.
+- Port 9001 is reserved on the verification workstation, so its local MinIO
+  console used 19001. Other machines use the documented default unless they
+  override it.
+- The MinIO public bucket is anonymously readable in local development by
+  design. Anonymous write is denied and the private bucket has no anonymous
+  policy.
+
+### Unresolved decisions
+
+No Phase 3 decision is unresolved and no later phase is blocked by this work.
+The existing business decisions tracked below remain open for their documented
+later phases. Phase 4 has not started.
+
+### Acceptance checklist
+
+- [x] Exact five-service infrastructure-only Compose stack created
+- [x] Official stable non-floating image tags selected, documented, and verified
+- [x] PostgreSQL 16 and Redis 7 majors preserved
+- [x] Every long-running service healthy; `minio-init` exited 0
+- [x] Named volumes and one explicitly named Docker network created
+- [x] Host ports configurable and loopback-only
+- [x] Four PostgreSQL extensions installed idempotently and proven present
+- [x] Redis AOF enabled and `PONG` verified
+- [x] MinIO buckets, authentication, policy safety, and initializer idempotency verified
+- [x] Mailpit UI, readiness, SMTP, and persistence verified
+- [x] Destructive reset requires exact interactive confirmation
+- [x] `.dockerignore`, `.gitignore`, environment placeholders, README, and runbook complete
+- [x] Workspace format, lint, boundaries, typecheck, test, and build gates pass
+- [x] All Phase 3 out-of-scope artifacts remain absent
+- [x] Hero assets unchanged and absent from MinIO
+- [x] No secrets introduced and no Git staging, commit, or push performed
+- [x] Phase 4 marked current but explicitly not started
 
 ---
 
@@ -425,3 +584,4 @@ of that decision but does not make it.
 | 2026-08-05 | Business logic moved to `packages/backend`, shared by two composition roots â€” resolves the API/worker contradiction | [ADR-0021](adr/0021-shared-backend-package.md) |
 | 2026-08-05 | Payment state changes only on a server-verified outcome from any of three channels; webhooks no longer privileged | [ADR-0022](adr/0022-payment-verification-sources.md) |
 | 2026-08-05 | Initial deployment target: self-hosted Linux VPS with Docker Compose and a TLS reverse proxy | [ADR-0023](adr/0023-self-hosted-vps-deployment.md) |
+| 2026-08-05 | Phase 3 local environment completed with pinned PostgreSQL, Redis, MinIO, and Mailpit infrastructure | [Phase 3](#phase-3--local-environment) |

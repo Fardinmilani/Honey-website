@@ -363,6 +363,12 @@ footage/
 *.c4d
 *.xcf
 
+# -----------------------------------------------------------------------------
+# Tracked local Docker bootstrap files
+# -----------------------------------------------------------------------------
+!docker/local/
+!docker/local/**
+
 
 # =============================================================================
 # ALWAYS TRACKED — protected paths (must remain the last block in this file)

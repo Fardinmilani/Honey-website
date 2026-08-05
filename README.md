@@ -6,15 +6,17 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 2 establishes tooling and workspace boundaries only. There is no Next.js,
-NestJS, Prisma, BullMQ, Docker, API, UI, or business implementation yet. The
-existing Hero media under `apps/web/public/media/hero/` is protected and must
-remain byte-identical.
+Phase 3 provides a local Docker infrastructure stack: PostgreSQL 16, Redis 7,
+MinIO, and Mailpit. There is still no Next.js, NestJS, Prisma, BullMQ, API, UI,
+or business implementation. The existing Hero media under
+`apps/web/public/media/hero/` is protected and must remain byte-identical.
 
 ## Requirements
 
 - Node.js `22.17.0` (LTS)
 - pnpm `11.20.0`, activated through Corepack
+- Docker Engine with Docker Compose v2 (Docker Desktop with WSL2 is recommended
+  on Windows)
 
 ## Bootstrap
 
@@ -35,19 +37,40 @@ The bootstrap installs the pinned toolchain dependencies, generates
 Phase 2 quality gate. Commit the generated lockfile with the other Phase 2
 files.
 
+## Local infrastructure
+
+Copy `.env.example` to the ignored `.env` file, start the infrastructure, and
+run its bounded health/resource verification:
+
+```sh
+pnpm docker:up
+pnpm docker:verify
+```
+
+The Compose stack contains infrastructure only. It does not build or run an
+application container. See [`docs/local-development.md`](docs/local-development.md)
+for ports, credentials policy, service-specific checks, reset safety, and
+troubleshooting.
+
 ## Commands
 
-| Command              | Purpose                                               |
-| -------------------- | ----------------------------------------------------- |
-| `pnpm build`         | Build every workspace package through Turborepo       |
-| `pnpm lint`          | Run ESLint in strict, zero-warning mode               |
-| `pnpm boundaries`    | Enforce the documented dependency graph and cycle ban |
-| `pnpm typecheck`     | Type-check every workspace package without emitting   |
-| `pnpm test`          | Run boundary tests and package test tasks             |
-| `pnpm format`        | Format supported files with Prettier                  |
-| `pnpm format:check`  | Verify formatting without writing                     |
-| `pnpm clean`         | Remove generated build and Turborepo output           |
-| `pnpm phase2:verify` | Assert that later-phase frameworks/files are absent   |
+| Command              | Purpose                                                 |
+| -------------------- | ------------------------------------------------------- |
+| `pnpm build`         | Build every workspace package through Turborepo         |
+| `pnpm lint`          | Run ESLint in strict, zero-warning mode                 |
+| `pnpm boundaries`    | Enforce the documented dependency graph and cycle ban   |
+| `pnpm typecheck`     | Type-check every workspace package without emitting     |
+| `pnpm test`          | Run boundary tests and package test tasks               |
+| `pnpm format`        | Format supported files with Prettier                    |
+| `pnpm format:check`  | Verify formatting without writing                       |
+| `pnpm clean`         | Remove generated build and Turborepo output             |
+| `pnpm phase2:verify` | Assert that later-phase frameworks/files are absent     |
+| `pnpm docker:up`     | Validate Compose and start local services detached      |
+| `pnpm docker:down`   | Stop services and preserve named volumes                |
+| `pnpm docker:logs`   | Follow local service logs                               |
+| `pnpm docker:status` | Show all local service states                           |
+| `pnpm docker:verify` | Verify health, extensions, buckets, policies, and ports |
+| `pnpm docker:reset`  | Confirm interactively before deleting local volumes     |
 
 ## Workspace
 
