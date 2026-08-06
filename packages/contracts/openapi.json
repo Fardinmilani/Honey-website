@@ -16,6 +16,16 @@
         "required": ["next", "user", "expiresAt", "csrfToken"],
         "type": "object"
       },
+      "DirectUploadDto": {
+        "properties": {
+          "expiresAt": { "format": "date-time", "type": "string" },
+          "fields": { "additionalProperties": { "type": "string" }, "type": "object" },
+          "method": { "enum": ["POST"], "type": "string" },
+          "url": { "format": "uri", "type": "string" }
+        },
+        "required": ["method", "url", "fields", "expiresAt"],
+        "type": "object"
+      },
       "HealthResponseDto": {
         "properties": { "status": { "enum": ["ok"], "example": "ok", "type": "string" } },
         "required": ["status"],
@@ -36,6 +46,99 @@
           "user": { "$ref": "#/components/schemas/SafeUserDto" }
         },
         "required": ["next"],
+        "type": "object"
+      },
+      "MediaAssetDto": {
+        "properties": {
+          "altTextByLocale": { "additionalProperties": { "type": "string" }, "type": "object" },
+          "bytes": { "minimum": 1, "type": "number" },
+          "checksum": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "createdBy": { "format": "uuid", "type": "string" },
+          "derivatives": {
+            "items": { "$ref": "#/components/schemas/MediaDerivativeDto" },
+            "type": "array"
+          },
+          "durationSeconds": { "minimum": 0, "nullable": true, "type": "number" },
+          "height": { "minimum": 1, "nullable": true, "type": "number" },
+          "id": { "format": "uuid", "type": "string" },
+          "kind": { "enum": ["IMAGE", "VIDEO"], "type": "string" },
+          "mimeType": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/avif",
+              "video/mp4",
+              "video/webm"
+            ],
+            "type": "string"
+          },
+          "updatedAt": { "format": "date-time", "type": "string" },
+          "url": { "format": "uri", "nullable": true, "type": "string" },
+          "visibility": { "enum": ["PUBLIC", "PRIVATE"], "type": "string" },
+          "width": { "minimum": 1, "nullable": true, "type": "number" }
+        },
+        "required": [
+          "id",
+          "kind",
+          "visibility",
+          "mimeType",
+          "bytes",
+          "width",
+          "height",
+          "durationSeconds",
+          "checksum",
+          "altTextByLocale",
+          "url",
+          "createdBy",
+          "createdAt",
+          "updatedAt",
+          "derivatives"
+        ],
+        "type": "object"
+      },
+      "MediaDerivativeDto": {
+        "properties": {
+          "bytes": { "minimum": 1, "type": "number" },
+          "checksum": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+          "format": { "enum": ["webp", "jpg"], "type": "string" },
+          "height": { "minimum": 1, "type": "number" },
+          "id": { "format": "uuid", "type": "string" },
+          "mimeType": { "enum": ["image/webp", "image/jpeg"], "type": "string" },
+          "url": { "format": "uri", "nullable": true, "type": "string" },
+          "variant": { "enum": ["thumb", "card", "hero", "og"], "type": "string" },
+          "width": { "minimum": 1, "type": "number" }
+        },
+        "required": [
+          "id",
+          "variant",
+          "format",
+          "mimeType",
+          "width",
+          "height",
+          "bytes",
+          "checksum",
+          "url"
+        ],
+        "type": "object"
+      },
+      "MediaUploadIntentDto": {
+        "properties": {
+          "assetId": { "format": "uuid", "type": "string" },
+          "expiresAt": { "format": "date-time", "type": "string" },
+          "upload": { "$ref": "#/components/schemas/DirectUploadDto" },
+          "uploadId": { "format": "uuid", "type": "string" }
+        },
+        "required": ["uploadId", "assetId", "expiresAt", "upload"],
+        "type": "object"
+      },
+      "PrivateMediaUrlDto": {
+        "properties": {
+          "expiresAt": { "format": "date-time", "type": "string" },
+          "url": { "format": "uri", "type": "string" }
+        },
+        "required": ["url", "expiresAt"],
         "type": "object"
       },
       "ProblemDetailsDto": {
@@ -246,6 +349,278 @@
         },
         "summary": "Check required dependencies",
         "tags": ["Operations"]
+      }
+    },
+    "/v1/admin/media/{assetId}": {
+      "delete": {
+        "description": "Deletes only a media asset that is not protected by an attachment constraint.",
+        "operationId": "deleteMediaAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "" },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Delete an unattached media asset",
+        "tags": ["Media"]
+      },
+      "get": {
+        "description": "Returns safe persisted metadata and canonical public URLs only when public.",
+        "operationId": "getMediaAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/MediaAssetDto" } }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Get trusted media metadata",
+        "tags": ["Media"]
+      }
+    },
+    "/v1/admin/media/{assetId}/alt-text": {
+      "patch": {
+        "description": "Validates canonical BCP-47 locale keys and bounded plain-text values.",
+        "operationId": "updateMediaAltText",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/MediaAssetDto" } }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Replace localized media alt text",
+        "tags": ["Media"]
+      }
+    },
+    "/v1/admin/media/{assetId}/private-url": {
+      "post": {
+        "description": "Signs only the stored key of an authorized private media asset.",
+        "operationId": "createPrivateMediaUrl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PrivateMediaUrlDto" }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a short-lived private media URL",
+        "tags": ["Media"]
+      }
+    },
+    "/v1/admin/media/upload-intents": {
+      "post": {
+        "description": "Creates an owner-bound, short-lived upload intent and a constrained direct-to-storage POST authorization.",
+        "operationId": "createMediaUploadIntent",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaUploadIntentDto" }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Authorize one direct media upload",
+        "tags": ["Media"]
+      }
+    },
+    "/v1/admin/media/upload-intents/{uploadId}/complete": {
+      "post": {
+        "description": "Consumes the owner-bound intent, verifies stored bytes by magic number, processes images, and persists only trusted metadata.",
+        "operationId": "completeMediaUpload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uploadId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/MediaAssetDto" } }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Verify and process a direct upload",
+        "tags": ["Media"]
       }
     },
     "/v1/auth/email-verification/confirm": {
@@ -606,6 +981,10 @@
     {
       "description": "Registration, authentication, account, and session endpoints.",
       "name": "Identity"
+    },
+    {
+      "description": "Staff-only direct uploads, trusted media metadata, and private retrieval.",
+      "name": "Media"
     }
   ]
 }

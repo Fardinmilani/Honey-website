@@ -6,13 +6,14 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 6 adds backend-owned registration, verification, login, password reset,
-opaque sessions, mandatory staff TOTP, roles/permissions, ownership checks,
-Redis lockout, append-only security audit, and fail-closed API authorization to
-the Phase 5 NestJS/Fastify foundation. OpenAPI contracts and the non-root API
-image include these routes. There is still no Next.js, BullMQ, identity UI,
-catalog, checkout, or later business implementation. The existing Hero media
-under `apps/web/public/media/hero/` is protected and remains byte-identical.
+Phase 7 adds a provider-neutral storage port, MinIO/S3 and in-memory adapters,
+owner-bound direct uploads, signature verification, bounded image re-encoding,
+deterministic derivatives, localized alt text, and public/private retrieval to
+the existing identity-secured NestJS/Fastify API. OpenAPI contracts and the
+non-root API image include the staff-only routes. There is still no Next.js,
+BullMQ processor, media UI, catalog attachment flow, checkout, or later business
+implementation. The existing Hero media under `apps/web/public/media/hero/` is
+protected, byte-identical, and never enters object storage.
 
 ## Requirements
 
@@ -70,6 +71,8 @@ The default URLs are `http://127.0.0.1:4000/healthz` and
 OpenAPI, testing, Docker, shutdown, and troubleshooting.
 Identity flows and local Mailpit/TOTP/session behavior are documented in
 [`docs/identity-development.md`](docs/identity-development.md).
+The direct-upload lifecycle, limits, MinIO addressing, processing matrix, and
+tests are documented in [`docs/media-development.md`](docs/media-development.md).
 
 ## Commands
 
@@ -87,6 +90,7 @@ Identity flows and local Mailpit/TOTP/session behavior are documented in
 | `pnpm phase4:verify`        | Verify the current database-foundation structure        |
 | `pnpm phase5:verify`        | Verify the backend/API foundation scope and invariants  |
 | `pnpm phase6:verify`        | Verify identity, authorization, scope, and integrity    |
+| `pnpm phase7:verify`        | Verify media/storage scope, boundaries, and integrity   |
 | `pnpm api:dev`              | Start the API in TypeScript watch mode                  |
 | `pnpm api:start`            | Start the built API                                     |
 | `pnpm api:test`             | Run the focused API test suite                          |
@@ -94,7 +98,7 @@ Identity flows and local Mailpit/TOTP/session behavior are documented in
 | `pnpm api:openapi:check`    | Fail when committed API contracts have drifted          |
 | `pnpm api:openapi:lint`     | Lint the OpenAPI 3.1 document                           |
 | `pnpm api:openapi:breaking` | Compare with an explicit base contract                  |
-| `pnpm api:docker:build`     | Build the non-root Phase 6 API image                    |
+| `pnpm api:docker:build`     | Build the non-root Phase 7 API image                    |
 | `pnpm db:validate`          | Validate the Prisma schema and configuration            |
 | `pnpm db:generate`          | Generate the typed ESM Prisma client                    |
 | `pnpm db:migrate`           | Apply committed database migrations                     |
@@ -115,7 +119,7 @@ apps/
   api/       NestJS/Fastify HTTP composition root and transport policy
   worker/    future BullMQ composition root
 packages/
-  backend/   platform foundation and transport-independent identity logic
+  backend/   platform, identity, and transport-independent media logic
   core/      framework-free primitives
   db/        Prisma schema, migrations, typed client, seed, test harness
   contracts/ committed OpenAPI 3.1 and generated transport types

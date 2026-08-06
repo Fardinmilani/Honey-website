@@ -31,6 +31,13 @@ password/TOTP credential per user, and text request IDs in audit rows. The
 accepted Phase 4 migration remains immutable. Integration tests migrate the
 complete history and prove the new constraints against PostgreSQL 16.
 
+Phase 7 adds the forward-only
+`20260806190000_media_storage_invariants` migration. It records public/private
+visibility and trusted derivative MIME type, dimensions, byte counts, and
+checksums, with constraints for allowed media shape, safe server-generated keys,
+positive dimensions/bytes, and deterministic derivative variants. Media upload
+intents remain in Redis and do not create a database table.
+
 The seed refuses `NODE_ENV=production` and non-local hosts. Its identifiers and
 timestamps are fixed, its writes are idempotent, and optional development staff
 credentials are read only from environment variables.

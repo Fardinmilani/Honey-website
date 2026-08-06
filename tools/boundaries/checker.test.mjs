@@ -88,6 +88,41 @@ for (const dependency of ['argon2', 'otplib', '@otplib/totp']) {
   });
 }
 
+for (const dependency of [
+  '@aws-sdk/client-s3',
+  '@smithy/node-http-handler',
+  'sharp',
+  'file-type',
+]) {
+  test(`rejects ${dependency} in apps/api media transport`, async () => {
+    const root = await fixture({
+      'apps/api/src/probe.ts': `import '${dependency}';`,
+    });
+    try {
+      const result = await analyzeWorkspace(root);
+      assert.equal(result.violations.length, 1);
+      assert.equal(result.violations[0]?.code, 'forbidden-api-media-provider-import');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const dependency of ['@aws-sdk/client-s3', 'sharp', 'redis']) {
+  test(`rejects ${dependency} in media domain`, async () => {
+    const root = await fixture({
+      'packages/backend/src/modules/media/domain/probe.ts': `import '${dependency}';`,
+    });
+    try {
+      const result = await analyzeWorkspace(root);
+      assert.equal(result.violations.length, 1);
+      assert.equal(result.violations[0]?.code, 'forbidden-backend-domain-import');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
 test('rejects persistence imports in packages/contracts', async () => {
   const root = await fixture({ 'packages/contracts/src/probe.ts': "import '@honey/db';" });
   try {

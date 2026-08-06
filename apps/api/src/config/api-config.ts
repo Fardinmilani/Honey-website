@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { IdentityConfig } from '@honey/backend';
+import type { IdentityConfig, MediaConfig, S3StorageConfig } from '@honey/backend';
 
 const NODE_ENV_VALUES = ['development', 'test', 'production'] as const;
 const LOG_LEVEL_VALUES = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
@@ -65,6 +65,27 @@ const schema = z
     IDENTITY_SMTP_SECURE: booleanString,
     IDENTITY_EMAIL_FROM: z.string().email(),
     IDENTITY_SMTP_TIMEOUT_MS: positiveInteger.max(30_000),
+    S3_INTERNAL_ENDPOINT: z.string().url(),
+    S3_BROWSER_ENDPOINT: z.string().url(),
+    S3_REGION: z.string().min(1).max(64),
+    S3_ACCESS_KEY: z.string().min(1).max(256),
+    S3_SECRET_KEY: z.string().min(1).max(256),
+    S3_FORCE_PATH_STYLE: booleanString,
+    S3_PUBLIC_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u),
+    S3_PRIVATE_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u),
+    S3_REQUEST_TIMEOUT_MS: positiveInteger.max(30_000),
+    PUBLIC_MEDIA_BASE_URL: z.string().url(),
+    MEDIA_UPLOAD_ALLOWED_ORIGINS: z.string(),
+    MEDIA_MAX_IMAGE_BYTES: positiveInteger.max(50_000_000),
+    MEDIA_MAX_VIDEO_BYTES: positiveInteger.max(500_000_000),
+    MEDIA_MAX_DECODED_PIXELS: positiveInteger.max(100_000_000),
+    MEDIA_MAX_WIDTH: positiveInteger.max(20_000),
+    MEDIA_MAX_HEIGHT: positiveInteger.max(20_000),
+    MEDIA_PRESIGNED_UPLOAD_TTL_SECONDS: positiveInteger.max(900),
+    MEDIA_PRIVATE_DOWNLOAD_TTL_SECONDS: positiveInteger.max(900),
+    MEDIA_UPLOAD_INTENT_TTL_SECONDS: positiveInteger.max(3_600),
+    MEDIA_PROCESSING_TIMEOUT_MS: positiveInteger.max(120_000),
+    MEDIA_DERIVATIVE_PROFILE: z.literal('honey-v1'),
   })
   .passthrough();
 
@@ -95,6 +116,11 @@ export type ApiConfig = Readonly<{
       from: string;
       connectionTimeoutMs: number;
     }>;
+  }>;
+  media: Readonly<{
+    config: MediaConfig;
+    storage: S3StorageConfig;
+    uploadAllowedOrigins: readonly string[];
   }>;
 }>;
 
@@ -145,6 +171,27 @@ function defaultsFor(environment: string | undefined): Readonly<Record<string, s
     IDENTITY_SMTP_SECURE: 'false',
     IDENTITY_EMAIL_FROM: 'no-reply@example.invalid',
     IDENTITY_SMTP_TIMEOUT_MS: '5000',
+    S3_INTERNAL_ENDPOINT: 'http://localhost:9000',
+    S3_BROWSER_ENDPOINT: 'http://localhost:9000',
+    S3_REGION: 'local',
+    S3_ACCESS_KEY: 'honey-local-minio',
+    S3_SECRET_KEY: 'replace-with-local-development-password',
+    S3_FORCE_PATH_STYLE: 'true',
+    S3_PUBLIC_BUCKET: 'honey-media',
+    S3_PRIVATE_BUCKET: 'honey-private',
+    S3_REQUEST_TIMEOUT_MS: '5000',
+    PUBLIC_MEDIA_BASE_URL: 'http://localhost:9000/honey-media/',
+    MEDIA_UPLOAD_ALLOWED_ORIGINS: 'http://localhost:3000',
+    MEDIA_MAX_IMAGE_BYTES: '15728640',
+    MEDIA_MAX_VIDEO_BYTES: '104857600',
+    MEDIA_MAX_DECODED_PIXELS: '40000000',
+    MEDIA_MAX_WIDTH: '12000',
+    MEDIA_MAX_HEIGHT: '12000',
+    MEDIA_PRESIGNED_UPLOAD_TTL_SECONDS: '300',
+    MEDIA_PRIVATE_DOWNLOAD_TTL_SECONDS: '120',
+    MEDIA_UPLOAD_INTENT_TTL_SECONDS: '600',
+    MEDIA_PROCESSING_TIMEOUT_MS: '30000',
+    MEDIA_DERIVATIVE_PROFILE: 'honey-v1',
   };
 }
 
@@ -186,6 +233,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
 
   const trustProxy = parseTrustProxy(parsed.data.TRUST_PROXY);
   const allowedOrigins = parseOrigins(parsed.data.API_ALLOWED_ORIGINS);
+  const uploadAllowedOrigins = parseOrigins(parsed.data.MEDIA_UPLOAD_ALLOWED_ORIGINS);
   if (parsed.data.NODE_ENV === 'production') {
     if (
       allowedOrigins.length === 0 ||
@@ -201,6 +249,17 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
       parsed.data.SESSION_COOKIE_NAME !== '__Host-session'
     ) {
       throw new Error('Production session cookie configuration must be secure and host-bound.');
+    }
+    if (
+      uploadAllowedOrigins.length === 0 ||
+      uploadAllowedOrigins.some((origin) => !origin.startsWith('https://')) ||
+      !parsed.data.S3_INTERNAL_ENDPOINT.startsWith('https://') ||
+      !parsed.data.S3_BROWSER_ENDPOINT.startsWith('https://') ||
+      !parsed.data.PUBLIC_MEDIA_BASE_URL.startsWith('https://') ||
+      parsed.data.S3_ACCESS_KEY === 'honey-local-minio' ||
+      parsed.data.S3_SECRET_KEY === 'replace-with-local-development-password'
+    ) {
+      throw new Error('Production media storage configuration is unsafe.');
     }
   }
   const totpKey = Buffer.from(parsed.data.TOTP_ENCRYPTION_KEY_BASE64, 'base64');
@@ -291,6 +350,32 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
         from: parsed.data.IDENTITY_EMAIL_FROM,
         connectionTimeoutMs: parsed.data.IDENTITY_SMTP_TIMEOUT_MS,
       },
+    },
+    media: {
+      config: {
+        publicBaseUrl: parsed.data.PUBLIC_MEDIA_BASE_URL,
+        maxImageBytes: parsed.data.MEDIA_MAX_IMAGE_BYTES,
+        maxVideoBytes: parsed.data.MEDIA_MAX_VIDEO_BYTES,
+        maxDecodedPixels: parsed.data.MEDIA_MAX_DECODED_PIXELS,
+        maxWidth: parsed.data.MEDIA_MAX_WIDTH,
+        maxHeight: parsed.data.MEDIA_MAX_HEIGHT,
+        presignedUploadTtlSeconds: parsed.data.MEDIA_PRESIGNED_UPLOAD_TTL_SECONDS,
+        privateDownloadTtlSeconds: parsed.data.MEDIA_PRIVATE_DOWNLOAD_TTL_SECONDS,
+        uploadIntentTtlSeconds: parsed.data.MEDIA_UPLOAD_INTENT_TTL_SECONDS,
+        processingTimeoutMs: parsed.data.MEDIA_PROCESSING_TIMEOUT_MS,
+      },
+      storage: {
+        internalEndpoint: parsed.data.S3_INTERNAL_ENDPOINT,
+        browserEndpoint: parsed.data.S3_BROWSER_ENDPOINT,
+        region: parsed.data.S3_REGION,
+        accessKeyId: parsed.data.S3_ACCESS_KEY,
+        secretAccessKey: parsed.data.S3_SECRET_KEY,
+        forcePathStyle: parsed.data.S3_FORCE_PATH_STYLE,
+        publicBucket: parsed.data.S3_PUBLIC_BUCKET,
+        privateBucket: parsed.data.S3_PRIVATE_BUCKET,
+        requestTimeoutMs: parsed.data.S3_REQUEST_TIMEOUT_MS,
+      },
+      uploadAllowedOrigins,
     },
   };
 }

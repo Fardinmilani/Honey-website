@@ -73,6 +73,20 @@ enum MediaRole {
   @@map("media_role")
 }
 
+enum MediaKind {
+  IMAGE
+  VIDEO
+
+  @@map("media_kind")
+}
+
+enum MediaVisibility {
+  PUBLIC
+  PRIVATE
+
+  @@map("media_visibility")
+}
+
 enum SupplierStatus {
   ACTIVE
   PAUSED
@@ -720,6 +734,8 @@ model SlugHistory {
 
 model MediaAsset {
   id              String            @id @db.Uuid
+  kind            MediaKind
+  visibility      MediaVisibility
   storageKey      String            @unique @map("storage_key")
   mimeType        String            @map("mime_type")
   bytes           BigInt
@@ -744,7 +760,11 @@ model MediaDerivative {
   mediaAssetId String     @map("media_asset_id") @db.Uuid
   variant      String
   format       String
+  mimeType     String     @map("mime_type")
   width        Int
+  height       Int
+  bytes        BigInt
+  checksum     String
   storageKey   String     @unique @map("storage_key")
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade, onUpdate: Cascade)

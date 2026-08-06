@@ -16,8 +16,8 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 4 | Database Foundation | ✅ Complete | 2026-08-06 |
 | 5 | Backend Library & API Foundation | Complete | 2026-08-06 |
 | 6 | Identity & Authorization | Complete | 2026-08-06 |
-| 7 | Media & Storage | â¬œ Not started | â€” |
-| 8 | Catalog & Content Model | â¬œ Not started | â€” |
+| 7 | Media & Storage | Complete | 2026-08-06 |
+| 8 | Catalog & Content Model | Not started (current) | — |
 | 9 | Web Foundation | â¬œ Not started | â€” |
 | 10 | Storefront Catalog & SEO | â¬œ Not started | â€” |
 | 11 | Sourcing, Procurement & Inventory | â¬œ Not started | â€” |
@@ -31,8 +31,218 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 7 — Media & Storage (**not started**).
-**Previous phase:** Phase 6 — Identity & Authorization (**complete 2026-08-06**).
+**Current phase:** Phase 8 — Catalog & Content Model (**not started**).
+**Previous phase:** Phase 7 — Media & Storage (**complete 2026-08-06**).
+
+---
+
+## Phase 7 — Media & Storage
+
+**Completed:** 2026-08-06 · **Status:** Complete
+
+### Scope delivered
+
+- a transport-neutral `StorageService` port and media domain in `@honey/backend`,
+  with S3/MinIO and deterministic in-memory adapters behind the same contract
+- owner-bound direct-upload intents in Redis with atomic state transitions,
+  single-use processing, 600-second intent TTL, 300-second presigned upload TTL,
+  server-generated UUID quarantine keys, and idempotent completion
+- private quarantine for every candidate; bounded metadata/prefix inspection,
+  magic-number type detection, executable/markup/script rejection, actual-size
+  validation, decoded-image limits, version binding, and cleanup on rejection
+- orientation-corrected Sharp re-encoding that strips EXIF/GPS and arbitrary
+  metadata, plus the fixed `honey-v1` derivative matrix: 320 WebP thumb, 720
+  WebP card, 1440 WebP hero, and 1200 JPEG Open Graph image, all without
+  enlargement
+- verified MP4 and WebM originals with no Phase 7 transcoding, derivatives,
+  adaptive streams, duration inference, background processor, or queue
+- atomic media/derivative persistence, trusted metadata and SHA-256 checksums,
+  public UUID keys, private UUID keys, identity-owned redacted audit writes,
+  persistence-failure cleanup, and retry recovery after a late audit failure
+- localized `altTextByLocale` maps with canonical BCP-47 keys, Unicode/NFC
+  preservation, Persian support, 1–300-character bounds, and markup/control
+  rejection; complete locale coverage remains a later publishing rule
+- six versioned staff-only media routes, each protected server-side by the
+  existing `content:write` permission and cookie CSRF rules on unsafe methods
+- canonical public URLs without API byte proxying and authorized 120-second
+  signed retrieval URLs derived only from persisted private asset IDs
+- strict media configuration, explicit local MinIO CORS origin, public/private
+  bucket policies, OpenAPI 3.1/types, boundary rules, CI MinIO coverage, a
+  Phase 7 structural verifier, and local operations documentation
+- forward-only media storage invariants migration; all earlier migrations and
+  the eight protected Hero files remain unchanged
+
+### Dependency decisions
+
+All additions are exact stable releases and are confined to the backend media
+infrastructure. Existing Redis, Prisma, Nest/Fastify, Zod, and Vitest facilities
+were reused.
+
+| Dependency | Version | Reason |
+|---|---:|---|
+| `@aws-sdk/client-s3` | `3.1104.0` | S3-compatible object metadata, reads, writes, copies, and deletion |
+| `@aws-sdk/s3-presigned-post` | `3.1104.0` | constrained direct browser uploads to private quarantine |
+| `@aws-sdk/s3-request-presigner` | `3.1104.0` | short-lived private-object retrieval URLs |
+| `@smithy/node-http-handler` | `4.9.13` | bounded S3 connection/socket timeouts |
+| `file-type` | `22.0.1` | byte-signature content identification |
+| `sharp` | `0.35.3` | bounded image decode, re-encoding, metadata stripping, and derivatives |
+
+No Next.js, BullMQ, video-transcoding, CDN, catalog, or UI dependency was added.
+
+### Files created
+
+- `apps/api/src/modules/media/media.controller.ts`
+- `apps/api/test/media.test.ts`
+- `docs/adr/0024-media-upload-processing.md`
+- `docs/media-development.md`
+- `packages/backend/src/modules/identity/infrastructure/prisma-audit.writer.ts`
+- `packages/backend/src/modules/media/application/media.service.ts`
+- `packages/backend/src/modules/media/domain/content-inspector.port.ts`
+- `packages/backend/src/modules/media/domain/media-audit.port.ts`
+- `packages/backend/src/modules/media/domain/media-processor.port.ts`
+- `packages/backend/src/modules/media/domain/media-repository.port.ts`
+- `packages/backend/src/modules/media/domain/media.ts`
+- `packages/backend/src/modules/media/domain/storage.port.ts`
+- `packages/backend/src/modules/media/domain/upload-intent.port.ts`
+- `packages/backend/src/modules/media/index.ts`
+- `packages/backend/src/modules/media/infrastructure/identity-media-audit.adapter.ts`
+- `packages/backend/src/modules/media/infrastructure/in-memory-storage.adapter.ts`
+- `packages/backend/src/modules/media/infrastructure/in-memory-upload-intent.adapter.ts`
+- `packages/backend/src/modules/media/infrastructure/magic-content-inspector.ts`
+- `packages/backend/src/modules/media/infrastructure/prisma-media.repository.ts`
+- `packages/backend/src/modules/media/infrastructure/redis-upload-intent.adapter.ts`
+- `packages/backend/src/modules/media/infrastructure/s3-storage.adapter.ts`
+- `packages/backend/src/modules/media/infrastructure/sharp-media-processor.ts`
+- `packages/backend/src/modules/media/media.module.ts`
+- `packages/backend/src/modules/media/module.meta.ts`
+- `packages/backend/test/media.integration.test.ts`
+- `packages/backend/test/media.minio.integration.test.ts`
+- `packages/backend/test/media.test.ts`
+- `packages/backend/test/storage.contract.ts`
+- `packages/backend/test/storage.fake.contract.test.ts`
+- `packages/backend/test/storage.minio.contract.test.ts`
+- `packages/db/prisma/migrations/20260806190000_media_storage_invariants/migration.sql`
+- `scripts/verify-phase7.mjs`
+
+### Files modified
+
+- `.env.example` — safe media/storage settings and local placeholders
+- `.github/workflows/ci.yml` — isolated pinned MinIO service and Phase 7 gates
+- `README.md` — Phase 7 state, commands, and media guide link
+- `PLANS.md` — Phase 7 complete; Phase 8 current but not started
+- `apps/api/src/app.module.ts` — media module/controller composition
+- `apps/api/src/config/api-config.ts` — bounded S3, upload, processing, and origin configuration
+- `apps/api/src/openapi/document.ts` — media tag and schemas
+- `apps/api/test/config.test.ts` — production and media configuration proofs
+- `docker-compose.yml` — explicit local MinIO CORS origin
+- `docs/adr/README.md` — append-only ADR-0024 index entry
+- `docs/api-development.md` — media route and transport behavior
+- `docs/local-development.md` — MinIO direct-upload guidance
+- `docs/module-boundaries.md` — media ownership and allowed dependency direction
+- `docs/progress.md` — this completion record
+- `package.json` — Phase 7 verifier and image tag
+- `packages/backend/README.md` — media module contract and ownership
+- `packages/backend/package.json` — exact storage/inspection/image dependencies
+- `packages/backend/src/index.ts` — public media exports
+- `packages/backend/src/modules/identity/domain/ports.ts` — identity-owned audit writer port
+- `packages/backend/src/modules/identity/index.ts` — audit writer export
+- `packages/config-eslint/index.mjs` — API and media-domain dependency restrictions
+- `packages/contracts/README.md` — media contract coverage
+- `packages/contracts/openapi.json` — generated Phase 7 operations and schemas
+- `packages/contracts/src/generated/api.ts` — generated strict media API types
+- `packages/db/README.md` — media schema and migration notes
+- `packages/db/prisma/schema.prisma` — media kind/visibility and trusted metadata fields
+- `packages/db/test/constraints.ts` — invalid media-shape and unsafe-key rejection proofs
+- `pnpm-lock.yaml` — exact Phase 7 dependency graph
+- `pnpm-workspace.yaml` — intentional dependency release-policy exceptions
+- `scripts/verify-phase5.mjs` — recognizes the new backend module without weakening Phase 5
+- `scripts/verify-phase6.mjs` — removes only the superseded “media absent” assertion
+- `tools/boundaries/checker.mjs` — media infrastructure/domain/API import boundaries
+- `tools/boundaries/checker.test.mjs` — negative Phase 7 boundary fixtures
+- `turbo.json` — forwards and hashes MinIO test settings to prevent cached skips
+
+### Decisions made
+
+- [ADR-0024](adr/0024-media-upload-processing.md) records private quarantined
+  direct uploads, Redis intent state, synchronous bounded Phase 7 processing,
+  deterministic derivatives, idempotent completion, and private retrieval.
+- [ADR-0007](adr/0007-s3-storage-abstraction.md) remains the provider-neutral
+  storage boundary; the API transport imports neither S3 nor Sharp.
+- Object keys and buckets are always server-derived. Public and private retrieval
+  starts from a persisted asset ID, so no arbitrary-key API exists.
+- Media persistence is one database transaction. Audit ownership remains in the
+  identity module; a late audit failure leaves the intent retryable rather than
+  duplicating media or falsely reporting completion.
+- Local MinIO uses server-supported explicit-origin CORS configuration and
+  anonymous read-only access only on the public bucket. Private/quarantine writes
+  and reads remain credentialed.
+- Migration history is immutable; Phase 7 uses a new forward-only migration.
+
+### Unresolved decisions
+
+No Phase 7 decision is unresolved and no Phase 7 deliverable is blocked. Existing
+later business questions remain open. Phase 8 is current but explicitly not
+started; no Phase 8 code or catalog attachment workflow was created.
+
+### Risks
+
+- Image processing is synchronous and deliberately bounded in Phase 7. High
+  throughput requires the later Phase 16 worker, which was not pre-wired.
+- MP4/WebM validation is container-signature and size based only; there is no
+  codec validation, transcoding, poster generation, adaptive streaming, or
+  reliable duration extraction.
+- Expired quarantine is isolated and harmless but requires operational cleanup;
+  no scheduled cleanup job belongs to this phase.
+- Final-object deletion after a persistence failure is bounded best effort.
+  Immutable UUID prefixes allow orphan reconciliation if storage is unavailable.
+- Media availability depends on Redis during intent completion and on S3/MinIO
+  during processing. Both fail closed without promoting unverified bytes.
+
+### Acceptance checklist
+
+- [x] Provider-neutral storage port exists with S3/MinIO and fake adapters
+- [x] Direct upload bypasses API bytes and uses constrained private quarantine
+- [x] Intents are owner-bound, expiring, atomic, single-use, and idempotent
+- [x] JPEG, PNG, WebP, AVIF, MP4, and WebM are accepted by actual signature
+- [x] SVG/markup/scripts/executables/archives/PDF/unknown bytes are rejected
+- [x] Actual byte, dimension, pixel, timeout, cache, and concurrency limits apply
+- [x] Valid images are oriented, re-encoded, EXIF/GPS stripped, and checksummed
+- [x] The fixed four-derivative matrix is deterministic and never enlarges
+- [x] Public media is anonymous read-only; private media uses authorized short URLs
+- [x] Localized alt text preserves Persian and rejects unsafe/invalid values
+- [x] Every media route requires `content:write` server-side; customers are rejected
+- [x] Database invariants, audit events, OpenAPI, boundaries, and CI are complete
+- [x] Fake and real-MinIO storage contracts and end-to-end processing tests pass
+- [x] No media UI, catalog/ProductMedia workflow, worker, BullMQ, transcoding, or CDN exists
+- [x] No arbitrary object-key or API byte-proxy route exists
+- [x] No secrets are tracked; nothing is staged, committed, tagged, or pushed
+- [x] Hero filesystem and object-storage integrity checks are empty/clean
+
+### Verification performed
+
+| Gate | Result |
+|---|---|
+| Normal and frozen install | passed; all 13 workspaces already up to date |
+| Prisma format/validate/generate | passed with Prisma `7.9.0` |
+| Migration deploy/status | passed; 3 migrations applied and schema current |
+| Seed twice | passed twice with explicit documented local `DATABASE_URL` |
+| Disposable migration/database integration | passed; 73 tables, 31 enums, 30 PostgreSQL rejection proofs, stable double seed |
+| Media unit/fake/Prisma tests | passed; signature, limits, EXIF, derivatives, intent and persistence behavior |
+| Full tests with real MinIO | passed; backend 47 passed/1 unrelated conditional skip, API 24 passed/1 unrelated conditional skip, 17/17 workspace tasks |
+| MinIO storage and processing | passed; direct upload, isolation, public fetch, signed expiry, cleanup, retry, executable rejection |
+| Boundary fixtures/graph | passed; 20/20 negative/positive fixtures and clean scan |
+| OpenAPI generate/drift/lint/forbidden/breaking | passed; explicit same-file baseline comparison passed |
+| Docker Compose verification | passed; all services healthy and bucket policies correct |
+| API image build/inspection/runtime | passed; `honey-api:phase7`, non-root `node`, no `.env`/Hero, database-backed `/readyz` |
+| `pnpm format:check` | passed |
+| `pnpm lint` | passed; 10/10 tasks |
+| `pnpm boundaries` | passed |
+| `pnpm typecheck` | passed; 17/17 tasks |
+| `pnpm test` | passed with real MinIO; 17/17 tasks |
+| `pnpm build` | passed; 10/10 tasks |
+| Phase 4/5/6/7 verifiers | passed |
+| MinIO object listing | both buckets empty after owned test cleanup; no Hero-related keys |
+| Hero/git safety commands | all four required commands produced no output |
 
 ---
 

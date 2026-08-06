@@ -167,6 +167,43 @@ export async function analyzeWorkspace(rootDirectory) {
         }
         if (
           sourceId === 'api' &&
+          (specifier.startsWith('@aws-sdk/') ||
+            specifier.startsWith('@smithy/') ||
+            specifier === 'sharp' ||
+            specifier.startsWith('sharp/') ||
+            specifier === 'file-type' ||
+            specifier.startsWith('file-type/'))
+        ) {
+          violations.push({
+            code: 'forbidden-api-media-provider-import',
+            file: workspaceRelative,
+            specifier,
+            message: 'apps/api delegates storage and media processing to @honey/backend',
+          });
+          continue;
+        }
+        if (
+          sourceId === 'backend' &&
+          workspaceRelative.includes('/domain/') &&
+          (specifier.startsWith('@aws-sdk/') ||
+            specifier.startsWith('@smithy/') ||
+            specifier === 'sharp' ||
+            specifier.startsWith('sharp/') ||
+            specifier === 'file-type' ||
+            specifier.startsWith('file-type/') ||
+            specifier === 'redis' ||
+            specifier.startsWith('redis/'))
+        ) {
+          violations.push({
+            code: 'forbidden-backend-domain-import',
+            file: workspaceRelative,
+            specifier,
+            message: 'backend domain code must remain independent of storage and media providers',
+          });
+          continue;
+        }
+        if (
+          sourceId === 'api' &&
           (specifier === 'pg' ||
             specifier.startsWith('pg/') ||
             specifier === 'postgres' ||

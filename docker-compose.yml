@@ -46,6 +46,9 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-honey-local-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-replace-with-local-development-password}
+      # MinIO supports server-level CORS. Keep this an explicit local origin;
+      # deployed environments provide their own validated HTTPS origin list.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MEDIA_UPLOAD_ALLOWED_ORIGINS:-http://localhost:3000}
     ports:
       - '127.0.0.1:${MINIO_PORT:-9000}:9000'
       - '127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001'

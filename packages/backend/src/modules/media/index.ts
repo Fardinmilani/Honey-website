@@ -1,0 +1,15 @@
+export * from './application/media.service.js';
+export * from './domain/media.js';
+export type * from './domain/content-inspector.port.js';
+export type * from './domain/media-processor.port.js';
+export type * from './domain/media-audit.port.js';
+export type * from './domain/media-repository.port.js';
+export type * from './domain/storage.port.js';
+export type * from './domain/upload-intent.port.js';
+export * from './media.module.js';
+export * from './module.meta.js';
+export { InMemoryStorageAdapter } from './infrastructure/in-memory-storage.adapter.js';
+export { InMemoryUploadIntentAdapter } from './infrastructure/in-memory-upload-intent.adapter.js';
+export { MagicContentInspector } from './infrastructure/magic-content-inspector.js';
+export { S3StorageAdapter, type S3StorageConfig } from './infrastructure/s3-storage.adapter.js';
+export { SharpMediaProcessor } from './infrastructure/sharp-media-processor.js';

@@ -1,11 +1,17 @@
 import { type DynamicModule, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
-import { IdentityModule, PlatformModule, type DatabaseHealthPort } from '@honey/backend';
+import {
+  IdentityModule,
+  MediaModule,
+  PlatformModule,
+  type DatabaseHealthPort,
+} from '@honey/backend';
 import type { GracefulShutdown } from './bootstrap/graceful-shutdown.js';
 import type { ApiConfig } from './config/api-config.js';
 import { PlatformController } from './modules/platform/platform.controller.js';
 import { IdentityController } from './modules/identity/identity.controller.js';
+import { MediaController } from './modules/media/media.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
@@ -21,8 +27,8 @@ export type AppModuleOptions = Readonly<{
 export class AppModule {
   static controllers(enableTestRoutes: boolean): readonly ControllerClass[] {
     return enableTestRoutes
-      ? [PlatformController, IdentityController, ValidationProbeController]
-      : [PlatformController, IdentityController];
+      ? [PlatformController, IdentityController, MediaController, ValidationProbeController]
+      : [PlatformController, IdentityController, MediaController];
   }
 
   static register(options: AppModuleOptions): DynamicModule {
@@ -44,6 +50,12 @@ export class AppModule {
           breachedPasswordEndpoint: options.config.identity.breachedPasswordEndpoint,
           breachedPasswordTimeoutMs: options.config.identity.breachedPasswordTimeoutMs,
           smtp: options.config.identity.smtp,
+        }),
+        MediaModule.register({
+          config: options.config.media.config,
+          storage: options.config.media.storage,
+          databaseUrl: options.config.databaseUrl,
+          redisUrl: options.config.redisUrl,
         }),
       ],
       controllers: [...AppModule.controllers(options.enableTestRoutes === true)],

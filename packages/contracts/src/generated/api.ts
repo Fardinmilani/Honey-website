@@ -39,6 +39,110 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/media/{assetId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get trusted media metadata
+     * @description Returns safe persisted metadata and canonical public URLs only when public.
+     */
+    get: operations['getMediaAsset'];
+    put?: never;
+    post?: never;
+    /**
+     * Delete an unattached media asset
+     * @description Deletes only a media asset that is not protected by an attachment constraint.
+     */
+    delete: operations['deleteMediaAsset'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/media/{assetId}/alt-text': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Replace localized media alt text
+     * @description Validates canonical BCP-47 locale keys and bounded plain-text values.
+     */
+    patch: operations['updateMediaAltText'];
+    trace?: never;
+  };
+  '/v1/admin/media/{assetId}/private-url': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a short-lived private media URL
+     * @description Signs only the stored key of an authorized private media asset.
+     */
+    post: operations['createPrivateMediaUrl'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/media/upload-intents': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Authorize one direct media upload
+     * @description Creates an owner-bound, short-lived upload intent and a constrained direct-to-storage POST authorization.
+     */
+    post: operations['createMediaUploadIntent'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/media/upload-intents/{uploadId}/complete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Verify and process a direct upload
+     * @description Consumes the owner-bound intent, verifies stored bytes by magic number, processes images, and persists only trusted metadata.
+     */
+    post: operations['completeMediaUpload'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/auth/email-verification/confirm': {
     parameters: {
       query?: never;
@@ -296,6 +400,17 @@ export interface components {
       next: 'AUTHENTICATED';
       user: components['schemas']['SafeUserDto'];
     };
+    DirectUploadDto: {
+      /** Format: date-time */
+      expiresAt: string;
+      fields: {
+        [key: string]: string;
+      };
+      /** @enum {string} */
+      method: 'POST';
+      /** Format: uri */
+      url: string;
+    };
     HealthResponseDto: {
       /**
        * @example ok
@@ -312,6 +427,65 @@ export interface components {
       /** @description Controlled TOTP enrollment URI; returned only after a valid staff password. */
       provisioningUri?: string;
       user?: components['schemas']['SafeUserDto'];
+    };
+    MediaAssetDto: {
+      altTextByLocale: {
+        [key: string]: string;
+      };
+      bytes: number;
+      checksum: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      createdBy: string;
+      derivatives: components['schemas']['MediaDerivativeDto'][];
+      durationSeconds: number | null;
+      height: number | null;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      kind: 'IMAGE' | 'VIDEO';
+      /** @enum {string} */
+      mimeType:
+        'image/jpeg' | 'image/png' | 'image/webp' | 'image/avif' | 'video/mp4' | 'video/webm';
+      /** Format: date-time */
+      updatedAt: string;
+      /** Format: uri */
+      url: string | null;
+      /** @enum {string} */
+      visibility: 'PUBLIC' | 'PRIVATE';
+      width: number | null;
+    };
+    MediaDerivativeDto: {
+      bytes: number;
+      checksum: string;
+      /** @enum {string} */
+      format: 'webp' | 'jpg';
+      height: number;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      mimeType: 'image/webp' | 'image/jpeg';
+      /** Format: uri */
+      url: string | null;
+      /** @enum {string} */
+      variant: 'thumb' | 'card' | 'hero' | 'og';
+      width: number;
+    };
+    MediaUploadIntentDto: {
+      /** Format: uuid */
+      assetId: string;
+      /** Format: date-time */
+      expiresAt: string;
+      upload: components['schemas']['DirectUploadDto'];
+      /** Format: uuid */
+      uploadId: string;
+    };
+    PrivateMediaUrlDto: {
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: uri */
+      url: string;
     };
     ProblemDetailsDto: {
       /** @example VALIDATION_FAILED */
@@ -480,6 +654,304 @@ export interface operations {
       };
       /** @description A required dependency is unavailable. */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  getMediaAsset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        assetId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MediaAssetDto'];
+        };
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  deleteMediaAsset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        assetId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  updateMediaAltText: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        assetId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MediaAssetDto'];
+        };
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  createPrivateMediaUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        assetId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PrivateMediaUrlDto'];
+        };
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  createMediaUploadIntent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MediaUploadIntentDto'];
+        };
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  completeMediaUpload: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        uploadId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MediaAssetDto'];
+        };
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      422: {
         headers: {
           [name: string]: unknown;
         };

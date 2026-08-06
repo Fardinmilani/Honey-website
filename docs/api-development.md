@@ -1,10 +1,11 @@
 # API development
 
-The NestJS/Fastify composition root exposes operational routes plus the Phase 6
-identity API. Identity rules, persistence, cryptography, lockout, ownership,
-and permission evaluation remain in `packages/backend`; controllers map DTOs,
-cookies, request principals, and OpenAPI only. See
-[`identity-development.md`](identity-development.md) for the complete flows.
+The NestJS/Fastify composition root exposes operational routes, the Phase 6
+identity API, and the Phase 7 staff media API. Identity, storage, upload,
+processing, persistence, ownership, and permission rules remain in
+`packages/backend`; controllers map DTOs, cookies, request principals, and
+OpenAPI only. See [`identity-development.md`](identity-development.md) and
+[`media-development.md`](media-development.md) for the complete flows.
 
 ## Prerequisites and environment
 
@@ -23,8 +24,9 @@ pnpm api:dev
 On Linux or macOS use `cp .env.example .env`. The start scripts load the root
 `.env` when it exists. The API defaults to
 `127.0.0.1:4000` outside production. Configuration is validated before boot;
-production requires explicit HTTPS origins, trusted-proxy policy, secure
-host-bound CSRF cookie settings, and every other documented value. Unknown
+production requires explicit HTTPS API/upload origins, HTTPS storage endpoints,
+trusted-proxy policy, secure host-bound CSRF cookie settings, non-placeholder
+storage credentials, and every other documented value. Unknown
 hosting variables are tolerated, but malformed known variables stop startup.
 Never put production credentials in `.env.example` or a command line.
 
@@ -85,6 +87,8 @@ With PostgreSQL already healthy:
 pnpm api:test
 pnpm api:test:integration
 pnpm phase5:verify
+pnpm phase6:verify
+pnpm phase7:verify
 pnpm api:docker:build
 ```
 
@@ -95,7 +99,7 @@ production-safe environment values, including a container-reachable
 
 ```powershell
 docker run --rm --name honey-api --network honey-local-internal -p 4000:4000 `
-  --env-file .env honey-api:phase6
+  --env-file .env honey-api:phase7
 ```
 
 The runtime image uses the non-root `node` user, `tini` as PID 1, and a
@@ -118,3 +122,6 @@ forced only after the deadline.
   `127.0.0.1` from the host or `postgres` from the Docker network.
 - Health is `200` but readiness is `503`: the API process is alive and the
   PostgreSQL dependency is unavailable or exceeded its bounded timeout.
+- Direct upload signature mismatch: keep `S3_INTERNAL_ENDPOINT` reachable from
+  the API and `S3_BROWSER_ENDPOINT` reachable from the browser; do not replace a
+  signed host after authorization is created.

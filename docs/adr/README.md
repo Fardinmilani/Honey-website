@@ -43,6 +43,7 @@ that costs, and what was rejected.
 | [0021](0021-shared-backend-package.md) | Business logic in `packages/backend`, shared by API and worker | Accepted |
 | [0022](0022-payment-verification-sources.md) | Payment state changes only on a server-verified provider outcome | Accepted |
 | [0023](0023-self-hosted-vps-deployment.md) | Initial deployment: self-hosted Linux VPS + Docker Compose | Accepted |
+| [0024](0024-media-upload-processing.md) | Quarantined direct uploads with bounded media processing | Accepted |
 
 ### Supersession chain
 

@@ -5,7 +5,9 @@ committed migration, deterministic development seed, and disposable database
 integration harness. Phase 5 adds the NestJS/Fastify API and backend platform
 foundation. Phase 6 uses PostgreSQL for opaque sessions/audit, Redis for
 authentication lockout and pre-auth challenges, and Mailpit for local identity
-mail. The API remains outside the default Compose profile and no UI exists yet.
+mail. Phase 7 uses Redis for owner-bound upload intents and MinIO for private
+quarantine, verified public media, and signed private retrieval. The API remains
+outside the default Compose profile and no UI exists yet.
 
 ## Prerequisites
 
@@ -73,6 +75,8 @@ pnpm docker:up
 all services in detached mode. The one-shot `minio-init` service waits for MinIO
 to become healthy, creates the required buckets, applies their policies, and
 exits successfully.
+MinIO itself receives the explicit local direct-upload CORS origin through
+`MINIO_API_CORS_ALLOW_ORIGIN`; no wildcard origin is configured.
 
 Wait for all services and required resources to be ready:
 
@@ -190,6 +194,8 @@ failure modes.
 The identity-specific setup, cookies, customer/staff flows, Mailpit inspection,
 and deterministic test behavior are documented in
 [`identity-development.md`](identity-development.md).
+Media endpoint addressing, direct uploads, limits, and focused tests are in
+[`media-development.md`](media-development.md).
 
 ## Redis verification
 
@@ -234,6 +240,12 @@ safe and proves idempotency:
 ```sh
 docker compose run --rm minio-init
 ```
+
+The host-run API uses `S3_INTERNAL_ENDPOINT=http://localhost:9000` and
+`S3_BROWSER_ENDPOINT=http://localhost:9000`. A container-run API uses
+`http://minio:9000` internally but must continue signing the browser-reachable
+host endpoint. Direct uploads land only in the private quarantine bucket. The
+public bucket serves only verified immutable outputs.
 
 Open the MinIO console at <http://localhost:9001> and sign in with the local
 `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` from `.env`.

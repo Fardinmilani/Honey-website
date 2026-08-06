@@ -104,9 +104,6 @@ for (const role of [
 const forbiddenMarketplaceRole = ['SELL', 'ER'].join('');
 assert.equal(seed.includes(`code: '${forbiddenMarketplaceRole}'`), false);
 
-await assert.rejects(access(resolve(root, 'packages/backend/src/modules/media')));
-await assert.rejects(access(resolve(root, 'apps/api/src/modules/media')));
-
 const controller = await readFile(
   resolve(root, 'apps/api/src/modules/identity/identity.controller.ts'),
   'utf8',

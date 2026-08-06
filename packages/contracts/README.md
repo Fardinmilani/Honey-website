@@ -1,12 +1,18 @@
 # `@honey/contracts`
 
-Committed, deterministic HTTP contracts for operational and Phase 6 identity
-routes, cookie authentication, safe account/session DTOs, and RFC 9457 problems.
+Committed, deterministic HTTP contracts for operational routes, Phase 6
+identity, Phase 7 staff media, cookie authentication, safe DTOs, and RFC 9457
+problems.
 
 - `openapi.json` is the generated OpenAPI 3.1 source of truth.
 - `src/generated/api.ts` is generated from that document; do not edit it.
 - `src/problem-details.ts` contains the shared transport type.
 - `.spectral.yaml` applies the repository OpenAPI lint policy.
+
+Media contracts expose safe request metadata, constrained direct-upload
+authorization fields, trusted media metadata, canonical public URLs, and
+short-lived private URLs. They expose no provider configuration, arbitrary
+bucket/key request, Prisma type, or uploaded byte proxy.
 
 ```sh
 pnpm api:openapi:generate

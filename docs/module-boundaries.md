@@ -57,7 +57,7 @@ application services" and "no app imports another app" are both true.
 |---|---|---|---|---|
 | `identity` | Auth, sessions, users, roles, permissions, audit | `user`, `auth_credential`, `session`, `verification_token`, `role`, `permission`, `role_permission`, `user_role`, `audit_log` | `email` | `/v1/auth/*`, `/v1/me/*` |
 | `catalog` | Products, variants, categories, collections, translations, slugs | `product*`, `product_variant*`, `category*`, `collection*`, `product_media`, `slug_history` | `search`, `cache` | `/v1/products`, `/v1/categories`, `/v1/collections` |
-| `media` | Media assets, uploads, derivatives, signed URLs | `media_asset`, `media_derivative` | `media` | `/v1/media/*` (admin) |
+| `media` | Media assets, uploads, derivatives, signed URLs | `media_asset`, `media_derivative` | `media` (future consumption) | `/v1/admin/media/*` |
 | `pricing` | Variant prices, coupons, tax rules, total computation | `variant_price`, `coupon`, `coupon_redemption`, `tax_rate` | — | internal + `/v1/coupons/validate` |
 | `sourcing` | Apiaries, harvest batches, batch allocation | `apiary*`, `harvest_batch`, `batch_allocation` | — | admin only |
 | `procurement` | Suppliers, purchase orders, goods receipts | `supplier`, `purchase_order*`, `goods_receipt*` | — | **admin only — never public** |

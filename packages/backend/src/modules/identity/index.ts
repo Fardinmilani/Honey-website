@@ -3,6 +3,7 @@ export * from './domain/identity.js';
 export type * from './domain/ports.js';
 export * from './identity.module.js';
 export * from './module.meta.js';
+export { PrismaAuditWriter } from './infrastructure/prisma-audit.writer.js';
 export {
   Aes256GcmSecretCipher,
   Argon2PasswordHasher,

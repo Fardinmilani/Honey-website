@@ -133,7 +133,11 @@ export interface IdentityTransactionPort {
   revokeAllSessions(userId: string, now: Date, audit: AuditInput): Promise<number>;
 }
 
-export interface IdentityRepositoryPort {
+export interface AuditWriterPort {
+  appendAudit(input: AuditInput): Promise<void>;
+}
+
+export interface IdentityRepositoryPort extends AuditWriterPort {
   transaction<Result>(
     work: (transaction: IdentityTransactionPort) => Promise<Result>,
   ): Promise<Result>;
@@ -165,7 +169,6 @@ export interface IdentityRepositoryPort {
       now: Date;
     }>,
   ): Promise<SafeUser | null>;
-  appendAudit(input: AuditInput): Promise<void>;
   assignRole(
     input: Readonly<{
       actorUserId: string;

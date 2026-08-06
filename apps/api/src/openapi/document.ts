@@ -26,6 +26,7 @@ export async function createOpenApiDocument(app: NestFastifyApplication): Promis
     .setVersion('1.0.0')
     .addTag('Operations', 'Process and dependency health endpoints.')
     .addTag('Identity', 'Registration, authentication, account, and session endpoints.')
+    .addTag('Media', 'Staff-only direct uploads, trusted media metadata, and private retrieval.')
     .addCookieAuth(
       '__Host-session',
       {

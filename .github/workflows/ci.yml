@@ -45,6 +45,15 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       REDIS_URL: redis://127.0.0.1:6379
       TOTP_ENCRYPTION_KEY_BASE64: AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
+      MEDIA_MINIO_TESTS: 'true'
+      S3_INTERNAL_ENDPOINT: http://127.0.0.1:9000
+      S3_BROWSER_ENDPOINT: http://127.0.0.1:9000
+      S3_REGION: local
+      S3_ACCESS_KEY: honey-ci-minio
+      S3_SECRET_KEY: honey-ci-deterministic-password
+      S3_PUBLIC_BUCKET: honey-media-ci
+      S3_PRIVATE_BUCKET: honey-private-ci
+      PUBLIC_MEDIA_BASE_URL: http://127.0.0.1:9000/honey-media-ci/
 
     steps:
       - name: Checkout
@@ -80,6 +89,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start pinned isolated MinIO
+        run: |
+          docker run --detach --name honey-ci-minio \
+            --publish 127.0.0.1:9000:9000 \
+            --env MINIO_ROOT_USER=honey-ci-minio \
+            --env MINIO_ROOT_PASSWORD=honey-ci-deterministic-password \
+            --health-cmd 'curl -f http://localhost:9000/minio/health/live' \
+            --health-interval 2s --health-timeout 2s --health-retries 30 \
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          for attempt in {1..30}; do
+            [ "$(docker inspect --format='{{.State.Health.Status}}' honey-ci-minio)" = healthy ] && exit 0
+            sleep 2
+          done
+          docker logs honey-ci-minio
+          exit 1
+
+      - name: Initialize isolated MinIO test buckets
+        run: >-
+          docker run --rm --network host --entrypoint /bin/sh
+          minio/mc:RELEASE.2025-08-13T08-35-41Z -c
+          'mc alias set ci http://127.0.0.1:9000 honey-ci-minio honey-ci-deterministic-password >/dev/null &&
+          mc mb --ignore-existing ci/honey-media-ci ci/honey-private-ci &&
+          mc anonymous set download ci/honey-media-ci &&
+          mc anonymous set none ci/honey-private-ci'
+
       - name: Check formatting
         run: pnpm format:check
 
@@ -94,6 +128,14 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Run Phase 7 media and MinIO integration tests
+        run: >-
+          pnpm --filter @honey/backend test -- --run
+          test/media.test.ts
+          test/media.integration.test.ts
+          test/storage.fake.contract.test.ts
+          test/storage.minio.contract.test.ts
 
       - name: Build
         run: pnpm build
@@ -116,6 +158,9 @@ jobs:
 
       - name: Verify Phase 6 identity and authorization
         run: pnpm phase6:verify
+
+      - name: Verify Phase 7 media and storage
+        run: pnpm phase7:verify
 
       - name: Build API container
         run: pnpm api:docker:build

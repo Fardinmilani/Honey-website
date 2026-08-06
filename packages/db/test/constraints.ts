@@ -18,6 +18,7 @@ const testIds = {
   statusHistory: '018f0000-0001-7000-8000-00000000000b',
   product: '018f0000-0001-7000-8000-00000000000c',
   passwordCredential: '018f0000-0001-7000-8000-00000000000d',
+  mediaAsset: '018f0000-0001-7000-8000-00000000000e',
 } as const;
 
 function databaseErrorCode(error: unknown): string | undefined {
@@ -129,6 +130,28 @@ async function createValidTestRecords(client: Client): Promise<void> {
 export async function runConstraintTests(client: Client): Promise<number> {
   await createValidTestRecords(client);
   const cases: ReadonlyArray<readonly [string, readonly string[], () => Promise<unknown>]> = [
+    [
+      'invalid trusted media shape',
+      ['23514'],
+      () =>
+        client.query(
+          `INSERT INTO "media_asset" (
+             "id", "kind", "visibility", "storage_key", "mime_type", "bytes", "width", "height", "checksum", "created_by"
+           ) VALUES ($1, 'IMAGE', 'PUBLIC', 'media/invalid/original.jpg', 'image/jpeg', 0, 10, 10, $2, $3)`,
+          [testIds.mediaAsset, 'a'.repeat(64), seedIds.ownerUser],
+        ),
+    ],
+    [
+      'unsafe media storage key',
+      ['23514'],
+      () =>
+        client.query(
+          `INSERT INTO "media_asset" (
+             "id", "kind", "visibility", "storage_key", "mime_type", "bytes", "checksum", "created_by"
+           ) VALUES ($1, 'VIDEO', 'PRIVATE', '../hero/honey-scroll.mp4', 'video/mp4', 10, $2, $3)`,
+          [testIds.mediaAsset, 'b'.repeat(64), seedIds.ownerUser],
+        ),
+    ],
     [
       'password credential without a hash',
       ['23514'],
