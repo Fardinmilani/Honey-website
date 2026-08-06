@@ -288,8 +288,8 @@ export async function runConstraintTests(client: Client): Promise<number> {
       () =>
         client.query(
           `INSERT INTO "product_variant" (
-          "id", "product_id", "sku", "net_weight_grams", "jar_size_label_key", "packaging_type_key", "weight_grams_shipping"
-        ) VALUES ('018f0000-0002-7000-8000-000000000009', $1, 'HNY-WILD-450', 1, 'jar.1g', 'packaging.glass', 1)`,
+          "id", "product_id", "sku", "net_weight_grams", "jar_size_label_key", "packaging_type_key", "weight_grams_shipping", "dimensions_mm"
+        ) VALUES ('018f0000-0002-7000-8000-000000000009', $1, 'HNY-WILD-450', 1, 'jar.1g', 'packaging.glass', 1, ARRAY[1,1,1])`,
           [testIds.product],
         ),
     ],

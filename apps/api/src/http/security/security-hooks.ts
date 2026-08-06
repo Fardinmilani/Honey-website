@@ -55,6 +55,9 @@ export function registerSecurityHooks(
 
   fastify.addHook('onSend', async (request, reply, payload) => {
     reply.header('X-Request-Id', request.id);
+    if ((request.url.split('?')[0] ?? '/').startsWith('/v1/admin/')) {
+      reply.header('Cache-Control', 'private, no-store');
+    }
     return payload;
   });
 }

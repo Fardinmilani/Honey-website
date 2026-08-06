@@ -142,8 +142,20 @@ export async function analyzeWorkspace(rootDirectory) {
     const files = await sourceFiles(resolve(root, workspacePath, 'src'));
     for (const file of files) {
       const source = await readFile(file, 'utf8');
+      const workspaceRelative = slash(relative(root, file));
+      if (
+        sourceId === 'backend' &&
+        workspaceRelative.includes('/modules/catalog/infrastructure/') &&
+        /\.(?:mediaAsset|mediaDerivative)\b/u.test(source)
+      ) {
+        violations.push({
+          code: 'catalog-media-table-reach-through',
+          file: workspaceRelative,
+          specifier: 'media Prisma model access',
+          message: 'catalog must resolve media through the public media application boundary',
+        });
+      }
       for (const specifier of importedSpecifiers(source)) {
-        const workspaceRelative = slash(relative(root, file));
         if (
           sourceId === 'backend' &&
           workspaceRelative.includes('/domain/') &&
@@ -179,6 +191,15 @@ export async function analyzeWorkspace(rootDirectory) {
             file: workspaceRelative,
             specifier,
             message: 'apps/api delegates storage and media processing to @honey/backend',
+          });
+          continue;
+        }
+        if (sourceId === 'api' && (specifier === 'redis' || specifier.startsWith('redis/'))) {
+          violations.push({
+            code: 'forbidden-api-cache-provider-import',
+            file: workspaceRelative,
+            specifier,
+            message: 'apps/api reaches catalog caching only through @honey/backend',
           });
           continue;
         }

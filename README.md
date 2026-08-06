@@ -6,14 +6,13 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 7 adds a provider-neutral storage port, MinIO/S3 and in-memory adapters,
-owner-bound direct uploads, signature verification, bounded image re-encoding,
-deterministic derivatives, localized alt text, and public/private retrieval to
-the existing identity-secured NestJS/Fastify API. OpenAPI contracts and the
-non-root API image include the staff-only routes. There is still no Next.js,
-BullMQ processor, media UI, catalog attachment flow, checkout, or later business
-implementation. The existing Hero media under `apps/web/public/media/hero/` is
-protected, byte-identical, and never enters object storage.
+Phase 8 adds the transport-independent catalog module, localized public catalog
+and search APIs, staff authoring/publication routes, materialized category paths,
+slug history, PostgreSQL Persian normalization, cursor pagination, and Redis
+tagged caching. Pricing, inventory, Next.js, storefront/admin UI, and workers are
+still absent. Phase 7 media is consumed only through its public application
+service. The existing Hero media under `apps/web/public/media/hero/` remains
+protected, byte-identical, and outside object storage.
 
 ## Requirements
 
@@ -73,6 +72,8 @@ Identity flows and local Mailpit/TOTP/session behavior are documented in
 [`docs/identity-development.md`](docs/identity-development.md).
 The direct-upload lifecycle, limits, MinIO addressing, processing matrix, and
 tests are documented in [`docs/media-development.md`](docs/media-development.md).
+Catalog routes, publication, locales, redirects, search, cursors, caching, and
+tests are documented in [`docs/catalog-development.md`](docs/catalog-development.md).
 
 ## Commands
 
@@ -91,6 +92,7 @@ tests are documented in [`docs/media-development.md`](docs/media-development.md)
 | `pnpm phase5:verify`        | Verify the backend/API foundation scope and invariants  |
 | `pnpm phase6:verify`        | Verify identity, authorization, scope, and integrity    |
 | `pnpm phase7:verify`        | Verify media/storage scope, boundaries, and integrity   |
+| `pnpm phase8:verify`        | Verify catalog scope, search, cache, and integrity      |
 | `pnpm api:dev`              | Start the API in TypeScript watch mode                  |
 | `pnpm api:start`            | Start the built API                                     |
 | `pnpm api:test`             | Run the focused API test suite                          |
@@ -98,7 +100,7 @@ tests are documented in [`docs/media-development.md`](docs/media-development.md)
 | `pnpm api:openapi:check`    | Fail when committed API contracts have drifted          |
 | `pnpm api:openapi:lint`     | Lint the OpenAPI 3.1 document                           |
 | `pnpm api:openapi:breaking` | Compare with an explicit base contract                  |
-| `pnpm api:docker:build`     | Build the non-root Phase 7 API image                    |
+| `pnpm api:docker:build`     | Build the non-root Phase 8 API image                    |
 | `pnpm db:validate`          | Validate the Prisma schema and configuration            |
 | `pnpm db:generate`          | Generate the typed ESM Prisma client                    |
 | `pnpm db:migrate`           | Apply committed database migrations                     |

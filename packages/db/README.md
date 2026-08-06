@@ -38,6 +38,12 @@ checksums, with constraints for allowed media shape, safe server-generated keys,
 positive dimensions/bytes, and deterministic derivative variants. Media upload
 intents remain in Redis and do not create a database table.
 
+Phase 8 adds the forward-only
+`20260806220000_catalog_content_model` migration. It enforces bounded catalog
+text and variant dimensions, materialized category paths, one published default
+variant, ordered collection membership and media roles, and normalized
+PostgreSQL search indexes without changing earlier migrations.
+
 The seed refuses `NODE_ENV=production` and non-local hosts. Its identifiers and
 timestamps are fixed, its writes are idempotent, and optional development staff
 credentials are read only from environment variables.

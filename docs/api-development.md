@@ -1,11 +1,13 @@
 # API development
 
 The NestJS/Fastify composition root exposes operational routes, the Phase 6
-identity API, and the Phase 7 staff media API. Identity, storage, upload,
-processing, persistence, ownership, and permission rules remain in
+identity API, the Phase 7 staff media API, and the Phase 8 public/admin catalog
+API. Identity, storage, upload, catalog, persistence, ownership, and permission
+rules remain in
 `packages/backend`; controllers map DTOs, cookies, request principals, and
 OpenAPI only. See [`identity-development.md`](identity-development.md) and
-[`media-development.md`](media-development.md) for the complete flows.
+[`media-development.md`](media-development.md), and
+[`catalog-development.md`](catalog-development.md) for the complete flows.
 
 ## Prerequisites and environment
 

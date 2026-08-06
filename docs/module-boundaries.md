@@ -56,7 +56,7 @@ application services" and "no app imports another app" are both true.
 | Module | Responsibility | Owns tables | Queues | Public routes |
 |---|---|---|---|---|
 | `identity` | Auth, sessions, users, roles, permissions, audit | `user`, `auth_credential`, `session`, `verification_token`, `role`, `permission`, `role_permission`, `user_role`, `audit_log` | `email` | `/v1/auth/*`, `/v1/me/*` |
-| `catalog` | Products, variants, categories, collections, translations, slugs | `product*`, `product_variant*`, `category*`, `collection*`, `product_media`, `slug_history` | `search`, `cache` | `/v1/products`, `/v1/categories`, `/v1/collections` |
+| `catalog` | Products, variants, categories, collections, translations, slugs | `product*`, `product_variant*`, `category*`, `collection*`, `product_media`, `slug_history` | `search`, `cache` | `/v1/catalog/*`, `/v1/admin/catalog/*` |
 | `media` | Media assets, uploads, derivatives, signed URLs | `media_asset`, `media_derivative` | `media` (future consumption) | `/v1/admin/media/*` |
 | `pricing` | Variant prices, coupons, tax rules, total computation | `variant_price`, `coupon`, `coupon_redemption`, `tax_rate` | — | internal + `/v1/coupons/validate` |
 | `sourcing` | Apiaries, harvest batches, batch allocation | `apiary*`, `harvest_batch`, `batch_allocation` | — | admin only |
@@ -74,6 +74,10 @@ application services" and "no app imports another app" are both true.
 
 **Table ownership is exclusive.** Exactly one module may read or write a given
 table. Anything else goes through that module's public service or a domain event.
+
+The Phase 8 catalog module therefore resolves display-safe media through the
+media application service. Catalog code does not query `media_asset` or
+`media_derivative` directly, and public catalog DTOs never expose storage keys.
 
 ---
 

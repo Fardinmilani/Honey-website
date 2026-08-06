@@ -137,6 +137,18 @@ jobs:
           test/storage.fake.contract.test.ts
           test/storage.minio.contract.test.ts
 
+      - name: Run Phase 8 PostgreSQL catalog, search, and Redis cache integration
+        run: >-
+          pnpm --filter @honey/backend test -- --run
+          test/catalog.test.ts
+          test/catalog.integration.test.ts
+
+      - name: Run Phase 8 catalog API authorization matrix
+        run: pnpm --filter @honey/api test -- --run test/catalog.test.ts
+
+      - name: Verify deterministic migration history and double seed
+        run: pnpm db:test
+
       - name: Build
         run: pnpm build
 
@@ -148,6 +160,9 @@ jobs:
 
       - name: Lint and scan OpenAPI contract
         run: pnpm api:openapi:lint && pnpm api:openapi:forbidden
+
+      - name: Traverse public catalog schemas for forbidden fields
+        run: pnpm --filter @honey/contracts test -- test/catalog-public-fields.test.mjs
 
       - name: Check pull-request OpenAPI compatibility
         if: github.event_name == 'pull_request'
@@ -161,6 +176,18 @@ jobs:
 
       - name: Verify Phase 7 media and storage
         run: pnpm phase7:verify
+
+      - name: Verify Phase 8 catalog and content
+        run: pnpm phase8:verify
+
+      - name: Prove Hero media never entered object storage
+        run: |
+          for bucket in honey-media-ci honey-private-ci; do
+            hits="$(docker run --rm --network host --entrypoint /bin/sh \
+              minio/mc:RELEASE.2025-08-13T08-35-41Z -c \
+              "mc alias set ci http://127.0.0.1:9000 honey-ci-minio honey-ci-deterministic-password >/dev/null && mc find ci/$bucket --regex '(?i)(hero|honey-scroll|honey-poster|hero-start|hero-end)'")"
+            test -z "$hits" || { echo "$hits"; exit 1; }
+          done
 
       - name: Build API container
         run: pnpm api:docker:build

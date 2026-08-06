@@ -17,7 +17,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 5 | Backend Library & API Foundation | Complete | 2026-08-06 |
 | 6 | Identity & Authorization | Complete | 2026-08-06 |
 | 7 | Media & Storage | Complete | 2026-08-06 |
-| 8 | Catalog & Content Model | Not started (current) | — |
+| 8 | Catalog & Content Model | Complete | 2026-08-06 |
 | 9 | Web Foundation | â¬œ Not started | â€” |
 | 10 | Storefront Catalog & SEO | â¬œ Not started | â€” |
 | 11 | Sourcing, Procurement & Inventory | â¬œ Not started | â€” |
@@ -31,8 +31,128 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 8 — Catalog & Content Model (**not started**).
-**Previous phase:** Phase 7 — Media & Storage (**complete 2026-08-06**).
+**Current phase:** Phase 9 — Web Foundation (**not started**).
+**Previous phase:** Phase 8 — Catalog & Content Model (**complete 2026-08-06**).
+
+---
+
+## Phase 8 — Catalog & Content Model
+
+**Completed:** 2026-08-06 · **Status:** Complete
+
+### Files created
+
+- `apps/api/src/modules/catalog/catalog.controller.ts`
+- `apps/api/test/catalog.test.ts`
+- `docs/adr/0025-catalog-hierarchy-search-cache.md`
+- `docs/catalog-development.md`
+- `packages/backend/src/modules/catalog/application/catalog.service.ts`
+- `packages/backend/src/modules/catalog/catalog.module.ts`
+- `packages/backend/src/modules/catalog/domain/catalog-cache.port.ts`
+- `packages/backend/src/modules/catalog/domain/catalog-media.port.ts`
+- `packages/backend/src/modules/catalog/domain/catalog-repository.port.ts`
+- `packages/backend/src/modules/catalog/domain/catalog.ts`
+- `packages/backend/src/modules/catalog/index.ts`
+- `packages/backend/src/modules/catalog/infrastructure/in-memory-catalog-cache.adapter.ts`
+- `packages/backend/src/modules/catalog/infrastructure/media-catalog.adapter.ts`
+- `packages/backend/src/modules/catalog/infrastructure/prisma-catalog.repository.ts`
+- `packages/backend/src/modules/catalog/infrastructure/redis-catalog-cache.adapter.ts`
+- `packages/backend/src/modules/catalog/module.meta.ts`
+- `packages/backend/test/catalog.integration.test.ts`
+- `packages/backend/test/catalog.test.ts`
+- `packages/contracts/test/catalog-public-fields.test.mjs`
+- `packages/db/prisma/migrations/20260806220000_catalog_content_model/migration.sql`
+- `scripts/verify-phase8.mjs`
+
+### Files modified
+
+- `.env.example` — documented validated catalog locale, cache, search, and hierarchy settings.
+- `.github/workflows/ci.yml` — added catalog PostgreSQL/Redis/API/contract gates, database history proof, the Phase 8 verifier, and MinIO Hero-key scanning.
+- `PLANS.md` — marked Phase 8 complete and Phase 9 current but not started.
+- `README.md` — documented the catalog deliverable and Phase 8 commands.
+- `apps/api/src/app.module.ts` — composed the catalog module through the existing media boundary.
+- `apps/api/src/config/api-config.ts` — validates locale sets and bounded catalog runtime settings.
+- `apps/api/src/http/security/security-hooks.ts` — applies private, no-store responses to the admin catalog namespace.
+- `apps/api/src/openapi/document.ts` — added catalog OpenAPI tags.
+- `apps/api/test/config.test.ts` — covers production catalog configuration.
+- `docs/adr/README.md` — indexed ADR-0025.
+- `docs/api-development.md` — documented the public/admin catalog API boundary.
+- `docs/local-development.md` — documented Redis catalog cache fallback behavior.
+- `docs/module-boundaries.md` — corrected catalog routes and recorded the public media-service dependency.
+- `docs/progress.md` — recorded Phase 8 scope, decisions, risks, acceptance, and observed verification.
+- `package.json` — added the Phase 8 verifier and Phase 8 API image tag.
+- `packages/backend/README.md` — documented catalog ownership and layers.
+- `packages/backend/src/index.ts` — exported the catalog public surface.
+- `packages/backend/src/modules/media/application/media.service.ts` — added bounded display-safe public asset resolution.
+- `packages/backend/src/modules/media/domain/media-repository.port.ts` — added bounded batch asset lookup.
+- `packages/backend/src/modules/media/infrastructure/prisma-media.repository.ts` — implemented the media-owned lookup.
+- `packages/backend/test/media.minio.integration.test.ts` — kept the media test repository aligned with its port.
+- `packages/backend/test/media.test.ts` — kept media fakes aligned and covered public catalog references.
+- `packages/config-eslint/index.mjs` — prevents direct cache-provider imports in the API.
+- `packages/contracts/README.md` — documented Phase 8 generated contracts and recursive public-field protection.
+- `packages/contracts/openapi.json` — generated public and admin catalog OpenAPI 3.1 operations.
+- `packages/contracts/scripts/check-forbidden.mjs` — allows the explicit admin sourcing enum while retaining public recursive checks.
+- `packages/contracts/src/generated/api.ts` — regenerated deterministic TypeScript catalog contracts.
+- `packages/db/README.md` — documented the forward-only Phase 8 migration.
+- `packages/db/prisma/schema.prisma` — represented collection-position uniqueness and product-media lookup support.
+- `packages/db/seed/data.ts` — added deterministic published bilingual catalog, hierarchy, and collection fixtures.
+- `packages/db/test/constraints.ts` — kept the duplicate-SKU rejection proof valid under the new dimensions constraint.
+- `scripts/verify-phase5.mjs` — recognizes the legitimate catalog API module in later phases.
+- `scripts/verify-phase7.mjs` — removed obsolete assertions that catalog must not yet exist.
+- `tools/boundaries/checker.mjs` — rejects API Redis access and catalog reach-through into media tables.
+- `tools/boundaries/checker.test.mjs` — added negative proofs for the new boundaries.
+
+### Decisions made
+
+- [ADR-0025](adr/0025-catalog-hierarchy-search-cache.md) records materialized category paths, normalized PostgreSQL trigram search, locale-scoped tagged Redis caching, and media resolution through the media application boundary.
+- The binding Phase 8 acceptance criterion controls old-slug behavior, so product, category, and collection history returns HTTP 301 with a canonical versioned API location.
+- `BatchAllocation` remains the established variant-to-harvest relationship; Phase 8 does not invent a product-level harvest foreign key or pull sourcing ownership forward.
+- Publication is an explicit audited transition. Products and collections may be revalidated while published when enabled locales change, while archived states remain terminal.
+- Product, collection, and variant publication transitions require `catalog:publish`; draft content management uses `catalog:write`.
+
+### Unresolved decisions
+
+- None block Phase 8. Current-price publication validation remains intentionally deferred to Phase 12, and public availability remains intentionally deferred to Phase 11.
+
+### Risks
+
+- Redis invalidation is best-effort after successful PostgreSQL writes; an outage can preserve a public response only until the bounded 60-second TTL, after which reads rebuild from PostgreSQL.
+- PostgreSQL integration tests emit a `pg` deprecation warning about overlapping client queries in the disposable test harness. The tests pass, but the harness should be made sequential before a future `pg` 9 upgrade.
+- Category public visibility has no status in the established schema; the all-enabled-locales publication rule applies to products and collections, while categories remain translation-presence based.
+- Catalog products deliberately contain no price or availability representation and must not be treated as purchasable until their owning later phases exist.
+
+### Acceptance checklist
+
+- [x] Transport-independent catalog domain, application, Prisma, Redis, in-memory cache, and media-boundary layers exist.
+- [x] Products, variants, translations, categories, hierarchy, collections, memberships, localized media links, slugs, history, publication, and archive workflows are implemented.
+- [x] Public versioned APIs resolve locales, expose only published localized data, paginate by opaque stable cursors, filter/sort through allow-lists, redirect old slugs with 301, and emit cache headers/ETags.
+- [x] Admin catalog APIs are staff-only, declare explicit permissions, require CSRF for unsafe cookie writes, return private/no-store, reject unknown fields, and audit every privileged mutation with safe before/after fields.
+- [x] Publication requires every enabled locale, complete translations, a published translated default variant, valid category membership, sanitized content, and valid public media references.
+- [x] PostgreSQL-backed search normalizes Arabic/Persian Yeh and Kaf, ZWNJ, diacritics, whitespace, and uses a parameterized trigram-indexed expression.
+- [x] Redis keys are canonical and locale/query/filter/sort/cursor scoped; tag invalidation and bounded PostgreSQL fallback are implemented and tested.
+- [x] Public contract traversal proves no internal sourcing, procurement, price, stock, audit, or storage field is reachable.
+- [x] The forward-only Phase 8 migration adds only catalog constraints, triggers, functions, and indexes; all accepted earlier migrations are unchanged.
+- [x] Deterministic bilingual seed data is idempotent and includes published products, variants, category hierarchy, and a curated collection.
+- [x] Pricing, inventory, supplier/procurement APIs, Next.js, storefront/admin UI, workers, external search, and Phase 9 code are absent.
+- [x] Hero files and MinIO object keys are untouched; `.env` is untracked; nothing is staged or committed.
+
+### Verification results
+
+- `pnpm install` and `pnpm install --frozen-lockfile` — passed; lockfile already current.
+- `pnpm format` and `pnpm format:check` — passed.
+- `pnpm lint`, `pnpm boundaries`, `pnpm typecheck` — passed across all workspaces.
+- `pnpm test` — passed after correcting publish revalidation; backend 51 passed/5 intentionally skipped, API 29 passed/1 integration-only skip, contracts 3 passed, and database integration passed.
+- `pnpm build` — passed across all affected workspaces.
+- `pnpm phase4:verify` through `pnpm phase8:verify` — passed after updating stale Phase 5/7 absence assertions for the new phase.
+- `pnpm api:openapi:generate`, `pnpm api:openapi:check`, `pnpm api:openapi:lint`, `pnpm api:openapi:forbidden`, and `pnpm api:openapi:breaking --base-ref HEAD` — passed.
+- `pnpm db:format`, `pnpm db:validate`, `pnpm db:generate`, `pnpm db:migrate`, and `pnpm db:migrate:status` — passed; all four migrations are applied and the local schema is current.
+- `pnpm db:test` — passed on a disposable database: 73 tables, 31 enums, 30 PostgreSQL rejection proofs, complete migration history, and deterministic seed stability across two runs.
+- Focused catalog checks — 6 domain/cache tests, 4 real PostgreSQL/Redis integration tests, 5 API authorization/validation tests, and the recursive public contract test passed.
+- `docker compose config --quiet` — passed.
+- `pnpm docker:verify` — initially found a stale one-shot `minio-init` race; the idempotent initializer was recreated against healthy MinIO and the rerun passed for PostgreSQL, Redis, MinIO, policies, and Mailpit.
+- `pnpm api:docker:build` — passed for `honey-api:phase8`; runtime UID is 1000, the image contains no `.env` or Hero asset, `/readyz` returned 200 with PostgreSQL/Redis, and SIGTERM shutdown exited cleanly.
+- MinIO `mc find` scans of `honey-media` and `honey-private` — passed with no Hero-related object key.
+- Hero status/diff, tracked `.env`, and staged-file checks — all produced no output.
 
 ---
 

@@ -39,6 +39,534 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/catalog/categories': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a catalog category
+     * @description Create a catalog category.
+     */
+    post: operations['createCatalogCategory'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/categories/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Update category ordering
+     * @description Update category ordering.
+     */
+    put: operations['updateCatalogCategory'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/categories/{id}/move': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a category hierarchy subtree
+     * @description Move a category hierarchy subtree.
+     */
+    post: operations['moveCatalogCategory'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/categories/{id}/translations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Create or update a category translation
+     * @description Create or update a category translation.
+     */
+    put: operations['upsertCatalogCategoryTranslation'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/collections': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a draft catalog collection
+     * @description Create a draft catalog collection.
+     */
+    post: operations['createCatalogCollection'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/collections/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Update collection ordering
+     * @description Update collection ordering.
+     */
+    put: operations['updateCatalogCollection'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/collections/{id}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a catalog collection
+     * @description Archive a catalog collection.
+     */
+    post: operations['archiveCatalogCollection'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/collections/{id}/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Publish a complete catalog collection
+     * @description Publish a complete catalog collection.
+     */
+    post: operations['publishCatalogCollection'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/collections/{id}/translations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Create or update a collection translation
+     * @description Create or update a collection translation.
+     */
+    put: operations['upsertCatalogCollectionTranslation'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a draft catalog product
+     * @description Create a draft catalog product.
+     */
+    post: operations['createCatalogProduct'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read an internal catalog product
+     * @description Read an internal catalog product.
+     */
+    get: operations['getAdminCatalogProduct'];
+    /**
+     * Update catalog product fields
+     * @description Update catalog product fields.
+     */
+    put: operations['updateCatalogProduct'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a catalog product
+     * @description Archive a catalog product.
+     */
+    post: operations['archiveCatalogProduct'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/categories': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Assign a category to a product
+     * @description Assign a category to a product.
+     */
+    post: operations['assignCatalogProductCategory'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/categories/{relationId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Remove a product category assignment
+     * @description Remove a product category assignment.
+     */
+    delete: operations['unassignCatalogProductCategory'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/collections': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Assign a product to a collection
+     * @description Assign a product to a collection.
+     */
+    post: operations['assignCatalogProductCollection'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/collections/{relationId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Remove a product collection assignment
+     * @description Remove a product collection assignment.
+     */
+    delete: operations['unassignCatalogProductCollection'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/media': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Attach a verified public media asset
+     * @description Attach a verified public media asset.
+     */
+    post: operations['attachCatalogProductMedia'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/media/{attachmentId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Detach media from a product
+     * @description Detach media from a product.
+     */
+    delete: operations['detachCatalogProductMedia'];
+    options?: never;
+    head?: never;
+    /**
+     * Update product media presentation fields
+     * @description Update product media presentation fields.
+     */
+    patch: operations['updateCatalogProductMedia'];
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Publish a complete catalog product
+     * @description Publish a complete catalog product.
+     */
+    post: operations['publishCatalogProduct'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/translations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Create or update a product translation
+     * @description Create or update a product translation.
+     */
+    put: operations['upsertCatalogProductTranslation'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/variants': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a draft product variant
+     * @description Create a draft product variant.
+     */
+    post: operations['createCatalogVariant'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/variants/{variantId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Update product variant fields
+     * @description Update product variant fields.
+     */
+    put: operations['updateCatalogVariant'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/variants/{variantId}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a product variant
+     * @description Archive a product variant.
+     */
+    post: operations['archiveCatalogVariant'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/variants/{variantId}/default': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Set the product default variant
+     * @description Set the product default variant.
+     */
+    post: operations['setDefaultCatalogVariant'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/variants/{variantId}/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Publish a draft product variant
+     * @description Publish a draft product variant.
+     */
+    post: operations['publishCatalogVariant'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/catalog/products/{id}/variants/{variantId}/translations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Create or update a variant translation
+     * @description Create or update a variant translation.
+     */
+    put: operations['upsertCatalogVariantTranslation'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/media/{assetId}': {
     parameters: {
       query?: never;
@@ -323,6 +851,186 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/catalog/categories': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List localized catalog categories
+     * @description List localized catalog categories.
+     */
+    get: operations['listCatalogCategories'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/categories/{slug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Resolve one localized category slug
+     * @description Resolve one localized category slug.
+     */
+    get: operations['getCatalogCategoryBySlug'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/categories/{slug}/products': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List products in one category
+     * @description List products in one category.
+     */
+    get: operations['listCatalogCategoryProducts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/collections': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List published localized collections
+     * @description List published localized collections.
+     */
+    get: operations['listCatalogCollections'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/collections/{slug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Resolve one localized collection slug
+     * @description Resolve one localized collection slug.
+     */
+    get: operations['getCatalogCollectionBySlug'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/collections/{slug}/products': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List products in one collection
+     * @description List products in one collection.
+     */
+    get: operations['listCatalogCollectionProducts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/products': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List published localized products
+     * @description List published localized products.
+     */
+    get: operations['listCatalogProducts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/products/{slug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Resolve one localized product slug
+     * @description Resolve one localized product slug.
+     */
+    get: operations['getCatalogProductBySlug'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/catalog/search': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search published products in one locale
+     * @description Search published products in one locale.
+     */
+    get: operations['searchCatalogProducts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me': {
     parameters: {
       query?: never;
@@ -391,6 +1099,34 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
+    AdminProductDto: {
+      /** Format: uuid */
+      apiaryId: string | null;
+      brandLine: string | null;
+      categories: Record<string, never>[];
+      collections: Record<string, never>[];
+      /** Format: uuid */
+      defaultVariantId: string | null;
+      floralSources: string[];
+      harvestSeason: string | null;
+      honeyVarietal: string | null;
+      /** Format: uuid */
+      id: string;
+      media: Record<string, never>[];
+      originAltitudeBand: string | null;
+      originRegion: string | null;
+      /** Format: uuid */
+      primaryCategoryId: string | null;
+      publishedAt: string | null;
+      sku: string | null;
+      sortWeight: number;
+      /** @enum {string} */
+      sourcingType: 'OWN_PRODUCTION' | 'SELECTED_SUPPLIER';
+      /** @enum {string} */
+      status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      translations: Record<string, never>[];
+      variants: Record<string, never>[];
+    };
     AuthenticatedResponseDto: {
       /** @description Double-submit value for X-CSRF-Token. */
       csrfToken: string;
@@ -399,6 +1135,22 @@ export interface components {
       /** @enum {string} */
       next: 'AUTHENTICATED';
       user: components['schemas']['SafeUserDto'];
+    };
+    CategoryListResponseDto: {
+      data: components['schemas']['PublicCategoryDto'][];
+      meta: components['schemas']['MetaDto'];
+    };
+    CategoryResponseDto: {
+      data: components['schemas']['PublicCategoryDto'];
+      meta: components['schemas']['MetaDto'];
+    };
+    CollectionListResponseDto: {
+      data: components['schemas']['PublicCollectionDto'][];
+      meta: components['schemas']['MetaDto'];
+    };
+    CollectionResponseDto: {
+      data: components['schemas']['PublicCollectionDto'];
+      meta: components['schemas']['MetaDto'];
     };
     DirectUploadDto: {
       /** Format: date-time */
@@ -481,6 +1233,15 @@ export interface components {
       /** Format: uuid */
       uploadId: string;
     };
+    MetaDto: {
+      locale: string;
+      requestId: string;
+    };
+    PageDto: {
+      hasMore: boolean;
+      limit: number;
+      nextCursor: string | null;
+    };
     PrivateMediaUrlDto: {
       /** Format: date-time */
       expiresAt: string;
@@ -503,6 +1264,90 @@ export interface components {
       title: string;
       /** @example https://api.honey.invalid/problems/validation-failed */
       type: string;
+    };
+    ProductListResponseDto: {
+      data: components['schemas']['PublicProductDto'][];
+      meta: components['schemas']['MetaDto'];
+      page: components['schemas']['PageDto'];
+    };
+    ProductResponseDto: {
+      data: components['schemas']['PublicProductDto'];
+      meta: components['schemas']['MetaDto'];
+    };
+    PublicCatalogMediaDto: {
+      altText: string;
+      height: number | null;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      kind: 'IMAGE' | 'VIDEO';
+      position: number;
+      /** @enum {string} */
+      role: 'GALLERY' | 'THUMBNAIL' | 'LIFESTYLE' | 'VIDEO';
+      /** Format: uri */
+      url: string;
+      width: number | null;
+    };
+    PublicCategoryDto: {
+      description: string | null;
+      /** Format: uuid */
+      id: string;
+      metaDescription: string | null;
+      metaTitle: string | null;
+      name: string;
+      /** Format: uuid */
+      parentId: string | null;
+      path: string;
+      slug: string;
+      sortWeight: number;
+    };
+    PublicCollectionDto: {
+      description: string | null;
+      /** Format: uuid */
+      id: string;
+      metaDescription: string | null;
+      metaTitle: string | null;
+      name: string;
+      /** Format: date-time */
+      publishedAt: string;
+      slug: string;
+      sortWeight: number;
+    };
+    PublicProductDto: {
+      brandLine: string | null;
+      description: string | null;
+      floralSources: string[];
+      harvestSeason: string | null;
+      honeyVarietal: string | null;
+      /** Format: uuid */
+      id: string;
+      media: components['schemas']['PublicCatalogMediaDto'][];
+      metaDescription: string | null;
+      metaTitle: string | null;
+      name: string;
+      originAltitudeBand: string | null;
+      originRegion: string | null;
+      pairingSuggestions: string | null;
+      /** Format: date-time */
+      publishedAt: string;
+      shortDescription: string | null;
+      slug: string;
+      storyHtml: string | null;
+      tastingNotes: string | null;
+      variants: components['schemas']['PublicVariantDto'][];
+    };
+    PublicVariantDto: {
+      dimensionsMm: number[];
+      /** Format: uuid */
+      id: string;
+      isDefault: boolean;
+      jarSizeLabelKey: string;
+      name: string;
+      netWeightGrams: number;
+      packagingTypeKey: string;
+      position: number;
+      sku: string;
+      weightGramsShipping: number;
     };
     ReadyResponseDto: {
       checks?: {
@@ -659,6 +1504,579 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  createCatalogCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** Format: uuid */
+            id?: string;
+          };
+        };
+      };
+    };
+  };
+  updateCatalogCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  moveCatalogCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  upsertCatalogCategoryTranslation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  createCatalogCollection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** Format: uuid */
+            id?: string;
+          };
+        };
+      };
+    };
+  };
+  updateCatalogCollection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  archiveCatalogCollection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  publishCatalogCollection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  upsertCatalogCollectionTranslation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  createCatalogProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  getAdminCatalogProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  updateCatalogProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  archiveCatalogProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  assignCatalogProductCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  unassignCatalogProductCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        relationId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  assignCatalogProductCollection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  unassignCatalogProductCollection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        relationId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  attachCatalogProductMedia: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  detachCatalogProductMedia: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachmentId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  updateCatalogProductMedia: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachmentId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  publishCatalogProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  upsertCatalogProductTranslation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  createCatalogVariant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  updateCatalogVariant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        variantId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  archiveCatalogVariant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        variantId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  setDefaultCatalogVariant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        variantId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  publishCatalogVariant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        variantId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  upsertCatalogVariantTranslation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        variantId: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductDto'];
         };
       };
     };
@@ -1260,6 +2678,211 @@ export interface operations {
         };
       };
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  listCatalogCategories: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CategoryListResponseDto'];
+        };
+      };
+    };
+  };
+  getCatalogCategoryBySlug: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CategoryResponseDto'];
+        };
+      };
+    };
+  };
+  listCatalogCategoryProducts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductListResponseDto'];
+        };
+      };
+    };
+  };
+  listCatalogCollections: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CollectionListResponseDto'];
+        };
+      };
+    };
+  };
+  getCatalogCollectionBySlug: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CollectionResponseDto'];
+        };
+      };
+    };
+  };
+  listCatalogCollectionProducts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductListResponseDto'];
+        };
+      };
+    };
+  };
+  listCatalogProducts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductListResponseDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  getCatalogProductBySlug: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductResponseDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  searchCatalogProducts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductListResponseDto'];
+        };
+      };
+      422: {
         headers: {
           [name: string]: unknown;
         };

@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 8 — Catalog & Content Model (**not started**)
-**Completed phase:** Phase 7 — Media & Storage (**complete 2026-08-06**)
+**Current phase:** Phase 9 — Web Foundation (**not started**)
+**Completed phase:** Phase 8 — Catalog & Content Model (**complete 2026-08-06**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -69,8 +69,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 5 | Backend Library & API Foundation | **Complete 2026-08-06** — transport-independent platform library + Nest/Fastify API, OpenAPI, operational endpoints, API image |
 | 6 | Identity & Authorization | **Complete 2026-08-06** — users, opaque sessions, RBAC, staff TOTP, audit log |
 | 7 | Media & Storage | **Complete 2026-08-06** — S3 abstraction, MinIO adapter, quarantined direct-upload pipeline |
-| 8 | Catalog & Content Model | **Not started (current)** — products, variants, translations, categories |
-| 9 | Web Foundation | App Router shell, i18n routing, RTL/LTR, design system, **Hero integration** |
+| 8 | Catalog & Content Model | **Complete 2026-08-06** — catalog domain/API, publication, search, cursors, Redis cache |
+| 9 | Web Foundation | **Not started (current)** — App Router shell, i18n routing, RTL/LTR, design system, **Hero integration** |
 | 10 | Storefront Catalog | Listing, filtering, PDP, SEO, structured data, sitemaps |
 | 11 | Sourcing, Procurement & Inventory | Suppliers, purchase orders, batches, stock ledger |
 | 12 | Cart & Pricing | Server-authoritative cart and price engine |

@@ -106,7 +106,7 @@ const apiModuleDirectories = (
 )
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name);
-assert.deepEqual(apiModuleDirectories.sort(), ['identity', 'media', 'platform']);
+assert.deepEqual(apiModuleDirectories.sort(), ['catalog', 'identity', 'media', 'platform']);
 
 const createApplication = await readFile(
   resolve(root, 'apps/api/src/bootstrap/create-application.ts'),

@@ -2,7 +2,8 @@
 
 Committed, deterministic HTTP contracts for operational routes, Phase 6
 identity, Phase 7 staff media, cookie authentication, safe DTOs, and RFC 9457
-problems.
+problems. Phase 8 adds localized public catalog and permission-scoped admin
+catalog contracts.
 
 - `openapi.json` is the generated OpenAPI 3.1 source of truth.
 - `src/generated/api.ts` is generated from that document; do not edit it.
@@ -13,6 +14,10 @@ Media contracts expose safe request metadata, constrained direct-upload
 authorization fields, trusted media metadata, canonical public URLs, and
 short-lived private URLs. They expose no provider configuration, arbitrary
 bucket/key request, Prisma type, or uploaded byte proxy.
+
+The Phase 8 recursive public-contract test follows every schema reachable from
+successful `/v1/catalog/*` responses and rejects internal sourcing, lifecycle,
+audit, and storage fields even when they are nested behind `$ref` entries.
 
 ```sh
 pnpm api:openapi:generate

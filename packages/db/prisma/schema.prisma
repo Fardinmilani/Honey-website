@@ -710,6 +710,7 @@ model ProductCollection {
   updatedBy String?  @map("updated_by") @db.Uuid
 
   @@unique([productId, collectionId])
+  @@unique([collectionId, position])
   @@index([collectionId, position])
   @@map("product_collection")
 }
@@ -796,6 +797,7 @@ model ProductMedia {
   updatedBy String?  @map("updated_by") @db.Uuid
 
   @@index([productId, position])
+  @@index([productId, mediaAssetId, role])
   @@index([variantId])
   @@index([mediaAssetId])
   @@map("product_media")

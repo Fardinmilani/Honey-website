@@ -6,6 +6,53 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "AdminProductDto": {
+        "properties": {
+          "apiaryId": { "format": "uuid", "nullable": true, "type": "string" },
+          "brandLine": { "nullable": true, "type": "string" },
+          "categories": { "items": { "type": "object" }, "type": "array" },
+          "collections": { "items": { "type": "object" }, "type": "array" },
+          "defaultVariantId": { "format": "uuid", "nullable": true, "type": "string" },
+          "floralSources": { "items": { "type": "string" }, "type": "array" },
+          "harvestSeason": { "nullable": true, "type": "string" },
+          "honeyVarietal": { "nullable": true, "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "media": { "items": { "type": "object" }, "type": "array" },
+          "originAltitudeBand": { "nullable": true, "type": "string" },
+          "originRegion": { "nullable": true, "type": "string" },
+          "primaryCategoryId": { "format": "uuid", "nullable": true, "type": "string" },
+          "publishedAt": { "nullable": true, "type": "string" },
+          "sku": { "nullable": true, "type": "string" },
+          "sortWeight": { "type": "number" },
+          "sourcingType": { "enum": ["OWN_PRODUCTION", "SELECTED_SUPPLIER"], "type": "string" },
+          "status": { "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "type": "string" },
+          "translations": { "items": { "type": "object" }, "type": "array" },
+          "variants": { "items": { "type": "object" }, "type": "array" }
+        },
+        "required": [
+          "id",
+          "status",
+          "publishedAt",
+          "sku",
+          "brandLine",
+          "honeyVarietal",
+          "floralSources",
+          "originRegion",
+          "originAltitudeBand",
+          "harvestSeason",
+          "sourcingType",
+          "apiaryId",
+          "sortWeight",
+          "primaryCategoryId",
+          "defaultVariantId",
+          "translations",
+          "variants",
+          "categories",
+          "collections",
+          "media"
+        ],
+        "type": "object"
+      },
       "AuthenticatedResponseDto": {
         "properties": {
           "csrfToken": { "description": "Double-submit value for X-CSRF-Token.", "type": "string" },
@@ -14,6 +61,44 @@
           "user": { "$ref": "#/components/schemas/SafeUserDto" }
         },
         "required": ["next", "user", "expiresAt", "csrfToken"],
+        "type": "object"
+      },
+      "CategoryListResponseDto": {
+        "properties": {
+          "data": {
+            "items": { "$ref": "#/components/schemas/PublicCategoryDto" },
+            "type": "array"
+          },
+          "meta": { "$ref": "#/components/schemas/MetaDto" }
+        },
+        "required": ["data", "meta"],
+        "type": "object"
+      },
+      "CategoryResponseDto": {
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PublicCategoryDto" },
+          "meta": { "$ref": "#/components/schemas/MetaDto" }
+        },
+        "required": ["data", "meta"],
+        "type": "object"
+      },
+      "CollectionListResponseDto": {
+        "properties": {
+          "data": {
+            "items": { "$ref": "#/components/schemas/PublicCollectionDto" },
+            "type": "array"
+          },
+          "meta": { "$ref": "#/components/schemas/MetaDto" }
+        },
+        "required": ["data", "meta"],
+        "type": "object"
+      },
+      "CollectionResponseDto": {
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PublicCollectionDto" },
+          "meta": { "$ref": "#/components/schemas/MetaDto" }
+        },
+        "required": ["data", "meta"],
         "type": "object"
       },
       "DirectUploadDto": {
@@ -133,6 +218,20 @@
         "required": ["uploadId", "assetId", "expiresAt", "upload"],
         "type": "object"
       },
+      "MetaDto": {
+        "properties": { "locale": { "type": "string" }, "requestId": { "type": "string" } },
+        "required": ["locale", "requestId"],
+        "type": "object"
+      },
+      "PageDto": {
+        "properties": {
+          "hasMore": { "type": "boolean" },
+          "limit": { "maximum": 100, "minimum": 1, "type": "number" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["nextCursor", "hasMore", "limit"],
+        "type": "object"
+      },
       "PrivateMediaUrlDto": {
         "properties": {
           "expiresAt": { "format": "date-time", "type": "string" },
@@ -159,6 +258,168 @@
           }
         },
         "required": ["type", "title", "status", "code", "instance", "requestId"],
+        "type": "object"
+      },
+      "ProductListResponseDto": {
+        "properties": {
+          "data": { "items": { "$ref": "#/components/schemas/PublicProductDto" }, "type": "array" },
+          "meta": { "$ref": "#/components/schemas/MetaDto" },
+          "page": { "$ref": "#/components/schemas/PageDto" }
+        },
+        "required": ["data", "meta", "page"],
+        "type": "object"
+      },
+      "ProductResponseDto": {
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PublicProductDto" },
+          "meta": { "$ref": "#/components/schemas/MetaDto" }
+        },
+        "required": ["data", "meta"],
+        "type": "object"
+      },
+      "PublicCatalogMediaDto": {
+        "properties": {
+          "altText": { "type": "string" },
+          "height": { "nullable": true, "type": "number" },
+          "id": { "format": "uuid", "type": "string" },
+          "kind": { "enum": ["IMAGE", "VIDEO"], "type": "string" },
+          "position": { "type": "number" },
+          "role": { "enum": ["GALLERY", "THUMBNAIL", "LIFESTYLE", "VIDEO"], "type": "string" },
+          "url": { "format": "uri", "type": "string" },
+          "width": { "nullable": true, "type": "number" }
+        },
+        "required": ["id", "role", "kind", "position", "width", "height", "url", "altText"],
+        "type": "object"
+      },
+      "PublicCategoryDto": {
+        "properties": {
+          "description": { "nullable": true, "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "metaDescription": { "nullable": true, "type": "string" },
+          "metaTitle": { "nullable": true, "type": "string" },
+          "name": { "type": "string" },
+          "parentId": { "format": "uuid", "nullable": true, "type": "string" },
+          "path": { "type": "string" },
+          "slug": { "type": "string" },
+          "sortWeight": { "type": "number" }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "path",
+          "name",
+          "slug",
+          "description",
+          "metaTitle",
+          "metaDescription",
+          "sortWeight"
+        ],
+        "type": "object"
+      },
+      "PublicCollectionDto": {
+        "properties": {
+          "description": { "nullable": true, "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "metaDescription": { "nullable": true, "type": "string" },
+          "metaTitle": { "nullable": true, "type": "string" },
+          "name": { "type": "string" },
+          "publishedAt": { "format": "date-time", "type": "string" },
+          "slug": { "type": "string" },
+          "sortWeight": { "type": "number" }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "metaTitle",
+          "metaDescription",
+          "sortWeight",
+          "publishedAt"
+        ],
+        "type": "object"
+      },
+      "PublicProductDto": {
+        "properties": {
+          "brandLine": { "nullable": true, "type": "string" },
+          "description": { "nullable": true, "type": "string" },
+          "floralSources": { "items": { "type": "string" }, "type": "array" },
+          "harvestSeason": { "nullable": true, "type": "string" },
+          "honeyVarietal": { "nullable": true, "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "media": {
+            "items": { "$ref": "#/components/schemas/PublicCatalogMediaDto" },
+            "type": "array"
+          },
+          "metaDescription": { "nullable": true, "type": "string" },
+          "metaTitle": { "nullable": true, "type": "string" },
+          "name": { "type": "string" },
+          "originAltitudeBand": { "nullable": true, "type": "string" },
+          "originRegion": { "nullable": true, "type": "string" },
+          "pairingSuggestions": { "nullable": true, "type": "string" },
+          "publishedAt": { "format": "date-time", "type": "string" },
+          "shortDescription": { "nullable": true, "type": "string" },
+          "slug": { "type": "string" },
+          "storyHtml": { "nullable": true, "type": "string" },
+          "tastingNotes": { "nullable": true, "type": "string" },
+          "variants": {
+            "items": { "$ref": "#/components/schemas/PublicVariantDto" },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "brandLine",
+          "shortDescription",
+          "description",
+          "tastingNotes",
+          "pairingSuggestions",
+          "storyHtml",
+          "metaTitle",
+          "metaDescription",
+          "honeyVarietal",
+          "floralSources",
+          "originRegion",
+          "originAltitudeBand",
+          "harvestSeason",
+          "publishedAt",
+          "variants",
+          "media"
+        ],
+        "type": "object"
+      },
+      "PublicVariantDto": {
+        "properties": {
+          "dimensionsMm": {
+            "items": { "type": "number" },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "id": { "format": "uuid", "type": "string" },
+          "isDefault": { "type": "boolean" },
+          "jarSizeLabelKey": { "type": "string" },
+          "name": { "type": "string" },
+          "netWeightGrams": { "type": "number" },
+          "packagingTypeKey": { "type": "string" },
+          "position": { "type": "number" },
+          "sku": { "type": "string" },
+          "weightGramsShipping": { "type": "number" }
+        },
+        "required": [
+          "id",
+          "sku",
+          "name",
+          "netWeightGrams",
+          "jarSizeLabelKey",
+          "packagingTypeKey",
+          "weightGramsShipping",
+          "dimensionsMm",
+          "position",
+          "isDefault"
+        ],
         "type": "object"
       },
       "ReadyResponseDto": {
@@ -349,6 +610,661 @@
         },
         "summary": "Check required dependencies",
         "tags": ["Operations"]
+      }
+    },
+    "/v1/admin/catalog/categories": {
+      "post": {
+        "description": "Create a catalog category.",
+        "operationId": "createCatalogCategory",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": { "id": { "format": "uuid", "type": "string" } },
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a catalog category",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/categories/{id}": {
+      "put": {
+        "description": "Update category ordering.",
+        "operationId": "updateCatalogCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update category ordering",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/categories/{id}/move": {
+      "post": {
+        "description": "Move a category hierarchy subtree.",
+        "operationId": "moveCatalogCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Move a category hierarchy subtree",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/categories/{id}/translations": {
+      "put": {
+        "description": "Create or update a category translation.",
+        "operationId": "upsertCatalogCategoryTranslation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create or update a category translation",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/collections": {
+      "post": {
+        "description": "Create a draft catalog collection.",
+        "operationId": "createCatalogCollection",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": { "id": { "format": "uuid", "type": "string" } },
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a draft catalog collection",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/collections/{id}": {
+      "put": {
+        "description": "Update collection ordering.",
+        "operationId": "updateCatalogCollection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update collection ordering",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/collections/{id}/archive": {
+      "post": {
+        "description": "Archive a catalog collection.",
+        "operationId": "archiveCatalogCollection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Archive a catalog collection",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/collections/{id}/publish": {
+      "post": {
+        "description": "Publish a complete catalog collection.",
+        "operationId": "publishCatalogCollection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Publish a complete catalog collection",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/collections/{id}/translations": {
+      "put": {
+        "description": "Create or update a collection translation.",
+        "operationId": "upsertCatalogCollectionTranslation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create or update a collection translation",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products": {
+      "post": {
+        "description": "Create a draft catalog product.",
+        "operationId": "createCatalogProduct",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a draft catalog product",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}": {
+      "get": {
+        "description": "Read an internal catalog product.",
+        "operationId": "getAdminCatalogProduct",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read an internal catalog product",
+        "tags": ["Catalog Admin"]
+      },
+      "put": {
+        "description": "Update catalog product fields.",
+        "operationId": "updateCatalogProduct",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update catalog product fields",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/archive": {
+      "post": {
+        "description": "Archive a catalog product.",
+        "operationId": "archiveCatalogProduct",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Archive a catalog product",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/categories": {
+      "post": {
+        "description": "Assign a category to a product.",
+        "operationId": "assignCatalogProductCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Assign a category to a product",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/categories/{relationId}": {
+      "delete": {
+        "description": "Remove a product category assignment.",
+        "operationId": "unassignCatalogProductCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relationId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Remove a product category assignment",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/collections": {
+      "post": {
+        "description": "Assign a product to a collection.",
+        "operationId": "assignCatalogProductCollection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Assign a product to a collection",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/collections/{relationId}": {
+      "delete": {
+        "description": "Remove a product collection assignment.",
+        "operationId": "unassignCatalogProductCollection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relationId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Remove a product collection assignment",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/media": {
+      "post": {
+        "description": "Attach a verified public media asset.",
+        "operationId": "attachCatalogProductMedia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Attach a verified public media asset",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/media/{attachmentId}": {
+      "delete": {
+        "description": "Detach media from a product.",
+        "operationId": "detachCatalogProductMedia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachmentId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "204": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Detach media from a product",
+        "tags": ["Catalog Admin"]
+      },
+      "patch": {
+        "description": "Update product media presentation fields.",
+        "operationId": "updateCatalogProductMedia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachmentId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update product media presentation fields",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/publish": {
+      "post": {
+        "description": "Publish a complete catalog product.",
+        "operationId": "publishCatalogProduct",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Publish a complete catalog product",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/translations": {
+      "put": {
+        "description": "Create or update a product translation.",
+        "operationId": "upsertCatalogProductTranslation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create or update a product translation",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/variants": {
+      "post": {
+        "description": "Create a draft product variant.",
+        "operationId": "createCatalogVariant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a draft product variant",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/variants/{variantId}": {
+      "put": {
+        "description": "Update product variant fields.",
+        "operationId": "updateCatalogVariant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update product variant fields",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/variants/{variantId}/archive": {
+      "post": {
+        "description": "Archive a product variant.",
+        "operationId": "archiveCatalogVariant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Archive a product variant",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/variants/{variantId}/default": {
+      "post": {
+        "description": "Set the product default variant.",
+        "operationId": "setDefaultCatalogVariant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Set the product default variant",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/variants/{variantId}/publish": {
+      "post": {
+        "description": "Publish a draft product variant.",
+        "operationId": "publishCatalogVariant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Publish a draft product variant",
+        "tags": ["Catalog Admin"]
+      }
+    },
+    "/v1/admin/catalog/products/{id}/variants/{variantId}/translations": {
+      "put": {
+        "description": "Create or update a variant translation.",
+        "operationId": "upsertCatalogVariantTranslation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminProductDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create or update a variant translation",
+        "tags": ["Catalog Admin"]
       }
     },
     "/v1/admin/media/{assetId}": {
@@ -874,6 +1790,205 @@
         "tags": ["Identity"]
       }
     },
+    "/v1/catalog/categories": {
+      "get": {
+        "description": "List localized catalog categories.",
+        "operationId": "listCatalogCategories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CategoryListResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "List localized catalog categories",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/categories/{slug}": {
+      "get": {
+        "description": "Resolve one localized category slug.",
+        "operationId": "getCatalogCategoryBySlug",
+        "parameters": [
+          { "in": "path", "name": "slug", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CategoryResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Resolve one localized category slug",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/categories/{slug}/products": {
+      "get": {
+        "description": "List products in one category.",
+        "operationId": "listCatalogCategoryProducts",
+        "parameters": [
+          { "in": "path", "name": "slug", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductListResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "List products in one category",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/collections": {
+      "get": {
+        "description": "List published localized collections.",
+        "operationId": "listCatalogCollections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CollectionListResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "List published localized collections",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/collections/{slug}": {
+      "get": {
+        "description": "Resolve one localized collection slug.",
+        "operationId": "getCatalogCollectionBySlug",
+        "parameters": [
+          { "in": "path", "name": "slug", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CollectionResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Resolve one localized collection slug",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/collections/{slug}/products": {
+      "get": {
+        "description": "List products in one collection.",
+        "operationId": "listCatalogCollectionProducts",
+        "parameters": [
+          { "in": "path", "name": "slug", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductListResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "List products in one collection",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/products": {
+      "get": {
+        "description": "List published localized products.",
+        "operationId": "listCatalogProducts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductListResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "List published localized products",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/products/{slug}": {
+      "get": {
+        "description": "Resolve one localized product slug.",
+        "operationId": "getCatalogProductBySlug",
+        "parameters": [
+          { "in": "path", "name": "slug", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Resolve one localized product slug",
+        "tags": ["Catalog"]
+      }
+    },
+    "/v1/catalog/search": {
+      "get": {
+        "description": "Search published products in one locale.",
+        "operationId": "searchCatalogProducts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductListResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Search published products in one locale",
+        "tags": ["Catalog"]
+      }
+    },
     "/v1/me": {
       "get": {
         "description": "Returns only the safe account and effective authorization summary for the current principal.",
@@ -985,6 +2100,14 @@
     {
       "description": "Staff-only direct uploads, trusted media metadata, and private retrieval.",
       "name": "Media"
+    },
+    {
+      "description": "Public localized products, categories, collections, and search.",
+      "name": "Catalog"
+    },
+    {
+      "description": "Permission-protected catalog authoring and publication workflows.",
+      "name": "Catalog Admin"
     }
   ]
 }

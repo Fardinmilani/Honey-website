@@ -125,6 +125,16 @@ export class PrismaMediaRepository implements MediaRepository {
     return asset === null ? null : this.#asset(asset);
   }
 
+  async findAssets(assetIds: readonly string[]): Promise<readonly MediaAsset[]> {
+    if (assetIds.length === 0) return [];
+    const assets = await this.#client.mediaAsset.findMany({
+      where: { id: { in: [...new Set(assetIds)].slice(0, 100) } },
+      include: assetInclude,
+      orderBy: { id: 'asc' },
+    });
+    return assets.map((asset) => this.#asset(asset));
+  }
+
   async updateAltText(
     assetId: string,
     altTextByLocale: Readonly<Record<string, string>>,

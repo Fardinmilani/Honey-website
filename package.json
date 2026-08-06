@@ -43,10 +43,11 @@
     "api:openapi:lint": "pnpm --filter @honey/contracts openapi:lint",
     "api:openapi:forbidden": "pnpm --filter @honey/contracts openapi:forbidden",
     "api:openapi:breaking": "pnpm --filter @honey/contracts openapi:breaking",
-    "api:docker:build": "docker build --file docker/api.Dockerfile --tag honey-api:phase7 .",
+    "api:docker:build": "docker build --file docker/api.Dockerfile --tag honey-api:phase8 .",
     "phase5:verify": "node scripts/verify-phase5.mjs",
     "phase6:verify": "node scripts/verify-phase6.mjs",
-    "phase7:verify": "node scripts/verify-phase7.mjs"
+    "phase7:verify": "node scripts/verify-phase7.mjs",
+    "phase8:verify": "node scripts/verify-phase8.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

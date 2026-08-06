@@ -141,8 +141,6 @@ assert.doesNotMatch(service, /apps\/api|ProductMedia|BullMQ|ffmpeg/iu);
 
 const worker = await readFile(resolve(root, 'apps/worker/src/index.ts'), 'utf8');
 assert.match(worker, /Phase 2 workspace marker/u);
-await assert.rejects(access(resolve(root, 'packages/backend/src/modules/catalog')));
-await assert.rejects(access(resolve(root, 'apps/api/src/modules/catalog')));
 
 const manifests = await Promise.all(
   [resolve(root, 'package.json'), ...(await files('apps')), ...(await files('packages'))]

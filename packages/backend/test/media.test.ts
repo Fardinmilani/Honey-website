@@ -106,6 +106,12 @@ class MemoryMediaRepository implements MediaRepository {
     return this.assets.get(assetId) ?? null;
   }
 
+  async findAssets(assetIds: readonly string[]): Promise<readonly MediaAsset[]> {
+    return (await Promise.all(assetIds.map((assetId) => this.findAsset(assetId)))).filter(
+      (asset): asset is MediaAsset => asset !== null,
+    );
+  }
+
   async updateAltText(
     assetId: string,
     altTextByLocale: Readonly<Record<string, string>>,

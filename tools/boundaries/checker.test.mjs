@@ -73,6 +73,31 @@ test('rejects PostgreSQL drivers in apps/api', async () => {
   }
 });
 
+test('rejects Redis clients in apps/api', async () => {
+  const root = await fixture({ 'apps/api/src/probe.ts': "import { createClient } from 'redis';" });
+  try {
+    const result = await analyzeWorkspace(root);
+    assert.equal(result.violations.length, 1);
+    assert.equal(result.violations[0]?.code, 'forbidden-api-cache-provider-import');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects catalog reach-through into media Prisma models', async () => {
+  const root = await fixture({
+    'packages/backend/src/modules/catalog/infrastructure/probe.ts':
+      'export const probe = (client) => client.mediaAsset.findMany();',
+  });
+  try {
+    const result = await analyzeWorkspace(root);
+    assert.equal(result.violations.length, 1);
+    assert.equal(result.violations[0]?.code, 'catalog-media-table-reach-through');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 for (const dependency of ['argon2', 'otplib', '@otplib/totp']) {
   test(`rejects ${dependency} in apps/api`, async () => {
     const root = await fixture({

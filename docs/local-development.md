@@ -7,7 +7,10 @@ foundation. Phase 6 uses PostgreSQL for opaque sessions/audit, Redis for
 authentication lockout and pre-auth challenges, and Mailpit for local identity
 mail. Phase 7 uses Redis for owner-bound upload intents and MinIO for private
 quarantine, verified public media, and signed private retrieval. The API remains
-outside the default Compose profile and no UI exists yet.
+outside the default Compose profile and no UI exists yet. Phase 8 uses the same
+Redis service for short-lived, locale-scoped catalog response caching; reads
+fall back to PostgreSQL when Redis is unavailable and mutations still require
+successful persistence before invalidation is attempted.
 
 ## Prerequisites
 

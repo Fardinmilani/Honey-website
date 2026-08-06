@@ -83,6 +83,12 @@ describe('API configuration', () => {
       MEDIA_UPLOAD_INTENT_TTL_SECONDS: '600',
       MEDIA_PROCESSING_TIMEOUT_MS: '30000',
       MEDIA_DERIVATIVE_PROFILE: 'honey-v1',
+      CATALOG_ENABLED_LOCALES: 'fa,en',
+      CATALOG_DEFAULT_LOCALE: 'fa',
+      CATALOG_CACHE_TTL_SECONDS: '60',
+      CATALOG_CACHE_NAMESPACE: 'honey:catalog:v1',
+      CATALOG_SEARCH_QUERY_MAX_LENGTH: '160',
+      CATALOG_MAX_CATEGORY_DEPTH: '6',
     };
     expect(() =>
       loadApiConfig({

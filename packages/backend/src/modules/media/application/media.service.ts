@@ -51,6 +51,15 @@ export type UploadIntentResult = Readonly<{
 
 export type PrivateDownloadResult = Readonly<{ url: string; expiresAt: string }>;
 
+export type PublicCatalogMediaAsset = Readonly<{
+  id: string;
+  kind: 'IMAGE' | 'VIDEO';
+  width: number | null;
+  height: number | null;
+  url: string;
+  altTextByLocale: Readonly<Record<string, string>>;
+}>;
+
 type MediaServiceDependencies = Readonly<{
   config: MediaConfig;
   storage: StorageService;
@@ -288,6 +297,29 @@ export class MediaService {
     const asset = await this.dependencies.repository.findAsset(assetId);
     if (asset === null) throw new NotFoundAppError({ code: 'MEDIA_ASSET_NOT_FOUND' });
     return asset;
+  }
+
+  async resolvePublicCatalogAssets(
+    assetIds: readonly string[],
+  ): Promise<readonly PublicCatalogMediaAsset[]> {
+    if (assetIds.length > 100 || new Set(assetIds).size !== assetIds.length) {
+      throw validation('assetIds', 'MEDIA_ASSET_BATCH_INVALID');
+    }
+    const assets = await this.dependencies.repository.findAssets(assetIds);
+    return assets.flatMap((asset) =>
+      asset.visibility === 'PUBLIC' && asset.url !== null
+        ? [
+            {
+              id: asset.id,
+              kind: asset.kind,
+              width: asset.width,
+              height: asset.height,
+              url: asset.url,
+              altTextByLocale: asset.altTextByLocale,
+            },
+          ]
+        : [],
+    );
   }
 
   async updateAltText(

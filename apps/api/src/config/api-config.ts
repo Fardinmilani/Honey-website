@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { IdentityConfig, MediaConfig, S3StorageConfig } from '@honey/backend';
+import type { CatalogConfig, IdentityConfig, MediaConfig, S3StorageConfig } from '@honey/backend';
 
 const NODE_ENV_VALUES = ['development', 'test', 'production'] as const;
 const LOG_LEVEL_VALUES = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
@@ -86,6 +86,12 @@ const schema = z
     MEDIA_UPLOAD_INTENT_TTL_SECONDS: positiveInteger.max(3_600),
     MEDIA_PROCESSING_TIMEOUT_MS: positiveInteger.max(120_000),
     MEDIA_DERIVATIVE_PROFILE: z.literal('honey-v1'),
+    CATALOG_ENABLED_LOCALES: z.string().min(1).max(512),
+    CATALOG_DEFAULT_LOCALE: z.string().min(2).max(64),
+    CATALOG_CACHE_TTL_SECONDS: positiveInteger.min(5).max(300),
+    CATALOG_CACHE_NAMESPACE: z.string().regex(/^[a-z0-9][a-z0-9:_-]{1,63}$/u),
+    CATALOG_SEARCH_QUERY_MAX_LENGTH: positiveInteger.min(20).max(500),
+    CATALOG_MAX_CATEGORY_DEPTH: positiveInteger.min(1).max(12),
   })
   .passthrough();
 
@@ -122,6 +128,7 @@ export type ApiConfig = Readonly<{
     storage: S3StorageConfig;
     uploadAllowedOrigins: readonly string[];
   }>;
+  catalog: CatalogConfig;
 }>;
 
 function defaultsFor(environment: string | undefined): Readonly<Record<string, string>> {
@@ -192,6 +199,12 @@ function defaultsFor(environment: string | undefined): Readonly<Record<string, s
     MEDIA_UPLOAD_INTENT_TTL_SECONDS: '600',
     MEDIA_PROCESSING_TIMEOUT_MS: '30000',
     MEDIA_DERIVATIVE_PROFILE: 'honey-v1',
+    CATALOG_ENABLED_LOCALES: 'fa,en',
+    CATALOG_DEFAULT_LOCALE: 'fa',
+    CATALOG_CACHE_TTL_SECONDS: '60',
+    CATALOG_CACHE_NAMESPACE: 'honey:catalog:v1',
+    CATALOG_SEARCH_QUERY_MAX_LENGTH: '160',
+    CATALOG_MAX_CATEGORY_DEPTH: '6',
   };
 }
 
@@ -234,6 +247,16 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
   const trustProxy = parseTrustProxy(parsed.data.TRUST_PROXY);
   const allowedOrigins = parseOrigins(parsed.data.API_ALLOWED_ORIGINS);
   const uploadAllowedOrigins = parseOrigins(parsed.data.MEDIA_UPLOAD_ALLOWED_ORIGINS);
+  const enabledLocales = parsed.data.CATALOG_ENABLED_LOCALES.split(',')
+    .map((locale) => locale.trim().toLowerCase())
+    .filter(Boolean);
+  if (
+    enabledLocales.length === 0 ||
+    new Set(enabledLocales).size !== enabledLocales.length ||
+    !enabledLocales.includes(parsed.data.CATALOG_DEFAULT_LOCALE.toLowerCase())
+  ) {
+    throw new Error('Catalog locale configuration is invalid.');
+  }
   if (parsed.data.NODE_ENV === 'production') {
     if (
       allowedOrigins.length === 0 ||
@@ -376,6 +399,14 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
         requestTimeoutMs: parsed.data.S3_REQUEST_TIMEOUT_MS,
       },
       uploadAllowedOrigins,
+    },
+    catalog: {
+      enabledLocales,
+      defaultLocale: parsed.data.CATALOG_DEFAULT_LOCALE,
+      cacheTtlSeconds: parsed.data.CATALOG_CACHE_TTL_SECONDS,
+      cacheNamespace: parsed.data.CATALOG_CACHE_NAMESPACE,
+      searchQueryMaxLength: parsed.data.CATALOG_SEARCH_QUERY_MAX_LENGTH,
+      maximumCategoryDepth: parsed.data.CATALOG_MAX_CATEGORY_DEPTH,
     },
   };
 }

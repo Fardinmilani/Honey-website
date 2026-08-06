@@ -23,6 +23,9 @@ export const seedIds = {
   category: '018f0000-0000-7000-8000-000000000010',
   categoryFa: '018f0000-0000-7000-8000-000000000011',
   categoryEn: '018f0000-0000-7000-8000-000000000012',
+  childCategory: '018f0000-0000-7000-8000-000000000016',
+  childCategoryFa: '018f0000-0000-7000-8000-000000000017',
+  childCategoryEn: '018f0000-0000-7000-8000-000000000018',
   collection: '018f0000-0000-7000-8000-000000000013',
   collectionFa: '018f0000-0000-7000-8000-000000000014',
   collectionEn: '018f0000-0000-7000-8000-000000000015',
@@ -233,8 +236,8 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
 
   await client.category.upsert({
     where: { id: seedIds.category },
-    create: { id: seedIds.category, path: 'honey', ...commonAudit },
-    update: { path: 'honey', updatedAt: seedTime },
+    create: { id: seedIds.category, path: `/${seedIds.category}`, ...commonAudit },
+    update: { path: `/${seedIds.category}`, updatedAt: seedTime },
   });
   const categoryTranslations = [
     { id: seedIds.categoryFa, locale: 'fa', name: 'عسل', slug: 'asal' },
@@ -248,10 +251,48 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     });
   }
 
+  await client.category.upsert({
+    where: { id: seedIds.childCategory },
+    create: {
+      id: seedIds.childCategory,
+      parentId: seedIds.category,
+      path: `/${seedIds.category}/${seedIds.childCategory}`,
+      sortWeight: 10,
+      ...commonAudit,
+    },
+    update: {
+      parentId: seedIds.category,
+      path: `/${seedIds.category}/${seedIds.childCategory}`,
+      sortWeight: 10,
+      updatedAt: seedTime,
+    },
+  });
+  const childCategoryTranslations = [
+    {
+      id: seedIds.childCategoryFa,
+      locale: 'fa',
+      name: 'عسل کوهستان',
+      slug: 'عسل-کوهستان',
+    },
+    {
+      id: seedIds.childCategoryEn,
+      locale: 'en',
+      name: 'Mountain honey',
+      slug: 'mountain-honey',
+    },
+  ];
+  for (const translation of childCategoryTranslations) {
+    await client.categoryTranslation.upsert({
+      where: { id: translation.id },
+      create: { ...translation, categoryId: seedIds.childCategory },
+      update: { locale: translation.locale, name: translation.name, slug: translation.slug },
+    });
+  }
+
   await client.collection.upsert({
     where: { id: seedIds.collection },
-    create: { id: seedIds.collection, ...commonAudit },
-    update: { updatedAt: seedTime },
+    create: { id: seedIds.collection, status: 'PUBLISHED', publishedAt: seedTime, ...commonAudit },
+    update: { status: 'PUBLISHED', publishedAt: seedTime, updatedAt: seedTime },
   });
   const collectionTranslations = [
     { id: seedIds.collectionFa, locale: 'fa', name: 'برداشت کوهستان', slug: 'bardasht-koohestan' },
@@ -396,8 +437,9 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       where: { id: product.id },
       create: {
         id: product.id,
-        status: 'DRAFT',
-        primaryCategoryId: seedIds.category,
+        status: 'PUBLISHED',
+        publishedAt: seedTime,
+        primaryCategoryId: null,
         honeyVarietal: product.varietal,
         floralSources: [product.varietal.toLowerCase()],
         originRegion: 'Azerbaijan',
@@ -407,8 +449,9 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
         ...commonAudit,
       },
       update: {
-        status: 'DRAFT',
-        primaryCategoryId: seedIds.category,
+        status: 'PUBLISHED',
+        publishedAt: seedTime,
+        primaryCategoryId: null,
         honeyVarietal: product.varietal,
         floralSources: [product.varietal.toLowerCase()],
         originRegion: 'Azerbaijan',
@@ -429,7 +472,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       where: { id: variant.id },
       create: {
         ...variant,
-        status: 'DRAFT',
+        status: 'PUBLISHED',
         netWeightGrams: 450,
         jarSizeLabelKey: 'jar.450g',
         packagingTypeKey: 'packaging.glass',
@@ -440,6 +483,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       },
       update: {
         sku: variant.sku,
+        status: 'PUBLISHED',
         netWeightGrams: 450,
         jarSizeLabelKey: 'jar.450g',
         packagingTypeKey: 'packaging.glass',
@@ -465,7 +509,9 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       productId: seedIds.ownProduct,
       locale: 'fa',
       name: 'عسل گل‌های وحشی',
-      slug: 'asal-golhaye-vahshi',
+      slug: 'عسل-گلهای-وحشی',
+      shortDescription: 'برداشت معطر گل‌های وحشی کوهستان',
+      description: 'عسلی با بافت نرم، رایحه گلی و پایان متعادل.',
       tastingNotes: 'گلی و نرم',
     },
     {
@@ -474,6 +520,8 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       locale: 'en',
       name: 'Wildflower Honey',
       slug: 'wildflower-honey',
+      shortDescription: 'A fragrant mountain wildflower harvest',
+      description: 'A smooth honey with floral aroma and a balanced finish.',
       tastingNotes: 'Floral and rounded',
     },
     {
@@ -482,6 +530,8 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       locale: 'fa',
       name: 'عسل آویشن',
       slug: 'asal-avishan',
+      shortDescription: 'برداشت تابستانی با رایحه آویشن',
+      description: 'عسلی گرم و گیاهی با بافتی آرام و یکدست.',
       tastingNotes: 'گیاهی و گرم',
     },
     {
@@ -490,6 +540,8 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       locale: 'en',
       name: 'Thyme Honey',
       slug: 'thyme-honey',
+      shortDescription: 'A summer harvest with thyme aroma',
+      description: 'A warm, herbal honey with a calm, even texture.',
       tastingNotes: 'Herbal and warm',
     },
   ];
@@ -500,6 +552,8 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       update: {
         name: translation.name,
         slug: translation.slug,
+        shortDescription: translation.shortDescription,
+        description: translation.description,
         tastingNotes: translation.tastingNotes,
       },
     });
@@ -545,6 +599,14 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       update: { productId: item.productId, categoryId: seedIds.category },
     });
   }
+  await client.product.update({
+    where: { id: seedIds.ownProduct },
+    data: { primaryCategoryId: seedIds.category, updatedAt: seedTime },
+  });
+  await client.product.update({
+    where: { id: seedIds.suppliedProduct },
+    data: { primaryCategoryId: seedIds.category, updatedAt: seedTime },
+  });
   const productCollections = [
     { id: seedIds.ownProductCollection, productId: seedIds.ownProduct, position: 0 },
     { id: seedIds.suppliedProductCollection, productId: seedIds.suppliedProduct, position: 1 },

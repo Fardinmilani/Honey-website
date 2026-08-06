@@ -1,8 +1,9 @@
 # `@honey/backend`
 
 Transport-independent backend shared by the API and, in a later phase, the
-worker. Phase 6 adds the three-layer identity module and Phase 7 adds the
-three-layer media module while keeping all HTTP mapping in `apps/api`.
+worker. Phase 6 adds the three-layer identity module, Phase 7 adds media, and
+Phase 8 adds localized catalog and content modeling while keeping all HTTP
+mapping in `apps/api`.
 
 ## Public foundation
 
@@ -41,3 +42,12 @@ intent adapters, bounded Sharp processing, and Prisma persistence. The
 application service is callable from the API now and from a later worker without
 a transport dependency. See
 [`docs/media-development.md`](../../docs/media-development.md).
+
+## Phase 8 catalog module
+
+`src/modules/catalog` owns products, variants, categories, collections,
+translations, canonical slugs, publication rules, PostgreSQL search, stable
+cursor pagination, and tagged Redis response caching. It consumes public media
+references only through the media module's application service and keeps HTTP,
+cookies, and OpenAPI concerns in `apps/api`. See
+[`docs/catalog-development.md`](../../docs/catalog-development.md).

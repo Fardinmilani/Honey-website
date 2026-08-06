@@ -38,6 +38,7 @@ export type PersistedAssetInput = Readonly<{
 export interface MediaRepository {
   createAsset(input: PersistedAssetInput): Promise<MediaAsset>;
   findAsset(assetId: string): Promise<MediaAsset | null>;
+  findAssets(assetIds: readonly string[]): Promise<readonly MediaAsset[]>;
   updateAltText(assetId: string, altTextByLocale: AltTextByLocale): Promise<MediaAsset | null>;
   deleteUnattachedAsset(assetId: string): Promise<MediaAsset | null>;
   close(): Promise<void>;

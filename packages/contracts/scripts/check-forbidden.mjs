@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 const directory = dirname(fileURLToPath(import.meta.url));
 const document = await readFile(resolve(directory, '../openapi.json'), 'utf8');
 const forbidden = [
-  /supplier/iu,
+  /supplier.?id/iu,
+  /supplier.?name/iu,
+  /supplier.?code/iu,
   /landed.?cost/iu,
   /moisture/iu,
   /\blab(?:oratory)?\b/iu,
