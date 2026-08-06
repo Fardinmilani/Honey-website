@@ -3,5 +3,7 @@ packages:
   - packages/*
 allowBuilds:
   '@prisma/engines': true
+  '@pb33f/openapi-changes': true
+  '@scarf/scarf': false
   esbuild: true
   prisma: true

@@ -1,6 +1,2 @@
-/**
- * Phase 2 workspace marker.
- *
- * Business and application implementation starts only in its assigned phase.
- */
-export {};
+export * from './errors/index.js';
+export * from './platform/index.js';

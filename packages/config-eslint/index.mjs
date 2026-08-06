@@ -6,6 +6,7 @@ const workspaceGroups = {
   backend: ['@honey/backend', '@honey/backend/*'],
   db: ['@honey/db', '@honey/db/*'],
   prisma: ['@prisma/client', '@prisma/client/*', '@prisma/*', 'prisma', 'prisma/*'],
+  dbDrivers: ['pg', 'pg/*', 'postgres', 'postgres/*'],
   frontend: ['@honey/ui', '@honey/ui/*', '@honey/i18n', '@honey/i18n/*'],
   contracts: ['@honey/contracts', '@honey/contracts/*'],
   core: ['@honey/core', '@honey/core/*'],
@@ -102,7 +103,7 @@ export function createHoneyEslintConfig() {
       files: ['apps/api/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['db', 'prisma', 'frontend', 'apps', 'configs'],
+          ['db', 'prisma', 'dbDrivers', 'frontend', 'apps', 'configs'],
           'apps/api is an HTTP composition root and may reach business logic only through the public @honey/backend entry point.',
         ),
       },
@@ -120,9 +121,34 @@ export function createHoneyEslintConfig() {
       files: ['packages/backend/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['prisma', 'frontend', 'contracts', 'apps', 'configs'],
+          ['prisma', 'dbDrivers', 'frontend', 'contracts', 'apps', 'configs'],
           'packages/backend may import only @honey/db, @honey/core, and @honey/utils. Cross-module access must use public module entry points.',
         ),
+      },
+    },
+    {
+      files: ['packages/backend/src/**/domain/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: [
+                  '@nestjs/*',
+                  'fastify',
+                  'fastify/*',
+                  '@honey/db',
+                  '@honey/db/*',
+                  '@prisma/*',
+                  'prisma',
+                  'prisma/*',
+                ],
+                message: 'Backend domain code must remain transport- and persistence-independent.',
+              },
+            ],
+          },
+        ],
       },
     },
     {

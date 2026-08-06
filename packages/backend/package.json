@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
-    "lint": "eslint src --max-warnings=0",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint src test --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "vitest run"
   },
   "exports": {
     ".": {
@@ -20,10 +20,13 @@
   ],
   "dependencies": {
     "@honey/db": "workspace:*",
-    "@honey/core": "workspace:*",
-    "@honey/utils": "workspace:*"
+    "@nestjs/common": "11.1.28",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
   },
   "devDependencies": {
-    "@honey/config-ts": "workspace:*"
+    "@honey/config-ts": "workspace:*",
+    "@types/node": "22.18.0",
+    "vitest": "4.1.10"
   }
 }

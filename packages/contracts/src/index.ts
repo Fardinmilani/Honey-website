@@ -1,6 +1,2 @@
-/**
- * Phase 2 workspace marker.
- *
- * Business and application implementation starts only in its assigned phase.
- */
-export {};
+export type { components, operations, paths } from './generated/api.js';
+export type { ProblemDetails, ValidationIssue } from './problem-details.js';

@@ -14,7 +14,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 2 | Workspace Foundation | ✅ Complete | 2026-08-05 |
 | 3 | Local Environment | ✅ Complete | 2026-08-05 |
 | 4 | Database Foundation | ✅ Complete | 2026-08-06 |
-| 5 | Backend Library & API Foundation | â¬œ Not started | â€” |
+| 5 | Backend Library & API Foundation | Complete | 2026-08-06 |
 | 6 | Identity & Authorization | â¬œ Not started | â€” |
 | 7 | Media & Storage | â¬œ Not started | â€” |
 | 8 | Catalog & Content Model | â¬œ Not started | â€” |
@@ -31,8 +31,239 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 5 — Backend Library & API Foundation (**not started**).
-**Previous phase:** Phase 4 — Database Foundation (**complete 2026-08-06**).
+**Current phase:** Phase 6 — Identity & Authorization (**not started**).
+**Previous phase:** Phase 5 — Backend Library & API Foundation (**complete 2026-08-06**).
+
+---
+
+## Phase 5 — Backend Library & API Foundation
+
+**Completed:** 2026-08-06 · **Status:** Complete
+
+### Scope delivered
+
+- `@honey/backend` transport-independent platform foundation with typed ports
+  for database health, transactions, request context, outbox persistence,
+  idempotency, graceful resources, and typed configuration
+- stable transport-neutral `AppError` taxonomy with validation, not-found,
+  conflict, unauthenticated, forbidden, rate-limited, dependency-unavailable,
+  and internal categories; only explicitly safe metadata serializes
+- bounded health service and Prisma infrastructure adapter; `@honey/backend` is
+  the only workspace package outside `@honey/db` that consumes the database
+  package, and the readiness query is table-free `SELECT 1`
+- NestJS 11/Fastify 5 API composition root with strict boot configuration,
+  explicit proxy/CORS policy, 1 MiB maximum body, DTO validation, JSON-only RFC
+  9457 errors, request IDs, structured Pino logs, redaction, rate-limit and CSRF
+  foundations, and API security headers
+- only `GET /healthz` and `GET /readyz` in production; the validation probe is
+  test-only and excluded from production composition and OpenAPI
+- deterministic OpenAPI 3.1 and TypeScript generation, Spectral lint,
+  forbidden-vocabulary scan, drift check, and OpenAPI 3.1 breaking-change tests
+- API-only multi-stage Docker image pinned to the verified Node 22.17.0 Alpine
+  digest, frozen pnpm installation, required workspace graph, production
+  dependencies, `tini`, non-root runtime, and `/readyz` health check
+- Nest shutdown hooks for SIGTERM/SIGINT with a first-signal watchdog, bounded
+  Fastify draining, backend/Prisma closure, duplicate-signal safety, lifecycle
+  logs, and forced exit only after the configured deadline
+- expanded mechanical/ESLint boundaries and GitHub Actions v5 maintenance while
+  preserving the Node 22.17.0 project pin, PostgreSQL 16, explicit pnpm cache,
+  test database environment, Turborepo passthrough, and all prior gates
+
+### Dependency decisions
+
+All versions were queried from the registry, are stable exact releases, support
+Node `22.17.0`, and are compatible with TypeScript `5.9.3`. Nest's adapter and
+the direct Fastify dependency share Fastify `5.10.0` to avoid duplicate types.
+
+| Dependency | Version | Reason |
+|---|---:|---|
+| `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-fastify` | `11.1.28` | Nest composition and Fastify adapter; no HTTP framework previously existed |
+| `@nestjs/swagger` | `11.4.6` | OpenAPI generation from the API composition root |
+| `fastify` | `5.10.0` | adapter-compatible runtime; Express was not added |
+| `@fastify/cookie` | `11.1.2` | cookie parsing for the CSRF transport seam |
+| `@fastify/helmet` | `13.1.0` | API security headers for Fastify 5 |
+| `class-transformer` | `0.5.1` | explicit DTO transformation boundary |
+| `class-validator` | `0.15.1` | strict global DTO validation |
+| `reflect-metadata` | `0.2.2` | Nest decorator metadata runtime |
+| `rxjs` | `7.8.2` | Nest peer/runtime requirement |
+| `zod` | `4.4.3` | strict boot environment schema |
+| `pino` | `10.3.1` | structured logging and redaction |
+| `vitest` | `4.1.10` | existing workspace TS testing strategy |
+| `tsx` | `4.20.6` | API development and contract generation |
+| `@types/node` | `22.18.0` | Node 22 type definitions |
+| `openapi-typescript` | `7.13.0` | TypeScript generation from OpenAPI 3.1 |
+| `@stoplight/spectral-cli` | `6.16.3` | local OpenAPI linting |
+| `@pb33f/openapi-changes` | `0.2.7` | OpenAPI 3.1 breaking reports; replaced an incompatible OpenAPI 3.0-only candidate |
+| `prettier` | `3.9.0` | reused repository formatter for generated output |
+
+pnpm explicitly allows the `@pb33f/openapi-changes` binary install and denies
+the transitive Scarf telemetry hook. No preview release, range, Express
+integration, duplicate logger, or separate rate-limit/CSRF framework was added.
+
+### Files created
+
+- `apps/api/src/app.module.ts`
+- `apps/api/src/main.ts`
+- `apps/api/src/bootstrap/create-application.ts`
+- `apps/api/src/bootstrap/graceful-shutdown.ts`
+- `apps/api/src/config/api-config.ts`
+- `apps/api/src/http/errors/problem-details.ts`
+- `apps/api/src/http/errors/problem.filter.ts`
+- `apps/api/src/http/errors/problem-mapper.ts`
+- `apps/api/src/http/logging/api-logger.ts`
+- `apps/api/src/http/logging/request-id.ts`
+- `apps/api/src/http/logging/request-logging.ts`
+- `apps/api/src/http/security/csrf.ts`
+- `apps/api/src/http/security/rate-limit.ts`
+- `apps/api/src/http/security/security-hooks.ts`
+- `apps/api/src/http/validation/global-validation.ts`
+- `apps/api/src/modules/platform/platform.controller.ts`
+- `apps/api/src/openapi/document.ts`
+- `apps/api/src/openapi/generate.ts`
+- `apps/api/src/testing/validation-probe.controller.ts`
+- `apps/api/test/api.integration.test.ts`
+- `apps/api/test/config.test.ts`
+- `apps/api/test/graceful-shutdown.test.ts`
+- `apps/api/test/security.test.ts`
+- `apps/api/tsconfig.build.json`
+- `docker/api.Dockerfile`
+- `docs/api-development.md`
+- `packages/backend/README.md`
+- `packages/backend/src/errors/app-error.ts`
+- `packages/backend/src/errors/foundation-errors.ts`
+- `packages/backend/src/errors/index.ts`
+- `packages/backend/src/modules/README.md`
+- `packages/backend/src/platform/application/health.service.ts`
+- `packages/backend/src/platform/domain/config.ts`
+- `packages/backend/src/platform/domain/database-health.port.ts`
+- `packages/backend/src/platform/domain/graceful-resource.ts`
+- `packages/backend/src/platform/domain/health.ts`
+- `packages/backend/src/platform/domain/idempotency.ts`
+- `packages/backend/src/platform/domain/outbox.ts`
+- `packages/backend/src/platform/domain/request-context.ts`
+- `packages/backend/src/platform/domain/tokens.ts`
+- `packages/backend/src/platform/domain/transaction.ts`
+- `packages/backend/src/platform/infrastructure/prisma-platform.adapter.ts`
+- `packages/backend/src/platform/infrastructure/request-context.storage.ts`
+- `packages/backend/src/platform/index.ts`
+- `packages/backend/src/platform/platform.module.ts`
+- `packages/backend/test/app-error.test.ts`
+- `packages/backend/test/platform.test.ts`
+- `packages/backend/tsconfig.build.json`
+- `packages/contracts/.spectral.yaml`
+- `packages/contracts/README.md`
+- `packages/contracts/openapi.json`
+- `packages/contracts/scripts/check-breaking.mjs`
+- `packages/contracts/scripts/check-forbidden.mjs`
+- `packages/contracts/scripts/generate-types.mjs`
+- `packages/contracts/src/generated/api.ts`
+- `packages/contracts/src/problem-details.ts`
+- `packages/contracts/test/breaking.test.mjs`
+- `scripts/verify-phase5.mjs`
+
+### Files modified
+
+- `.env.example` — safe API, readiness, rate-limit, and CSRF transport configuration
+- `.github/workflows/ci.yml` — official action v5 maintenance and Phase 5/OpenAPI gates
+- `README.md` — Phase 5 state, quick start, commands, and workspace roles
+- `PLANS.md` — Phase 5 complete; Phase 6 current but not started
+- `apps/api/package.json` — exact API dependencies and safe local scripts
+- `apps/api/src/index.ts` — API public exports
+- `apps/api/tsconfig.json` — strict API source/test checking
+- `docs/local-development.md` — API status and runbook link
+- `docs/progress.md` — this completion record
+- `package.json` — API, OpenAPI, image, and Phase 5 commands
+- `packages/backend/package.json` — exact backend dependencies and scripts
+- `packages/backend/src/index.ts` — backend public exports
+- `packages/backend/tsconfig.json` — strict backend source/test checking
+- `packages/config-eslint/index.mjs` — new package/layer import restrictions
+- `packages/contracts/package.json` — contract generation, lint, breaking, and tests
+- `packages/contracts/src/index.ts` — problem-detail/generated exports
+- `pnpm-lock.yaml` — approved exact Phase 5 dependency graph
+- `pnpm-workspace.yaml` — binary approval and telemetry denial
+- `scripts/verify-forbidden-vocabulary.mjs` — excludes dependency trees and avoids the `secure`/prohibited-term false positive without relaxing prohibited vocabulary
+- `scripts/verify-phase4.mjs` — retains its database/CI checks while removing the obsolete assertion that Phase 5 dependencies cannot exist
+- `tools/boundaries/checker.mjs` — Phase 5 boundary enforcement
+- `tools/boundaries/checker.test.mjs` — negative and valid graph fixtures
+- `turbo.json` — dependency builds precede public-type checking and database test URLs pass through to package tests
+
+### Decisions made
+
+- No new ADR was required. The implementation follows
+  [ADR-0004](adr/0004-modular-monolith.md),
+  [ADR-0008](adr/0008-rest-openapi.md),
+  [ADR-0017](adr/0017-testing-strategy.md),
+  [ADR-0021](adr/0021-shared-backend-package.md), and
+  [ADR-0023](adr/0023-docker-strategy.md).
+- Pino is integrated through a small Nest logger adapter and Fastify hooks,
+  avoiding another logger and keeping bodies, credentials, cookies, and raw
+  query strings outside request log events.
+- Rate limiting exposes a replaceable store and uses a single-process Phase 5
+  baseline. Redis-backed multi-replica behavior remains deferred and is not
+  represented as production-distributed limiting.
+- CSRF provides only comparison and exemption transport primitives. Session
+  binding/issuance remains Phase 6 work.
+- CI breaking comparison is pull-request-only and uses the base branch contract;
+  pushes still run generation, drift, lint, and vocabulary checks.
+
+### Unresolved decisions
+
+No Phase 5 decision is unresolved. Redis-backed rate-limit state and
+authenticated CSRF/session integration are intentional later-phase work, not
+blockers and not pre-wired. Existing later business questions remain open.
+Phase 6 is current but explicitly not started.
+
+### Risks
+
+- The in-memory rate-limit store is process-local and must be replaced through
+  its port before multi-replica production deployment.
+- Readiness fails closed when PostgreSQL is unreachable or slow, so an
+  orchestrator may remove the instance until recovery.
+- The first contract-introducing pull request has no historical OpenAPI to
+  compare; it still runs generation, drift, lint, and vocabulary checks.
+- Worker/web images and production Compose remain intentionally absent.
+
+### Acceptance checklist
+
+- [x] Backend is transport-independent and unit-testable without HTTP
+- [x] AppError has stable safe output and hidden causes/internal metadata
+- [x] Platform ports include only Phase 5 config, health, transaction, outbox, idempotency, context, and shutdown seams
+- [x] API is NestJS/Fastify with strict startup validation and no business rules
+- [x] Health is database-free; readiness uses the backend/database seam and timeout
+- [x] Logging, validation, RFC 9457, rate limit, CSRF, headers, and CORS are tested
+- [x] Only health/readiness production endpoints exist
+- [x] OpenAPI/types are deterministic, linted, drift/vocabulary/breaking checked
+- [x] API/backend/contracts boundaries are mechanically enforced
+- [x] API image builds, contains no dev/test/Hero artifacts, runs non-root, and shuts down gracefully
+- [x] CI actions use v5; setup-node cache is disabled; prior pins/gates remain
+- [x] Dedicated Phase 5 verifier exists; historical verifiers are not substitutes
+- [x] No Phase 6 code, later image/Compose, forbidden claim, marketplace, or invented feature added
+- [x] Hero unchanged; no secrets, staging, commit, or push
+
+### Verification performed
+
+| Gate | Result |
+|---|---|
+| Install and frozen lockfile | passed; approved build scripts only |
+| Backend with PostgreSQL | passed; 9/9 including transaction seam |
+| API focused suite | passed; 16/16 with the PostgreSQL URL passed through by Turborepo |
+| API PostgreSQL integration | passed; 7/7 |
+| Contract breaking suite | passed; 2/2 including rejected operation removal |
+| OpenAPI generate/drift/lint/forbidden/breaking | passed |
+| Boundary tests and clean graph | passed; 10/10 and clean scan |
+| API image build/inspection | passed; non-root production graph, no tests/Hero |
+| Container health/readiness | passed against PostgreSQL 16 |
+| SIGTERM | passed; start/completion logs observed within grace |
+| `pnpm format:check` | passed |
+| `pnpm lint` | passed |
+| `pnpm boundaries` | passed |
+| `pnpm typecheck` | passed |
+| `pnpm test` | passed |
+| `pnpm build` | passed |
+| `pnpm phase4:verify` | passed |
+| `pnpm phase5:verify` | passed |
+| CI workflow check | passed; Node 20 action majors absent, all gates wired |
+| Hero integrity | passed; status and diff-stat empty for all eight files |
 
 ---
 

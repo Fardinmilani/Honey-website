@@ -49,6 +49,41 @@ test('rejects Prisma outside packages/db', async () => {
   }
 });
 
+test('rejects framework and persistence imports in backend domain code', async () => {
+  const root = await fixture({
+    'packages/backend/src/platform/domain/probe.ts': "import { Injectable } from '@nestjs/common';",
+  });
+  try {
+    const result = await analyzeWorkspace(root);
+    assert.equal(result.violations.length, 1);
+    assert.equal(result.violations[0]?.code, 'forbidden-backend-domain-import');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects PostgreSQL drivers in apps/api', async () => {
+  const root = await fixture({ 'apps/api/src/probe.ts': "import pg from 'pg';" });
+  try {
+    const result = await analyzeWorkspace(root);
+    assert.equal(result.violations.length, 1);
+    assert.equal(result.violations[0]?.code, 'forbidden-db-driver-import');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects persistence imports in packages/contracts', async () => {
+  const root = await fixture({ 'packages/contracts/src/probe.ts': "import '@honey/db';" });
+  try {
+    const result = await analyzeWorkspace(root);
+    assert.equal(result.violations.length, 1);
+    assert.equal(result.violations[0]?.code, 'forbidden-edge');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('accepts the documented dependency direction', async () => {
   const root = await fixture({
     'apps/web/src/index.ts': "import '@honey/ui'; import '@honey/contracts';",

@@ -2,8 +2,9 @@
 
 Phase 3 provides the infrastructure stack. Phase 4 adds the Prisma schema,
 committed migration, deterministic development seed, and disposable database
-integration harness. It still does not contain a web application, API, worker,
-queue processor, or business service.
+integration harness. Phase 5 adds the NestJS/Fastify API and
+transport-independent backend platform foundation. The API is not added to the
+default Compose profile and contains no authentication or business endpoints.
 
 ## Prerequisites
 
@@ -173,6 +174,17 @@ The harness connects through `TEST_DATABASE_ADMIN_URL`, creates a unique
 seed twice, proves database rejection of invalid rows and mutations, and drops
 only that temporary database in a `finally` path. It never resets or drops
 `POSTGRES_DB` or the database named by `DATABASE_URL`.
+
+## API development
+
+With PostgreSQL healthy and the migration applied, `pnpm api:dev` starts the API
+on `127.0.0.1:4000`. Its `/healthz` endpoint is process-only; `/readyz` depends
+on a bounded PostgreSQL check. The root `.env` is loaded when present.
+
+The focused runbook is [`api-development.md`](api-development.md). It covers
+configuration, request IDs and logging, RFC 9457 errors, validation, OpenAPI,
+tests, the standalone API image, graceful shutdown, PowerShell, and common
+failure modes.
 
 ## Redis verification
 

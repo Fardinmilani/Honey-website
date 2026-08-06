@@ -1,0 +1,16 @@
+extends:
+  - spectral:oas
+
+rules:
+  operation-operationId: error
+  operation-tags: error
+  operation-summary:
+    description: Every operation must have a summary.
+    given: $.paths[*][get,put,post,delete,options,head,patch,trace]
+    severity: error
+    then:
+      field: summary
+      function: truthy
+  oas3-api-servers: off
+  info-contact: off
+  info-license: off

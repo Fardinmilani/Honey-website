@@ -58,22 +58,6 @@ for (const requiredCiText of [
   if (!workflow.includes(requiredCiText)) throw new Error(`CI is missing ${requiredCiText}.`);
 }
 
-const manifests = await Promise.all(
-  [
-    'package.json',
-    'apps/api/package.json',
-    'apps/web/package.json',
-    'apps/worker/package.json',
-  ].map(async (path) => JSON.parse(await readFile(resolve(root, path), 'utf8'))),
-);
-const forbiddenDependencies = ['next', '@nestjs/core', '@nestjs/platform-fastify', 'bullmq'];
-for (const manifest of manifests) {
-  const dependencies = { ...manifest.dependencies, ...manifest.devDependencies };
-  for (const dependency of forbiddenDependencies) {
-    if (dependency in dependencies) throw new Error(`Phase 5+ dependency found: ${dependency}.`);
-  }
-}
-
 console.log(
   `Phase 4 structural verification passed with migration ${migrationDirectories[0].name}.`,
 );

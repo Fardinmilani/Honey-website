@@ -1,6 +1,2 @@
-/**
- * Phase 2 workspace marker.
- *
- * Business and application implementation starts only in its assigned phase.
- */
-export {};
+export { createApiApplication } from './bootstrap/create-application.js';
+export { loadApiConfig, type ApiConfig } from './config/api-config.js';

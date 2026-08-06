@@ -143,6 +143,43 @@ export async function analyzeWorkspace(rootDirectory) {
     for (const file of files) {
       const source = await readFile(file, 'utf8');
       for (const specifier of importedSpecifiers(source)) {
+        const workspaceRelative = slash(relative(root, file));
+        if (
+          sourceId === 'backend' &&
+          workspaceRelative.includes('/domain/') &&
+          (specifier.startsWith('@nestjs/') ||
+            specifier === 'fastify' ||
+            specifier.startsWith('fastify/') ||
+            specifier === '@honey/db' ||
+            specifier.startsWith('@honey/db/') ||
+            specifier === 'prisma' ||
+            specifier.startsWith('prisma/') ||
+            specifier.startsWith('@prisma/'))
+        ) {
+          violations.push({
+            code: 'forbidden-backend-domain-import',
+            file: workspaceRelative,
+            specifier,
+            message:
+              'backend domain code must remain independent of NestJS, Fastify, Prisma, and persistence adapters',
+          });
+          continue;
+        }
+        if (
+          sourceId === 'api' &&
+          (specifier === 'pg' ||
+            specifier.startsWith('pg/') ||
+            specifier === 'postgres' ||
+            specifier.startsWith('postgres/'))
+        ) {
+          violations.push({
+            code: 'forbidden-db-driver-import',
+            file: workspaceRelative,
+            specifier,
+            message: 'apps/api may reach PostgreSQL only through @honey/backend',
+          });
+          continue;
+        }
         if (
           sourceId !== 'db' &&
           (specifier === 'prisma' ||

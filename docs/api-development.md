@@ -1,0 +1,121 @@
+# API development
+
+Phase 5 provides the NestJS/Fastify HTTP composition root and the
+transport-independent backend platform library. The only production routes are
+`GET /healthz` and `GET /readyz`. There are no authentication, session, catalog,
+checkout, or other business endpoints yet.
+
+## Prerequisites and environment
+
+Use Node.js `22.17.0`, pnpm `11.20.0`, and the local PostgreSQL 16 service. Copy
+`.env.example` to the ignored `.env`, start infrastructure, apply the committed
+database migration, and then start the API:
+
+```powershell
+Copy-Item .env.example .env
+pnpm docker:up
+pnpm docker:verify
+pnpm db:migrate
+pnpm api:dev
+```
+
+On Linux or macOS use `cp .env.example .env`. The start scripts load the root
+`.env` when it exists. The API defaults to
+`127.0.0.1:4000` outside production. Configuration is validated before boot;
+production requires explicit HTTPS origins, trusted-proxy policy, secure
+host-bound CSRF cookie settings, and every other documented value. Unknown
+hosting variables are tolerated, but malformed known variables stop startup.
+Never put production credentials in `.env.example` or a command line.
+
+Do not print `DATABASE_URL` in logs or diagnostics.
+
+## Health and readiness
+
+```text
+http://127.0.0.1:4000/healthz
+http://127.0.0.1:4000/readyz
+```
+
+`/healthz` proves the process is alive, never queries PostgreSQL, and returns
+`200` with `Cache-Control: no-store`. `/readyz` makes a bounded `SELECT 1`
+through `@honey/backend` and `@honey/db`; it returns `200` only while PostgreSQL
+is reachable and otherwise returns a sanitized `503 application/problem+json`.
+Neither endpoint requires business or seed data.
+
+Every response echoes a valid `X-Request-Id`; invalid or absent incoming values
+are replaced. Structured request logs include service/environment metadata,
+method, route template, status, duration, and request ID. Bodies, raw query
+strings, cookies, authorization, CSRF tokens, credentials, and personal data are
+not logged; sensitive fields are explicitly redacted.
+
+## Validation and errors
+
+Malformed JSON returns `400`. Structurally valid DTO input with invalid or
+unknown properties returns `422`. Errors use RFC 9457 problem details with a
+stable machine code and request ID; stacks, SQL, Prisma, configuration, and
+dependency details are never returned. Phase 5 includes a test-only validation
+route that is absent from production composition and OpenAPI.
+
+The global rate-limit baseline returns `429` with `Retry-After` and rate-limit
+headers. Its in-memory store is a replaceable single-process Phase 5 baseline;
+the documented Redis-backed multi-replica implementation is deferred. CSRF
+implements configurable constant-time double-submit primitives and operational
+exemptions, but complete cookie-authenticated protection is deferred until
+Phase 6 integrates sessions.
+
+## OpenAPI workflow
+
+```sh
+pnpm api:openapi:generate
+pnpm api:openapi:check
+pnpm api:openapi:lint
+pnpm api:openapi:forbidden
+pnpm api:openapi:breaking --base-file path/to/base-openapi.json
+```
+
+Generation writes the deterministic OpenAPI 3.1 document and TypeScript types.
+The check command fails on committed drift. Breaking comparison must use the
+pull-request base document; an unchanged document passes and operation removal
+fails. No deployed API or network lookup is involved.
+
+## Tests and image
+
+With PostgreSQL already healthy:
+
+```sh
+pnpm api:test
+pnpm api:test:integration
+pnpm phase5:verify
+pnpm api:docker:build
+```
+
+The API image is intentionally not added to the default local Compose profile.
+To run it manually, attach it to the existing infrastructure network and supply
+production-safe environment values, including a container-reachable
+`DATABASE_URL` whose host is `postgres`:
+
+```powershell
+docker run --rm --name honey-api --network honey-local-internal -p 4000:4000 `
+  --env-file .env honey-api:phase5
+```
+
+The runtime image uses the non-root `node` user, `tini` as PID 1, and a
+`/readyz` health check. `docker stop --time 15 honey-api` sends SIGTERM. Nest
+stops accepting new requests, drains within `API_SHUTDOWN_GRACE_MS`, closes the
+database resource, logs the bounded lifecycle, and exits; a hung shutdown is
+forced only after the deadline.
+
+## Troubleshooting
+
+- Port conflict: change `API_PORT` and the published Docker port, or stop the
+  process already listening on 4000. On PowerShell use
+  `Get-NetTCPConnection -LocalPort 4000` to inspect it.
+- Invalid configuration: the startup error names invalid keys but never their
+  values. Compare those keys with `.env.example`; production does not accept
+  wildcard origins, arbitrary proxy trust, insecure CSRF cookies, or omitted
+  required values.
+- Readiness is `503`: confirm `pnpm docker:status`, run `pnpm docker:verify`,
+  check that migrations were applied, and ensure `DATABASE_URL` uses
+  `127.0.0.1` from the host or `postgres` from the Docker network.
+- Health is `200` but readiness is `503`: the API process is alive and the
+  PostgreSQL dependency is unavailable or exceeded its bounded timeout.

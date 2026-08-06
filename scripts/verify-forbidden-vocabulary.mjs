@@ -11,7 +11,7 @@ const fragments = [
   'lab.?(test|report|result)',
   'thera' + 'peut',
   'med' + 'ic',
-  'cu' + 're',
+  '(?<!se)cu' + 're',
   'tre' + 'at',
   'anti' + 'bacterial',
   'immu' + 'nity',
@@ -31,7 +31,11 @@ const scanRoots = [
 async function collect(path) {
   try {
     const entries = await readdir(path, { withFileTypes: true });
-    const nested = await Promise.all(entries.map((entry) => collect(resolve(path, entry.name))));
+    const nested = await Promise.all(
+      entries
+        .filter((entry) => entry.name !== 'node_modules')
+        .map((entry) => collect(resolve(path, entry.name))),
+    );
     return nested.flat();
   } catch (error) {
     if (typeof error === 'object' && error !== null && 'code' in error) {

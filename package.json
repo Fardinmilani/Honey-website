@@ -33,7 +33,18 @@
     "db:seed": "pnpm --filter @honey/db db:seed",
     "db:test": "pnpm --filter @honey/db db:test",
     "forbidden-vocabulary": "node scripts/verify-forbidden-vocabulary.mjs",
-    "phase4:verify": "pnpm db:validate && pnpm db:generate && pnpm forbidden-vocabulary && pnpm boundaries && node scripts/verify-phase4.mjs"
+    "phase4:verify": "pnpm db:validate && pnpm db:generate && pnpm forbidden-vocabulary && pnpm boundaries && node scripts/verify-phase4.mjs",
+    "api:dev": "pnpm --filter @honey/api dev",
+    "api:start": "pnpm --filter @honey/api start",
+    "api:test": "pnpm --filter @honey/api test",
+    "api:test:integration": "pnpm --filter @honey/api test:integration",
+    "api:openapi:generate": "pnpm --filter @honey/api openapi:generate && pnpm --filter @honey/contracts types:generate",
+    "api:openapi:check": "pnpm --filter @honey/api openapi:check && pnpm --filter @honey/contracts types:check",
+    "api:openapi:lint": "pnpm --filter @honey/contracts openapi:lint",
+    "api:openapi:forbidden": "pnpm --filter @honey/contracts openapi:forbidden",
+    "api:openapi:breaking": "pnpm --filter @honey/contracts openapi:breaking",
+    "api:docker:build": "docker build --file docker/api.Dockerfile --tag honey-api:phase5 .",
+    "phase5:verify": "node scripts/verify-phase5.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -5,9 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
-    "lint": "eslint src --max-warnings=0",
+    "lint": "eslint src scripts test --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "node --test",
+    "types:generate": "node scripts/generate-types.mjs",
+    "types:check": "node scripts/generate-types.mjs --check",
+    "openapi:lint": "spectral lint openapi.json --ruleset .spectral.yaml --fail-severity=warn",
+    "openapi:forbidden": "node scripts/check-forbidden.mjs",
+    "openapi:breaking": "node scripts/check-breaking.mjs"
   },
   "exports": {
     ".": {
@@ -22,6 +27,10 @@
     "@honey/core": "workspace:*"
   },
   "devDependencies": {
-    "@honey/config-ts": "workspace:*"
+    "@honey/config-ts": "workspace:*",
+    "@pb33f/openapi-changes": "0.2.7",
+    "@stoplight/spectral-cli": "6.16.3",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.0"
   }
 }

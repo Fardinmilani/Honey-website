@@ -33,15 +33,19 @@ jobs:
           --health-retries 12
     env:
       TEST_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
 
       - name: Enable pinned pnpm
         run: |
@@ -55,7 +59,7 @@ jobs:
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
@@ -85,3 +89,16 @@ jobs:
 
       - name: Verify Phase 4 database foundation
         run: pnpm phase4:verify
+
+      - name: Generate and verify OpenAPI contract
+        run: pnpm api:openapi:generate && pnpm api:openapi:check
+
+      - name: Lint and scan OpenAPI contract
+        run: pnpm api:openapi:lint && pnpm api:openapi:forbidden
+
+      - name: Check pull-request OpenAPI compatibility
+        if: github.event_name == 'pull_request'
+        run: pnpm api:openapi:breaking --base-ref origin/${{ github.base_ref }}
+
+      - name: Verify Phase 5 API foundation
+        run: pnpm phase5:verify

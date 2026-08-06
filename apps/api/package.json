@@ -4,18 +4,37 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
-    "lint": "eslint src --max-warnings=0",
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx --env-file-if-exists=../../.env watch src/main.ts",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "lint": "eslint src test --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "vitest run",
+    "test:integration": "vitest run test/api.integration.test.ts",
+    "openapi:generate": "tsx src/openapi/generate.ts",
+    "openapi:check": "tsx src/openapi/generate.ts --check"
   },
   "dependencies": {
     "@honey/backend": "workspace:*",
-    "@honey/contracts": "workspace:*",
-    "@honey/core": "workspace:*",
-    "@honey/utils": "workspace:*"
+    "@fastify/cookie": "11.1.2",
+    "@fastify/helmet": "13.1.0",
+    "@nestjs/common": "11.1.28",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/platform-fastify": "11.1.28",
+    "@nestjs/swagger": "11.4.6",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
+    "fastify": "5.10.0",
+    "pino": "10.3.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@honey/config-ts": "workspace:*"
+    "@honey/config-ts": "workspace:*",
+    "@types/node": "22.18.0",
+    "prettier": "3.9.0",
+    "tsx": "4.20.6",
+    "vitest": "4.1.10"
   }
 }
