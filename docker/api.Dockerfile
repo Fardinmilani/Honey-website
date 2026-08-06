@@ -9,16 +9,21 @@ COPY packages/backend/package.json packages/backend/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/config-ts/package.json packages/config-ts/package.json
 
-FROM manifests AS build
-RUN pnpm install --filter=@honey/api... --frozen-lockfile
+FROM manifests AS dependencies
+RUN --mount=type=cache,id=honey-api-pnpm-store,target=/root/.local/share/pnpm/store/v11,sharing=locked \
+  pnpm install --filter=@honey/api... --frozen-lockfile \
+    --network-concurrency=4 --fetch-retries=5 --fetch-timeout=300000
+
+FROM dependencies AS build
 COPY packages/config-ts packages/config-ts
 COPY packages/db packages/db
 COPY packages/backend packages/backend
 COPY apps/api apps/api
 RUN pnpm --filter=@honey/api... run build
 
-FROM manifests AS production-dependencies
-RUN pnpm install --prod --filter=@honey/api... --frozen-lockfile
+FROM dependencies AS production-dependencies
+RUN --mount=type=cache,id=honey-api-pnpm-store,target=/root/.local/share/pnpm/store/v11,sharing=locked \
+  CI=true pnpm install --prod --filter=@honey/api... --offline --frozen-lockfile
 
 FROM node:22.17.0-alpine3.22@sha256:fc3e945f920b7e3000cd1af86c4ae406ec70c72f328b667baf0f3a8910d69eed AS runtime
 RUN apk add --no-cache tini

@@ -17,13 +17,15 @@ const migrationRoot = resolve(root, 'packages/db/prisma/migrations');
 const migrationDirectories = (await readdir(migrationRoot, { withFileTypes: true })).filter(
   (entry) => entry.isDirectory(),
 );
-if (migrationDirectories.length !== 1) {
-  throw new Error(
-    `Phase 4 requires exactly one initial migration; found ${migrationDirectories.length}.`,
-  );
+if (migrationDirectories.length < 1) {
+  throw new Error('Phase 4 requires its accepted initial migration.');
 }
+const initialMigration = migrationDirectories.find(
+  (entry) => entry.name === '20260805231327_initial_foundation',
+);
+if (initialMigration === undefined) throw new Error('The accepted Phase 4 migration is missing.');
 const migrationSql = await readFile(
-  resolve(migrationRoot, migrationDirectories[0].name, 'migration.sql'),
+  resolve(migrationRoot, initialMigration.name, 'migration.sql'),
   'utf8',
 );
 for (const requiredSql of [
@@ -58,6 +60,4 @@ for (const requiredCiText of [
   if (!workflow.includes(requiredCiText)) throw new Error(`CI is missing ${requiredCiText}.`);
 }
 
-console.log(
-  `Phase 4 structural verification passed with migration ${migrationDirectories[0].name}.`,
-);
+console.log(`Phase 4 structural verification passed with migration ${initialMigration.name}.`);

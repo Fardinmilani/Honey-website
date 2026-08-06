@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createApiApplication } from '../bootstrap/create-application.js';
-import type { ApiConfig } from '../config/api-config.js';
+import { loadApiConfig } from '../config/api-config.js';
 import { createOpenApiDocument } from './document.js';
 
 const CONTRACT_PATH = resolve(
@@ -11,20 +11,11 @@ const CONTRACT_PATH = resolve(
   '../../../../packages/contracts/openapi.json',
 );
 
-const generationConfig: ApiConfig = {
-  nodeEnv: 'test',
-  host: '127.0.0.1',
-  port: 4000,
-  databaseUrl: 'postgresql://contract:contract@127.0.0.1:5432/contract',
-  logLevel: 'silent',
-  trustProxy: false,
-  allowedOrigins: ['http://localhost:3000'],
-  bodyLimitBytes: 1_048_576,
-  shutdownGraceMs: 10_000,
-  readinessTimeoutMs: 2_000,
-  rateLimit: { max: 300, windowMs: 60_000 },
-  csrf: { cookieName: 'csrf_token', headerName: 'x-csrf-token', secureCookie: false },
-};
+const generationConfig = loadApiConfig({
+  NODE_ENV: 'test',
+  DATABASE_URL: 'postgresql://contract:contract@127.0.0.1:5432/contract',
+  LOG_LEVEL: 'silent',
+});
 
 export async function generateOpenApi(): Promise<string> {
   const app = await createApiApplication({ config: generationConfig });

@@ -20,9 +20,21 @@ function sortValue(value: unknown): unknown {
 export async function createOpenApiDocument(app: NestFastifyApplication): Promise<string> {
   const configuration = new DocumentBuilder()
     .setTitle('Honey API')
-    .setDescription('Operational contract for the Honey API foundation.')
+    .setDescription(
+      'Honey API contract. Cookie-authenticated unsafe requests require the X-CSRF-Token double-submit header.',
+    )
     .setVersion('1.0.0')
     .addTag('Operations', 'Process and dependency health endpoints.')
+    .addTag('Identity', 'Registration, authentication, account, and session endpoints.')
+    .addCookieAuth(
+      '__Host-session',
+      {
+        type: 'apiKey',
+        in: 'cookie',
+        description: 'Opaque server-side session. Local HTTP development uses honey_session.',
+      },
+      'sessionCookie',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, configuration);
   document.openapi = '3.1.0';

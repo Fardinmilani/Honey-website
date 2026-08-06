@@ -10,6 +10,7 @@ import {
 
 import { HealthService } from '@honey/backend';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
+import { Public } from '../../http/auth/authorization.js';
 
 class HealthResponseDto {
   @ApiProperty({ type: String, enum: ['ok'], example: 'ok' })
@@ -35,6 +36,7 @@ export class PlatformController {
   constructor(@Inject(HealthService) private readonly health: HealthService) {}
 
   @Get('healthz')
+  @Public()
   @Header('Cache-Control', 'no-store')
   @ApiOperation({
     operationId: 'getHealth',
@@ -51,6 +53,7 @@ export class PlatformController {
   }
 
   @Get('readyz')
+  @Public()
   @Header('Cache-Control', 'no-store')
   @ApiOperation({
     operationId: 'getReadiness',

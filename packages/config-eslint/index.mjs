@@ -7,6 +7,7 @@ const workspaceGroups = {
   db: ['@honey/db', '@honey/db/*'],
   prisma: ['@prisma/client', '@prisma/client/*', '@prisma/*', 'prisma', 'prisma/*'],
   dbDrivers: ['pg', 'pg/*', 'postgres', 'postgres/*'],
+  identityCrypto: ['argon2', 'argon2/*', 'otplib', 'otplib/*', '@otplib/*'],
   frontend: ['@honey/ui', '@honey/ui/*', '@honey/i18n', '@honey/i18n/*'],
   contracts: ['@honey/contracts', '@honey/contracts/*'],
   core: ['@honey/core', '@honey/core/*'],
@@ -103,7 +104,7 @@ export function createHoneyEslintConfig() {
       files: ['apps/api/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
         'no-restricted-imports': restriction(
-          ['db', 'prisma', 'dbDrivers', 'frontend', 'apps', 'configs'],
+          ['db', 'prisma', 'dbDrivers', 'identityCrypto', 'frontend', 'apps', 'configs'],
           'apps/api is an HTTP composition root and may reach business logic only through the public @honey/backend entry point.',
         ),
       },

@@ -25,6 +25,12 @@ database, creates a uniquely named `honey_phase4_test_*` database, and drops onl
 that validated name after success or failure. It never resets the database in
 `DATABASE_URL`.
 
+Phase 6 adds a forward-only identity migration for encrypted TOTP material,
+replay state, absolute session expiry, credential-shape constraints, one
+password/TOTP credential per user, and text request IDs in audit rows. The
+accepted Phase 4 migration remains immutable. Integration tests migrate the
+complete history and prove the new constraints against PostgreSQL 16.
+
 The seed refuses `NODE_ENV=production` and non-local hosts. Its identifiers and
 timestamps are fixed, its writes are idempotent, and optional development staff
 credentials are read only from environment variables.

@@ -1,10 +1,14 @@
 import { type DynamicModule, Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 
-import { PlatformModule, type DatabaseHealthPort } from '@honey/backend';
+import { IdentityModule, PlatformModule, type DatabaseHealthPort } from '@honey/backend';
 import type { GracefulShutdown } from './bootstrap/graceful-shutdown.js';
 import type { ApiConfig } from './config/api-config.js';
 import { PlatformController } from './modules/platform/platform.controller.js';
+import { IdentityController } from './modules/identity/identity.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
+import { AuthorizationGuard } from './http/auth/authorization.guard.js';
+import type { ControllerClass } from './http/auth/route-policy-verifier.js';
 
 export type AppModuleOptions = Readonly<{
   config: ApiConfig;
@@ -15,6 +19,12 @@ export type AppModuleOptions = Readonly<{
 
 @Module({})
 export class AppModule {
+  static controllers(enableTestRoutes: boolean): readonly ControllerClass[] {
+    return enableTestRoutes
+      ? [PlatformController, IdentityController, ValidationProbeController]
+      : [PlatformController, IdentityController];
+  }
+
   static register(options: AppModuleOptions): DynamicModule {
     return {
       module: AppModule,
@@ -26,12 +36,22 @@ export class AppModule {
             ? {}
             : { databaseHealthOverride: options.databaseHealthOverride }),
         }),
+        IdentityModule.register({
+          config: options.config.identity.config,
+          databaseUrl: options.config.databaseUrl,
+          redisUrl: options.config.redisUrl,
+          totpEncryptionKey: options.config.identity.totpEncryptionKey,
+          breachedPasswordEndpoint: options.config.identity.breachedPasswordEndpoint,
+          breachedPasswordTimeoutMs: options.config.identity.breachedPasswordTimeoutMs,
+          smtp: options.config.identity.smtp,
+        }),
       ],
-      controllers:
-        options.enableTestRoutes === true
-          ? [PlatformController, ValidationProbeController]
-          : [PlatformController],
-      providers: [{ provide: 'API_GRACEFUL_SHUTDOWN', useValue: options.gracefulShutdown }],
+      controllers: [...AppModule.controllers(options.enableTestRoutes === true)],
+      providers: [
+        { provide: 'API_GRACEFUL_SHUTDOWN', useValue: options.gracefulShutdown },
+        { provide: 'API_CONFIG', useValue: options.config },
+        { provide: APP_GUARD, useClass: AuthorizationGuard },
+      ],
     };
   }
 }

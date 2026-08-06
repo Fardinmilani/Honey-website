@@ -1,9 +1,41 @@
 {
   "components": {
     "schemas": {
+      "AcceptedResponseDto": {
+        "properties": { "accepted": { "example": true, "type": "boolean" } },
+        "required": ["accepted"],
+        "type": "object"
+      },
+      "AuthenticatedResponseDto": {
+        "properties": {
+          "csrfToken": { "description": "Double-submit value for X-CSRF-Token.", "type": "string" },
+          "expiresAt": { "format": "date-time", "type": "string" },
+          "next": { "enum": ["AUTHENTICATED"], "type": "string" },
+          "user": { "$ref": "#/components/schemas/SafeUserDto" }
+        },
+        "required": ["next", "user", "expiresAt", "csrfToken"],
+        "type": "object"
+      },
       "HealthResponseDto": {
         "properties": { "status": { "enum": ["ok"], "example": "ok", "type": "string" } },
         "required": ["status"],
+        "type": "object"
+      },
+      "LoginResponseDto": {
+        "properties": {
+          "csrfToken": { "type": "string" },
+          "expiresAt": { "format": "date-time", "type": "string" },
+          "next": {
+            "enum": ["AUTHENTICATED", "TOTP_REQUIRED", "TOTP_ENROLLMENT_REQUIRED"],
+            "type": "string"
+          },
+          "provisioningUri": {
+            "description": "Controlled TOTP enrollment URI; returned only after a valid staff password.",
+            "type": "string"
+          },
+          "user": { "$ref": "#/components/schemas/SafeUserDto" }
+        },
+        "required": ["next"],
         "type": "object"
       },
       "ProblemDetailsDto": {
@@ -41,6 +73,103 @@
         "required": ["status"],
         "type": "object"
       },
+      "SafeUserDto": {
+        "properties": {
+          "displayName": { "nullable": true, "type": "string" },
+          "email": { "format": "email", "type": "string" },
+          "emailVerified": { "type": "boolean" },
+          "id": { "format": "uuid", "type": "string" },
+          "isStaff": { "type": "boolean" },
+          "permissions": {
+            "items": {
+              "enum": [
+                "catalog:read",
+                "catalog:write",
+                "catalog:publish",
+                "inventory:read",
+                "inventory:adjust",
+                "procurement:read",
+                "procurement:write",
+                "order:read",
+                "order:write",
+                "order:refund",
+                "order:cancel",
+                "customer:read",
+                "customer:export",
+                "content:read",
+                "content:write",
+                "content:publish",
+                "review:moderate",
+                "settings:read",
+                "settings:write",
+                "role:grant",
+                "audit:read"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "preferredLocale": { "example": "fa", "type": "string" },
+          "roles": {
+            "items": {
+              "enum": [
+                "OWNER",
+                "ADMIN",
+                "ORDER_MANAGER",
+                "INVENTORY_MANAGER",
+                "CONTENT_EDITOR",
+                "SUPPORT",
+                "CUSTOMER"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": { "enum": ["ACTIVE", "SUSPENDED", "DELETED"], "type": "string" }
+        },
+        "required": [
+          "id",
+          "email",
+          "emailVerified",
+          "displayName",
+          "preferredLocale",
+          "status",
+          "isStaff",
+          "roles",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "SessionDto": {
+        "properties": {
+          "createdAt": { "format": "date-time", "type": "string" },
+          "current": { "type": "boolean" },
+          "expiresAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "ip": { "nullable": true, "type": "string" },
+          "kind": { "enum": ["CUSTOMER", "STAFF"], "type": "string" },
+          "lastSeenAt": { "format": "date-time", "type": "string" },
+          "userAgentHash": { "nullable": true, "type": "string" }
+        },
+        "required": [
+          "id",
+          "kind",
+          "current",
+          "createdAt",
+          "lastSeenAt",
+          "expiresAt",
+          "ip",
+          "userAgentHash"
+        ],
+        "type": "object"
+      },
+      "SessionsResponseDto": {
+        "properties": {
+          "sessions": { "items": { "$ref": "#/components/schemas/SessionDto" }, "type": "array" }
+        },
+        "required": ["sessions"],
+        "type": "object"
+      },
       "ValidationIssueDto": {
         "properties": {
           "code": { "example": "INVALID_VALUE", "type": "string" },
@@ -49,11 +178,19 @@
         "required": ["path", "code"],
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "description": "Opaque server-side session. Local HTTP development uses honey_session.",
+        "in": "cookie",
+        "name": "__Host-session",
+        "type": "apiKey"
+      }
     }
   },
   "info": {
     "contact": {},
-    "description": "Operational contract for the Honey API foundation.",
+    "description": "Honey API contract. Cookie-authenticated unsafe requests require the X-CSRF-Token double-submit header.",
     "title": "Honey API",
     "version": "1.0.0"
   },
@@ -110,8 +247,365 @@
         "summary": "Check required dependencies",
         "tags": ["Operations"]
       }
+    },
+    "/v1/auth/email-verification/confirm": {
+      "post": {
+        "description": "Consumes one valid, unexpired verification token and atomically marks the email verified.",
+        "operationId": "confirmEmailVerification",
+        "parameters": [],
+        "responses": {
+          "204": { "description": "" },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Confirm email verification",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/email-verification/request": {
+      "post": {
+        "description": "Returns the same accepted response regardless of whether an eligible account exists.",
+        "operationId": "requestEmailVerification",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AcceptedResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Request email verification",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "description": "Creates a customer session or a short-lived staff TOTP challenge after generic credential validation.",
+        "operationId": "login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/LoginResponseDto" } }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Authenticate with email and password",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "description": "Revokes the server-side session before clearing the matching authentication cookies.",
+        "operationId": "logout",
+        "parameters": [],
+        "responses": {
+          "204": { "description": "" },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Revoke the current session",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/logout-all": {
+      "post": {
+        "description": "Immediately revokes every active session owned by the authenticated account.",
+        "operationId": "logoutAll",
+        "parameters": [],
+        "responses": {
+          "204": { "description": "" },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Revoke every active session",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/password-reset/confirm": {
+      "post": {
+        "description": "Consumes one reset token, replaces the Argon2id credential, and revokes existing sessions.",
+        "operationId": "confirmPasswordReset",
+        "parameters": [],
+        "responses": {
+          "204": { "description": "" },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Confirm a password reset",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/password-reset/request": {
+      "post": {
+        "description": "Rate-limits the request and returns an enumeration-safe accepted response.",
+        "operationId": "requestPasswordReset",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AcceptedResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Request a password reset",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "description": "Creates only a CUSTOMER account and sends a one-time verification email when accepted.",
+        "operationId": "registerCustomer",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AcceptedResponseDto" }
+              }
+            },
+            "description": "Registration was accepted."
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Register a customer account",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/auth/staff/totp/confirm": {
+      "post": {
+        "description": "Consumes the pre-authentication cookie and creates a staff session only after valid TOTP verification.",
+        "operationId": "confirmStaffTotp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthenticatedResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Complete staff TOTP authentication",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "description": "Returns only the safe account and effective authorization summary for the current principal.",
+        "operationId": "getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/SafeUserDto" } }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Get the authenticated account",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/me/sessions": {
+      "get": {
+        "description": "Lists only active sessions owned by the authenticated account.",
+        "operationId": "listMySessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SessionsResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List active sessions for this account",
+        "tags": ["Identity"]
+      }
+    },
+    "/v1/me/sessions/{sessionId}": {
+      "delete": {
+        "description": "Revokes an owned session and returns not found for a session owned by another account.",
+        "operationId": "revokeMySession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "" },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Revoke one of this account’s sessions",
+        "tags": ["Identity"]
+      }
     }
   },
   "servers": [],
-  "tags": [{ "description": "Process and dependency health endpoints.", "name": "Operations" }]
+  "tags": [
+    { "description": "Process and dependency health endpoints.", "name": "Operations" },
+    {
+      "description": "Registration, authentication, account, and session endpoints.",
+      "name": "Identity"
+    }
+  ]
 }

@@ -73,6 +73,21 @@ test('rejects PostgreSQL drivers in apps/api', async () => {
   }
 });
 
+for (const dependency of ['argon2', 'otplib', '@otplib/totp']) {
+  test(`rejects ${dependency} in apps/api`, async () => {
+    const root = await fixture({
+      'apps/api/src/probe.ts': `import '${dependency}';`,
+    });
+    try {
+      const result = await analyzeWorkspace(root);
+      assert.equal(result.violations.length, 1);
+      assert.equal(result.violations[0]?.code, 'forbidden-api-identity-crypto-import');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
 test('rejects persistence imports in packages/contracts', async () => {
   const root = await fixture({ 'packages/contracts/src/probe.ts': "import '@honey/db';" });
   try {

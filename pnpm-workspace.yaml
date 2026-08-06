@@ -5,5 +5,6 @@ allowBuilds:
   '@prisma/engines': true
   '@pb33f/openapi-changes': true
   '@scarf/scarf': false
+  argon2: true
   esbuild: true
   prisma: true

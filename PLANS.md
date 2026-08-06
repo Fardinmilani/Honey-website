@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 6 — Identity & Authorization (**not started**)
-**Completed phase:** Phase 5 — Backend Library & API Foundation (**complete 2026-08-06**)
+**Current phase:** Phase 7 — Media & Storage (**not started**)
+**Completed phase:** Phase 6 — Identity & Authorization (**complete 2026-08-06**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -67,8 +67,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 3 | Local Environment | **Complete 2026-08-05** — Docker Compose: Postgres, Redis, MinIO, Mailpit |
 | 4 | Database Foundation | **Complete 2026-08-06** — Prisma schema core, first migration, seed harness |
 | 5 | Backend Library & API Foundation | **Complete 2026-08-06** — transport-independent platform library + Nest/Fastify API, OpenAPI, operational endpoints, API image |
-| 6 | Identity & Authorization | **Not started** — users, sessions, RBAC, admin 2FA, audit log |
-| 7 | Media & Storage | S3 abstraction, MinIO adapter, upload pipeline |
+| 6 | Identity & Authorization | **Complete 2026-08-06** — users, opaque sessions, RBAC, staff TOTP, audit log |
+| 7 | Media & Storage | **Not started (current)** — S3 abstraction, MinIO adapter, upload pipeline |
 | 8 | Catalog & Content Model | Products, variants, translations, categories |
 | 9 | Web Foundation | App Router shell, i18n routing, RTL/LTR, design system, **Hero integration** |
 | 10 | Storefront Catalog | Listing, filtering, PDP, SEO, structured data, sitemaps |

@@ -1,8 +1,8 @@
 # `@honey/backend`
 
-Transport-independent backend foundation shared by the API and, in a later
-phase, the worker. Phase 5 contains only platform capabilities; `src/modules/`
-intentionally contains no business module.
+Transport-independent backend shared by the API and, in a later phase, the
+worker. Phase 6 adds the three-layer identity module while keeping all HTTP
+mapping in `apps/api`.
 
 ## Public foundation
 
@@ -13,10 +13,12 @@ intentionally contains no business module.
 - Prisma-backed platform adapter, with `@honey/db` kept behind this package
 - Nest dependency-injection composition metadata without any HTTP bootstrap
 
-The domain and application layers have no NestJS, Fastify, Prisma, database
-driver, route, controller, or HTTP-server dependency. Unit tests run without an
-HTTP process. No outbox dispatcher, Redis idempotency implementation, business
-workflow, authentication, or business-specific error exists in Phase 5.
+The identity domain and application layers have no NestJS, Fastify, Prisma,
+database driver, route, controller, or HTTP-server dependency. Infrastructure
+adapters implement PostgreSQL persistence, Redis lockout/challenges, Argon2id,
+AES-256-GCM/RFC 6238 TOTP, privacy-preserving password screening, and narrow
+SMTP delivery. Unit tests use deterministic fakes; integration tests use a
+disposable PostgreSQL database and real Redis.
 
 ## Commands
 

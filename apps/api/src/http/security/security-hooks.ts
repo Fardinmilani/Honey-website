@@ -44,11 +44,12 @@ export function registerSecurityHooks(
 
   fastify.addHook('preValidation', async (request) => {
     const path = request.url.split('?')[0] ?? '/';
+    const hasSessionCookie = request.cookies[config.sessionCookie.name] !== undefined;
     verifyCsrf({
       method: request.method,
       cookieToken: request.cookies[config.csrf.cookieName],
       headerToken: headerValue(request, config.csrf.headerName),
-      exempt: OPERATIONAL_PATHS.has(path),
+      exempt: OPERATIONAL_PATHS.has(path) || !hasSessionCookie,
     });
   });
 

@@ -17,6 +17,7 @@ const testIds = {
   audit: '018f0000-0001-7000-8000-00000000000a',
   statusHistory: '018f0000-0001-7000-8000-00000000000b',
   product: '018f0000-0001-7000-8000-00000000000c',
+  passwordCredential: '018f0000-0001-7000-8000-00000000000d',
 } as const;
 
 function databaseErrorCode(error: unknown): string | undefined {
@@ -49,6 +50,11 @@ async function expectDatabaseRejection(
 }
 
 async function createValidTestRecords(client: Client): Promise<void> {
+  await client.query(
+    `INSERT INTO "auth_credential" ("id", "user_id", "type", "secret_hash")
+     VALUES ($1, $2, 'PASSWORD', '$argon2id$test-fixture-only')`,
+    [testIds.passwordCredential, seedIds.ownerUser],
+  );
   await client.query(
     `INSERT INTO "cart" ("id", "anonymous_id", "currency", "locale", "expires_at")
      VALUES ($1, 'phase4-browser', 'IRR', 'en', now() + interval '1 hour')`,
@@ -123,6 +129,48 @@ async function createValidTestRecords(client: Client): Promise<void> {
 export async function runConstraintTests(client: Client): Promise<number> {
   await createValidTestRecords(client);
   const cases: ReadonlyArray<readonly [string, readonly string[], () => Promise<unknown>]> = [
+    [
+      'password credential without a hash',
+      ['23514'],
+      () =>
+        client.query(`UPDATE "auth_credential" SET "secret_hash" = NULL WHERE "id" = $1`, [
+          testIds.passwordCredential,
+        ]),
+    ],
+    [
+      'incomplete encrypted TOTP credential',
+      ['23514'],
+      () =>
+        client.query(
+          `INSERT INTO "auth_credential" ("id", "user_id", "type", "encrypted_secret")
+           VALUES ('018f0000-0002-7000-8000-00000000000f', $1, 'TOTP', decode('00', 'hex'))`,
+          [seedIds.ownerUser],
+        ),
+    ],
+    [
+      'duplicate password credential for one user',
+      ['23505'],
+      () =>
+        client.query(
+          `INSERT INTO "auth_credential" ("id", "user_id", "type", "secret_hash")
+           VALUES ('018f0000-0002-7000-8000-000000000010', $1, 'PASSWORD', '$argon2id$duplicate')`,
+          [seedIds.ownerUser],
+        ),
+    ],
+    [
+      'session idle expiry beyond absolute expiry',
+      ['23514'],
+      () =>
+        client.query(
+          `INSERT INTO "session" (
+             "id", "user_id", "kind", "token_hash", "expires_at", "absolute_expires_at"
+           ) VALUES (
+             '018f0000-0002-7000-8000-000000000011', $1, 'STAFF', 'phase6-invalid-session',
+             now() + interval '13 hours', now() + interval '12 hours'
+           )`,
+          [seedIds.ownerUser],
+        ),
+    ],
     [
       'negative inventory',
       ['23514'],

@@ -319,13 +319,17 @@ model User {
 }
 
 model AuthCredential {
-  id         String         @id @db.Uuid
-  userId     String         @map("user_id") @db.Uuid
-  type       CredentialType
-  secretHash String         @map("secret_hash")
-  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  lastUsedAt DateTime?      @map("last_used_at") @db.Timestamptz(3)
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id               String         @id @db.Uuid
+  userId           String         @map("user_id") @db.Uuid
+  type             CredentialType
+  secretHash       String?        @map("secret_hash")
+  encryptedSecret  Bytes?         @map("encrypted_secret") @db.ByteA
+  secretNonce      Bytes?         @map("secret_nonce") @db.ByteA
+  secretTag        Bytes?         @map("secret_tag") @db.ByteA
+  lastAcceptedStep BigInt?        @map("last_accepted_step")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt       DateTime?      @map("last_used_at") @db.Timestamptz(3)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   createdBy String?  @map("created_by") @db.Uuid
@@ -336,17 +340,18 @@ model AuthCredential {
 }
 
 model Session {
-  id            String      @id @db.Uuid
-  userId        String      @map("user_id") @db.Uuid
-  kind          SessionKind
-  tokenHash     String      @unique @map("token_hash")
-  ip            String?     @db.Inet
-  userAgentHash String?     @map("user_agent_hash")
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  lastSeenAt    DateTime    @default(now()) @map("last_seen_at") @db.Timestamptz(3)
-  expiresAt     DateTime    @map("expires_at") @db.Timestamptz(3)
-  revokedAt     DateTime?   @map("revoked_at") @db.Timestamptz(3)
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id                String      @id @db.Uuid
+  userId            String      @map("user_id") @db.Uuid
+  kind              SessionKind
+  tokenHash         String      @unique @map("token_hash")
+  ip                String?     @db.Inet
+  userAgentHash     String?     @map("user_agent_hash")
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt        DateTime    @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt         DateTime    @map("expires_at") @db.Timestamptz(3)
+  absoluteExpiresAt DateTime    @map("absolute_expires_at") @db.Timestamptz(3)
+  revokedAt         DateTime?   @map("revoked_at") @db.Timestamptz(3)
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   createdBy String?  @map("created_by") @db.Uuid
@@ -450,7 +455,7 @@ model AuditLog {
   beforeJson  Json?    @map("before_json") @db.JsonB
   afterJson   Json?    @map("after_json") @db.JsonB
   ip          String?  @db.Inet
-  requestId   String?  @map("request_id") @db.Uuid
+  requestId   String?  @map("request_id")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 

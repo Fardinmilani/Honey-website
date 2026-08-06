@@ -1,9 +1,10 @@
 # API development
 
-Phase 5 provides the NestJS/Fastify HTTP composition root and the
-transport-independent backend platform library. The only production routes are
-`GET /healthz` and `GET /readyz`. There are no authentication, session, catalog,
-checkout, or other business endpoints yet.
+The NestJS/Fastify composition root exposes operational routes plus the Phase 6
+identity API. Identity rules, persistence, cryptography, lockout, ownership,
+and permission evaluation remain in `packages/backend`; controllers map DTOs,
+cookies, request principals, and OpenAPI only. See
+[`identity-development.md`](identity-development.md) for the complete flows.
 
 ## Prerequisites and environment
 
@@ -56,12 +57,10 @@ stable machine code and request ID; stacks, SQL, Prisma, configuration, and
 dependency details are never returned. Phase 5 includes a test-only validation
 route that is absent from production composition and OpenAPI.
 
-The global rate-limit baseline returns `429` with `Retry-After` and rate-limit
-headers. Its in-memory store is a replaceable single-process Phase 5 baseline;
-the documented Redis-backed multi-replica implementation is deferred. CSRF
-implements configurable constant-time double-submit primitives and operational
-exemptions, but complete cookie-authenticated protection is deferred until
-Phase 6 integrates sessions.
+The global transport limit returns `429` with `Retry-After` and rate-limit
+headers. Identity additionally uses Redis-backed, concurrency-safe per-IP and
+per-identity exponential lockout. CSRF constant-time double-submit validation is
+active for unsafe requests whenever the session cookie is present.
 
 ## OpenAPI workflow
 
@@ -96,7 +95,7 @@ production-safe environment values, including a container-reachable
 
 ```powershell
 docker run --rm --name honey-api --network honey-local-internal -p 4000:4000 `
-  --env-file .env honey-api:phase5
+  --env-file .env honey-api:phase6
 ```
 
 The runtime image uses the non-root `node` user, `tini` as PID 1, and a

@@ -33,6 +33,30 @@ try {
     await seedDatabase(prisma, { staffEmail: 'owner@example.invalid' });
     const secondFingerprint = await readSeedFingerprint(prisma);
     assert.deepEqual(secondFingerprint, firstFingerprint);
+    const roles = await prisma.role.findMany({ orderBy: { code: 'asc' }, select: { code: true } });
+    assert.deepEqual(
+      roles.map((role) => role.code),
+      [
+        'ADMIN',
+        'CONTENT_EDITOR',
+        'CUSTOMER',
+        'INVENTORY_MANAGER',
+        'ORDER_MANAGER',
+        'OWNER',
+        'SUPPORT',
+      ],
+    );
+    const permissions = await prisma.permission.findMany({ select: { code: true } });
+    assert.equal(permissions.length, 21);
+    const forbiddenMarketplaceRole = ['SELL', 'ER'].join('');
+    assert.equal(
+      roles.some((role) => role.code === forbiddenMarketplaceRole),
+      false,
+    );
+    const ownerPermissionCount = await prisma.rolePermission.count({
+      where: { role: { code: 'OWNER' } },
+    });
+    assert.equal(ownerPermissionCount, 21);
   } finally {
     await prisma.$disconnect();
   }

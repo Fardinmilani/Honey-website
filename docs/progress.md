@@ -15,7 +15,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 3 | Local Environment | ✅ Complete | 2026-08-05 |
 | 4 | Database Foundation | ✅ Complete | 2026-08-06 |
 | 5 | Backend Library & API Foundation | Complete | 2026-08-06 |
-| 6 | Identity & Authorization | â¬œ Not started | â€” |
+| 6 | Identity & Authorization | Complete | 2026-08-06 |
 | 7 | Media & Storage | â¬œ Not started | â€” |
 | 8 | Catalog & Content Model | â¬œ Not started | â€” |
 | 9 | Web Foundation | â¬œ Not started | â€” |
@@ -31,8 +31,228 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 6 — Identity & Authorization (**not started**).
-**Previous phase:** Phase 5 — Backend Library & API Foundation (**complete 2026-08-06**).
+**Current phase:** Phase 7 — Media & Storage (**not started**).
+**Previous phase:** Phase 6 — Identity & Authorization (**complete 2026-08-06**).
+
+---
+
+## Phase 6 — Identity & Authorization
+
+**Completed:** 2026-08-06 · **Status:** Complete
+
+### Scope delivered
+
+- transport-independent `identity` module in `@honey/backend`, composed by the
+  Nest/Fastify API without moving business rules into controllers
+- normalized-email registration with Unicode-aware password limits, Argon2id
+  (`64 MiB`, time cost `3`, parallelism `1`), fail-closed breached-password
+  lookup through the Pwned Passwords k-anonymity API, verification emails, and
+  transactional persistence
+- opaque 256-bit sessions: only SHA-256 hashes persist, absolute and idle expiry
+  are server-enforced, rotation/revocation is immediate, and session material is
+  returned only in secure `HttpOnly` cookies
+- Redis-backed login lockout and password-reset limits; atomic Lua lockout
+  transitions and encrypted, one-use staff challenges under concurrency
+- staff RFC 6238 TOTP enrollment/challenge/confirmation with AES-256-GCM secret
+  storage, bounded clock drift, replay prevention, and mandatory 2FA before a
+  staff session can be issued
+- exact seven-role, twenty-one-permission seed model, permission-based server
+  checks, explicit owner-only role assignment, ownership primitives, immediate
+  role-change session revocation, and append-only request-correlated audits
+- fail-closed global permission guard and startup scanner: every route must
+  declare exactly one public or protected policy
+- routes for register, login, TOTP confirmation, logout, logout-all, verification,
+  reset, `/v1/me`, own-session listing, and own-session revocation
+- strict DTO tampering rejection, double-submit CSRF for unsafe cookie requests,
+  safe responses, OpenAPI 3.1/types, real Redis/PostgreSQL tests, CI integration,
+  and a dedicated Phase 6 verifier
+- forward-only migration for encrypted credential shapes, credential uniqueness,
+  absolute session expiry, and audit request IDs; the initial migration is intact
+- successful `honey-api:phase6` image with one cached supply-chain-verified frozen
+  install, offline production pruning, and a non-root runtime
+
+### Dependency decisions
+
+All additions are exact stable releases and limited to Phase 6.
+
+| Dependency | Version | Reason |
+|---|---:|---|
+| `argon2` | `0.45.1` | Argon2id password hashing |
+| `nodemailer` | `9.0.3` | narrow SMTP/Mailpit adapter |
+| `otplib` | `13.4.1` | RFC 6238 TOTP |
+| `redis` | `6.1.0` | atomic lockout, limits, and challenges |
+| `pg` | `8.22.0` | disposable PostgreSQL integration harness |
+| `@types/nodemailer` | `8.0.1` | strict SMTP types |
+| `@types/pg` | `8.16.0` | strict PostgreSQL harness types |
+
+Existing Nest/Fastify, Zod, Vitest, Prisma, DB, and contract tools were reused.
+No JWT, Passport, OAuth/social login, authentication UI, media/storage adapter,
+or Phase 7 scaffold was introduced.
+
+### Files created
+
+- `apps/api/src/http/auth/authorization.guard.ts`
+- `apps/api/src/http/auth/authorization.ts`
+- `apps/api/src/http/auth/request-principal.ts`
+- `apps/api/src/http/auth/route-policy-verifier.ts`
+- `apps/api/src/modules/identity/identity.controller.ts`
+- `apps/api/test/identity.test.ts`
+- `docs/identity-development.md`
+- `packages/backend/src/modules/identity/application/identity.service.ts`
+- `packages/backend/src/modules/identity/domain/identity.ts`
+- `packages/backend/src/modules/identity/domain/ports.ts`
+- `packages/backend/src/modules/identity/identity.module.ts`
+- `packages/backend/src/modules/identity/index.ts`
+- `packages/backend/src/modules/identity/infrastructure/identity-crypto.ts`
+- `packages/backend/src/modules/identity/infrastructure/prisma-identity.repository.ts`
+- `packages/backend/src/modules/identity/infrastructure/redis-auth-state.adapter.ts`
+- `packages/backend/src/modules/identity/infrastructure/smtp-identity-email.adapter.ts`
+- `packages/backend/src/modules/identity/module.meta.ts`
+- `packages/backend/test/identity.integration.test.ts`
+- `packages/backend/test/identity.test.ts`
+- `packages/db/prisma/migrations/20260806120000_identity_authorization/migration.sql`
+- `scripts/verify-phase6.mjs`
+
+### Files modified
+
+- `.env.example` — safe Phase 6 configuration placeholders
+- `.github/workflows/ci.yml` — Redis, identity tests/verifier, and image gate
+- `README.md` — Phase 6 status and commands
+- `PLANS.md` — Phase 6 complete; Phase 7 current but not started
+- `apps/api/package.json` — identity integration test coverage
+- `apps/api/src/app.module.ts` — identity composition, guard, and policy scanner
+- `apps/api/src/bootstrap/create-application.ts` — identity HTTP integration
+- `apps/api/src/config/api-config.ts` — strict identity environment invariants
+- `apps/api/src/http/security/security-hooks.ts` — session-cookie CSRF enforcement
+- `apps/api/src/modules/platform/platform.controller.ts` — explicit public policy
+- `apps/api/src/openapi/document.ts` — identity tag and cookie scheme
+- `apps/api/src/openapi/generate.ts` — deterministic Phase 6 contract generation
+- `apps/api/src/testing/validation-probe.controller.ts` — explicit test policy
+- `apps/api/test/config.test.ts` — Phase 6 configuration matrix
+- `docker/api.Dockerfile` — verified cached install and offline production pruning
+- `docs/api-development.md` — identity API behavior
+- `docs/local-development.md` — Redis, Mailpit, and TOTP runbook link
+- `docs/progress.md` — this completion record
+- `package.json` — Phase 6 verifier and image gate
+- `packages/backend/README.md` — identity ownership and API
+- `packages/backend/package.json` — exact identity dependencies
+- `packages/backend/src/index.ts` — public identity export
+- `packages/config-eslint/index.mjs` — identity layer restrictions
+- `packages/contracts/README.md` — identity contract coverage
+- `packages/contracts/openapi.json` — generated identity operations/schemas
+- `packages/contracts/src/generated/api.ts` — generated identity types
+- `packages/db/README.md` — migration and seed notes
+- `packages/db/prisma/schema.prisma` — credential, session, and audit changes
+- `packages/db/seed/data.ts` — idempotent roles and permissions
+- `packages/db/test/constraints.ts` — Phase 6 database constraints
+- `packages/db/test/run-integration.ts` — real PostgreSQL rejection proofs
+- `packages/db/turbo.json` — serialized Prisma generation
+- `pnpm-lock.yaml` — exact Phase 6 dependency graph
+- `pnpm-workspace.yaml` — explicit Argon2 native build approval
+- `scripts/verify-forbidden-vocabulary.mjs` — whole-word claim matching
+- `scripts/verify-phase4.mjs` — immutable initial-migration lookup
+- `scripts/verify-phase5.mjs` — assertions superseded only by Phase 6
+- `tools/boundaries/checker.mjs` — identity dependency boundaries
+- `tools/boundaries/checker.test.mjs` — Phase 6 boundary fixtures
+
+### Decisions made
+
+- No new ADR was required. The implementation follows
+  [ADR-0004](adr/0004-modular-monolith.md),
+  [ADR-0008](adr/0008-rest-openapi.md),
+  [ADR-0010](adr/0010-security-baseline.md),
+  [ADR-0015](adr/0015-session-strategy.md),
+  [ADR-0017](adr/0017-testing-strategy.md),
+  [ADR-0021](adr/0021-shared-backend-package.md), and
+  [ADR-0023](adr/0023-docker-strategy.md).
+- Session credentials are opaque random values, never JWTs. Only hashes persist;
+  the raw value exists at the cookie boundary once.
+- Permission strings are the authorization boundary. Owner role assignment also
+  requires the explicit owner operation and is always audited.
+- Staff sessions require non-replayed TOTP. Secrets are AES-256-GCM encrypted and
+  production staff sessions use eight-hour idle/twelve-hour absolute limits.
+- Pwned Passwords exposes only a SHA-1 prefix and fails closed within a bound.
+- Migration history is immutable. Docker retains pnpm supply-chain verification;
+  concurrency/timeouts were tuned instead of bypassing that verification.
+
+### Unresolved decisions
+
+No Phase 6 decision is unresolved and no deliverable is blocked. Existing later
+business questions remain open. Phase 7 is current but explicitly not started.
+
+### Risks
+
+- Auth availability depends on Redis; fail-closed behavior prevents bypassing
+  lockout, limits, or one-use challenge guarantees during an outage.
+- Registration/reset intentionally fail closed if the bounded breached-password
+  service request cannot complete; email delivery similarly requires SMTP.
+- TOTP depends on synchronized clocks and secure operational storage/rotation of
+  `IDENTITY_TOTP_ENCRYPTION_KEY`.
+- No customer/admin auth UI exists; that is intentional Phase 6 scope.
+- npm registry instability delayed Docker verification. Persistent cache and
+  bounded retries reduce repeat work without weakening integrity checks.
+
+### Acceptance checklist
+
+- [x] Registration, login, logout, verification, reset, and identity module exist
+- [x] Argon2id, Unicode password limits, and breached-password rejection are server-enforced
+- [x] Opaque sessions rotate/revoke immediately and enforce idle/absolute expiry
+- [x] Staff cannot authenticate without valid, non-replayed TOTP
+- [x] Exact roles/permissions seed idempotently; checks use permissions
+- [x] Missing/conflicting route policy prevents boot
+- [x] Ownership prevents cross-customer access
+- [x] Privileged/security operations append correlated audit events
+- [x] Redis lockout, limits, and challenges are atomic under concurrency
+- [x] `/v1/me` and own-session responses are safe
+- [x] Negative authorization, PostgreSQL, Redis, HTTP, and contract tests pass
+- [x] UI/social login are absent and Phase 7 is not scaffolded
+- [x] Initial migration and all eight Hero assets are unchanged
+- [x] No secrets, prohibited concepts/claims, test weakening, staging, commit, or push
+
+### Verification performed
+
+| Gate | Result |
+|---|---|
+| Install/frozen lockfile | passed; exact lockfile and approved native builds |
+| Prisma format/validate/generate | passed |
+| Migration deploy/status and seed twice | passed; database current and seed stable |
+| Database integration | passed; 73 tables, 29 enums, 28 PostgreSQL rejection proofs |
+| Backend tests | passed; 24/24, 0 skipped; real PostgreSQL/Redis |
+| API tests | passed; 22/22, 0 skipped; real PostgreSQL readiness test executed |
+| Boundary tests/graph | passed; 13/13 and clean scan |
+| OpenAPI generate/drift/lint/forbidden/breaking | passed |
+| API image build/inspection | passed; `honey-api:phase6`, non-root `node` |
+| `docker compose config --quiet` | passed |
+| `pnpm format:check` | passed |
+| `pnpm lint` | passed |
+| `pnpm boundaries` | passed |
+| `pnpm typecheck` | passed; 17/17 workspace tasks |
+| `pnpm test` | passed; 17/17 workspace tasks |
+| `pnpm build` | passed; 10/10 build tasks |
+| Phase 4/5/6 verifiers | passed |
+| Hero integrity | passed; status and diff-stat empty for all eight files |
+
+### Independent final verification (2026-08-06)
+
+- Corrected one Phase 6 audit defect: `auth.login_succeeded` declared a session
+  subject but the Prisma adapter persisted the user ID as `subjectId`. It now
+  persists the actual session ID, with a disposable-PostgreSQL regression proof.
+- Both environment-conditional platform tests executed with local PostgreSQL:
+  the backend transaction seam and API readiness adapter passed; no test was
+  skipped.
+- PostgreSQL, Redis, MinIO, and Mailpit were healthy. The disposable migration
+  harness applied both migrations, reported 73 tables and 29 enums, passed 28
+  rejection proofs, and produced a stable double seed.
+- The full requested workspace sequence passed: normal and frozen install,
+  format/write and format check, lint, boundaries, typecheck (17/17), tests
+  (17/17), build (10/10), Phase 4/5/6 verifiers, OpenAPI drift/type checks, and
+  Compose validation.
+- `honey-api:phase6` rebuilt successfully, runs as non-root `node`, contains no
+  `.env` or Hero media, reached healthy database-backed readiness, and stopped
+  cleanly with exit code 0.
+- The accepted initial migration and all Hero assets remain unchanged. `.env`
+  remains untracked, nothing is staged, and Phase 7 remains explicitly not
+  started.
 
 ---
 
@@ -985,3 +1205,4 @@ of that decision but does not make it.
 | 2026-08-05 | Payment state changes only on a server-verified outcome from any of three channels; webhooks no longer privileged | [ADR-0022](adr/0022-payment-verification-sources.md) |
 | 2026-08-05 | Initial deployment target: self-hosted Linux VPS with Docker Compose and a TLS reverse proxy | [ADR-0023](adr/0023-self-hosted-vps-deployment.md) |
 | 2026-08-05 | Phase 3 local environment completed with pinned PostgreSQL, Redis, MinIO, and Mailpit infrastructure | [Phase 3](#phase-3--local-environment) |
+| 2026-08-06 | Phase 6 identity and authorization completed with opaque sessions, permission-based authorization, mandatory staff TOTP, Redis lockout, and append-only audits | [Phase 6](#phase-6--identity--authorization) |

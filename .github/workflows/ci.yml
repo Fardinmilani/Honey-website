@@ -31,9 +31,20 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+      redis:
+        image: redis:7.4.10-alpine3.21
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
       TEST_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      REDIS_URL: redis://127.0.0.1:6379
+      TOTP_ENCRYPTION_KEY_BASE64: AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
 
     steps:
       - name: Checkout
@@ -102,3 +113,9 @@ jobs:
 
       - name: Verify Phase 5 API foundation
         run: pnpm phase5:verify
+
+      - name: Verify Phase 6 identity and authorization
+        run: pnpm phase6:verify
+
+      - name: Build API container
+        run: pnpm api:docker:build

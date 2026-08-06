@@ -2,6 +2,10 @@ import type { PrismaClient } from '../src/generated/prisma/client.js';
 
 const seedTime = new Date('2026-01-01T00:00:00.000Z');
 
+function identitySeedId(value: number): string {
+  return `018f0000-0000-7000-8000-${value.toString(16).padStart(12, '0')}`;
+}
+
 export const seedIds = {
   ownerUser: '018f0000-0000-7000-8000-000000000001',
   ownerRole: '018f0000-0000-7000-8000-000000000002',
@@ -95,8 +99,13 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
 
   const roles = [
     { id: seedIds.ownerRole, code: 'OWNER', name: 'Owner' },
+    { id: identitySeedId(0x1001), code: 'ADMIN', name: 'Administrator' },
+    { id: identitySeedId(0x1002), code: 'ORDER_MANAGER', name: 'Order manager' },
+    { id: identitySeedId(0x1003), code: 'INVENTORY_MANAGER', name: 'Inventory manager' },
+    { id: identitySeedId(0x1004), code: 'CONTENT_EDITOR', name: 'Content editor' },
+    { id: identitySeedId(0x1005), code: 'SUPPORT', name: 'Support' },
     { id: seedIds.customerRole, code: 'CUSTOMER', name: 'Customer' },
-  ];
+  ] as const;
   for (const role of roles) {
     await client.role.upsert({
       where: { id: role.id },
@@ -110,7 +119,24 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     { id: seedIds.catalogWritePermission, code: 'catalog:write' },
     { id: seedIds.inventoryReadPermission, code: 'inventory:read' },
     { id: seedIds.inventoryAdjustPermission, code: 'inventory:adjust' },
-  ];
+    { id: identitySeedId(0x1101), code: 'catalog:publish' },
+    { id: identitySeedId(0x1102), code: 'procurement:read' },
+    { id: identitySeedId(0x1103), code: 'procurement:write' },
+    { id: identitySeedId(0x1104), code: 'order:read' },
+    { id: identitySeedId(0x1105), code: 'order:write' },
+    { id: identitySeedId(0x1106), code: 'order:refund' },
+    { id: identitySeedId(0x1107), code: 'order:cancel' },
+    { id: identitySeedId(0x1108), code: 'customer:read' },
+    { id: identitySeedId(0x1109), code: 'customer:export' },
+    { id: identitySeedId(0x110a), code: 'content:read' },
+    { id: identitySeedId(0x110b), code: 'content:write' },
+    { id: identitySeedId(0x110c), code: 'content:publish' },
+    { id: identitySeedId(0x110d), code: 'review:moderate' },
+    { id: identitySeedId(0x110e), code: 'settings:read' },
+    { id: identitySeedId(0x110f), code: 'settings:write' },
+    { id: identitySeedId(0x1110), code: 'role:grant' },
+    { id: identitySeedId(0x1111), code: 'audit:read' },
+  ] as const;
   for (const permission of permissions) {
     await client.permission.upsert({
       where: { id: permission.id },
@@ -119,18 +145,59 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     });
   }
 
-  const rolePermissions = [
-    [seedIds.ownerRolePermission, seedIds.catalogReadPermission],
-    [seedIds.ownerRolePermissionWrite, seedIds.catalogWritePermission],
-    [seedIds.ownerInventoryPermission, seedIds.inventoryReadPermission],
-    [seedIds.ownerInventoryAdjustPermission, seedIds.inventoryAdjustPermission],
-  ] as const;
-  for (const [id, permissionId] of rolePermissions) {
-    await client.rolePermission.upsert({
-      where: { id },
-      create: { id, roleId: seedIds.ownerRole, permissionId },
-      update: { roleId: seedIds.ownerRole, permissionId },
-    });
+  const bundles = new Map<string, readonly string[]>([
+    ['OWNER', permissions.map((permission) => permission.code)],
+    [
+      'ADMIN',
+      permissions
+        .map((permission) => permission.code)
+        .filter((code) => code !== 'role:grant' && code !== 'settings:write'),
+    ],
+    [
+      'ORDER_MANAGER',
+      ['order:read', 'order:write', 'order:refund', 'order:cancel', 'customer:read'],
+    ],
+    [
+      'INVENTORY_MANAGER',
+      ['inventory:read', 'inventory:adjust', 'procurement:read', 'procurement:write'],
+    ],
+    [
+      'CONTENT_EDITOR',
+      [
+        'catalog:read',
+        'catalog:write',
+        'catalog:publish',
+        'content:read',
+        'content:write',
+        'content:publish',
+        'review:moderate',
+      ],
+    ],
+    ['SUPPORT', ['order:read', 'customer:read']],
+    ['CUSTOMER', []],
+  ]);
+  const permissionsByCode = new Map<string, (typeof permissions)[number]>(
+    permissions.map((permission) => [permission.code, permission]),
+  );
+  let assignmentNumber = 0x2000;
+  for (const role of roles) {
+    for (const permissionCode of bundles.get(role.code) ?? []) {
+      const permission = permissionsByCode.get(permissionCode);
+      if (permission === undefined) throw new Error(`Unknown seeded permission ${permissionCode}.`);
+      const existing = await client.rolePermission.findUnique({
+        where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
+      });
+      if (existing === null) {
+        await client.rolePermission.create({
+          data: {
+            id: identitySeedId(assignmentNumber),
+            roleId: role.id,
+            permissionId: permission.id,
+          },
+        });
+      }
+      assignmentNumber += 1;
+    }
   }
 
   await client.userRole.upsert({

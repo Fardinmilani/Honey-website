@@ -181,6 +181,22 @@ export async function analyzeWorkspace(rootDirectory) {
           continue;
         }
         if (
+          sourceId === 'api' &&
+          (specifier === 'argon2' ||
+            specifier.startsWith('argon2/') ||
+            specifier === 'otplib' ||
+            specifier.startsWith('otplib/') ||
+            specifier.startsWith('@otplib/'))
+        ) {
+          violations.push({
+            code: 'forbidden-api-identity-crypto-import',
+            file: workspaceRelative,
+            specifier,
+            message: 'apps/api delegates password and TOTP cryptography to @honey/backend',
+          });
+          continue;
+        }
+        if (
           sourceId !== 'db' &&
           (specifier === 'prisma' ||
             specifier.startsWith('prisma/') ||

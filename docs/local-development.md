@@ -2,9 +2,10 @@
 
 Phase 3 provides the infrastructure stack. Phase 4 adds the Prisma schema,
 committed migration, deterministic development seed, and disposable database
-integration harness. Phase 5 adds the NestJS/Fastify API and
-transport-independent backend platform foundation. The API is not added to the
-default Compose profile and contains no authentication or business endpoints.
+integration harness. Phase 5 adds the NestJS/Fastify API and backend platform
+foundation. Phase 6 uses PostgreSQL for opaque sessions/audit, Redis for
+authentication lockout and pre-auth challenges, and Mailpit for local identity
+mail. The API remains outside the default Compose profile and no UI exists yet.
 
 ## Prerequisites
 
@@ -186,6 +187,10 @@ configuration, request IDs and logging, RFC 9457 errors, validation, OpenAPI,
 tests, the standalone API image, graceful shutdown, PowerShell, and common
 failure modes.
 
+The identity-specific setup, cookies, customer/staff flows, Mailpit inspection,
+and deterministic test behavior are documented in
+[`identity-development.md`](identity-development.md).
+
 ## Redis verification
 
 ```sh
@@ -241,12 +246,14 @@ MinIO. They remain static in-repository application assets.
 Open the captured-message UI at <http://localhost:8025>. The readiness endpoint
 is <http://localhost:8025/readyz>.
 
-Mailpit listens for SMTP on `localhost:1025`. Application email integration does
-not exist yet; a later phase will use these values:
+Mailpit listens for SMTP on `localhost:1025`. The Phase 6 identity-only SMTP
+adapter uses these local values:
 
 ```text
 MAILPIT_SMTP_HOST=localhost
 MAILPIT_SMTP_PORT=1025
+IDENTITY_SMTP_HOST=localhost
+IDENTITY_SMTP_PORT=1025
 ```
 
 Mailpit stores captured local messages in its named volume so container restarts

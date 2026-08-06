@@ -87,17 +87,6 @@ for (const forbidden of [
     `${forbidden} must not exist in Phase 5`,
   );
 }
-for (const forbidden of [
-  'packages/backend/src/modules/identity',
-  'apps/api/src/modules/identity',
-]) {
-  await assert.rejects(
-    access(resolve(root, forbidden)),
-    undefined,
-    `${forbidden} belongs to Phase 6`,
-  );
-}
-
 const worker = await readFile(resolve(root, 'apps/worker/src/index.ts'), 'utf8');
 assert.match(worker, /Phase 2 workspace marker/u);
 const manifests = await Promise.all(
@@ -108,8 +97,8 @@ const manifests = await Promise.all(
 assert.doesNotMatch(manifests.join('\n'), /"(?:bullmq|next)"\s*:/u);
 
 const appModule = await readFile(resolve(root, 'apps/api/src/app.module.ts'), 'utf8');
-assert.match(appModule, /controllers:\s*options\.enableTestRoutes/u);
-assert.match(appModule, /\[PlatformController\]/u);
+assert.match(appModule, /AppModule\.controllers\(options\.enableTestRoutes/u);
+assert.match(appModule, /PlatformController/u);
 const apiModuleDirectories = (
   await readdir(resolve(root, 'apps/api/src/modules'), {
     withFileTypes: true,
@@ -117,7 +106,7 @@ const apiModuleDirectories = (
 )
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name);
-assert.deepEqual(apiModuleDirectories, ['platform']);
+assert.deepEqual(apiModuleDirectories.sort(), ['identity', 'platform']);
 
 const createApplication = await readFile(
   resolve(root, 'apps/api/src/bootstrap/create-application.ts'),

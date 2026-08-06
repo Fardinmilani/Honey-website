@@ -17,6 +17,7 @@ import { requestIdFromIncoming } from '../http/logging/request-id.js';
 import { registerSecurityHooks } from '../http/security/security-hooks.js';
 import type { RateLimitStore } from '../http/security/rate-limit.js';
 import { createGlobalValidationPipe } from '../http/validation/global-validation.js';
+import { assertControllerAuthorizationPolicies } from '../http/auth/route-policy-verifier.js';
 
 export type CreateApiApplicationOptions = Readonly<{
   config: ApiConfig;
@@ -31,6 +32,7 @@ export type CreateApiApplicationOptions = Readonly<{
 export async function createApiApplication(
   options: CreateApiApplicationOptions,
 ): Promise<NestFastifyApplication> {
+  assertControllerAuthorizationPolicies(AppModule.controllers(options.enableTestRoutes === true));
   const logger = options.logger ?? createApiLogger(options.config, options.loggerDestination);
   const gracefulShutdown = new GracefulShutdown(options.config.shutdownGraceMs, logger);
   const adapter = new FastifyAdapter({

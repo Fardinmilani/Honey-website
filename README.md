@@ -6,14 +6,13 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 5 provides the transport-independent backend platform library and the
-NestJS/Fastify API composition root. The production API exposes only liveness
-and PostgreSQL-backed readiness, with strict configuration, structured logging,
-RFC 9457 errors, validation, security transport foundations, deterministic
-OpenAPI 3.1 contracts, and a non-root API image. There is still no Next.js,
-BullMQ, authentication, session, catalog, checkout, UI, or other business
-implementation. The existing Hero media under `apps/web/public/media/hero/` is
-protected and must remain byte-identical.
+Phase 6 adds backend-owned registration, verification, login, password reset,
+opaque sessions, mandatory staff TOTP, roles/permissions, ownership checks,
+Redis lockout, append-only security audit, and fail-closed API authorization to
+the Phase 5 NestJS/Fastify foundation. OpenAPI contracts and the non-root API
+image include these routes. There is still no Next.js, BullMQ, identity UI,
+catalog, checkout, or later business implementation. The existing Hero media
+under `apps/web/public/media/hero/` is protected and remains byte-identical.
 
 ## Requirements
 
@@ -69,6 +68,8 @@ The default URLs are `http://127.0.0.1:4000/healthz` and
 `http://127.0.0.1:4000/readyz`. See
 [`docs/api-development.md`](docs/api-development.md) for configuration,
 OpenAPI, testing, Docker, shutdown, and troubleshooting.
+Identity flows and local Mailpit/TOTP/session behavior are documented in
+[`docs/identity-development.md`](docs/identity-development.md).
 
 ## Commands
 
@@ -85,6 +86,7 @@ OpenAPI, testing, Docker, shutdown, and troubleshooting.
 | `pnpm phase2:verify`        | Run the historical/manual Phase 2 scope verifier        |
 | `pnpm phase4:verify`        | Verify the current database-foundation structure        |
 | `pnpm phase5:verify`        | Verify the backend/API foundation scope and invariants  |
+| `pnpm phase6:verify`        | Verify identity, authorization, scope, and integrity    |
 | `pnpm api:dev`              | Start the API in TypeScript watch mode                  |
 | `pnpm api:start`            | Start the built API                                     |
 | `pnpm api:test`             | Run the focused API test suite                          |
@@ -92,7 +94,7 @@ OpenAPI, testing, Docker, shutdown, and troubleshooting.
 | `pnpm api:openapi:check`    | Fail when committed API contracts have drifted          |
 | `pnpm api:openapi:lint`     | Lint the OpenAPI 3.1 document                           |
 | `pnpm api:openapi:breaking` | Compare with an explicit base contract                  |
-| `pnpm api:docker:build`     | Build the non-root Phase 5 API image                    |
+| `pnpm api:docker:build`     | Build the non-root Phase 6 API image                    |
 | `pnpm db:validate`          | Validate the Prisma schema and configuration            |
 | `pnpm db:generate`          | Generate the typed ESM Prisma client                    |
 | `pnpm db:migrate`           | Apply committed database migrations                     |
@@ -113,7 +115,7 @@ apps/
   api/       NestJS/Fastify HTTP composition root and transport policy
   worker/    future BullMQ composition root
 packages/
-  backend/   transport-independent platform foundation; future business logic
+  backend/   platform foundation and transport-independent identity logic
   core/      framework-free primitives
   db/        Prisma schema, migrations, typed client, seed, test harness
   contracts/ committed OpenAPI 3.1 and generated transport types
