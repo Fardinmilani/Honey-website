@@ -4,19 +4,39 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
-    "lint": "eslint src --max-warnings=0",
+    "dev": "next dev --port 3000",
+    "build": "next build && node scripts/prepare-standalone.mjs",
+    "start": "node .next/standalone/apps/web/server.js",
+    "lint": "eslint src e2e scripts --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "pnpm build:deps && vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "stylelint": "stylelint \"src/**/*.{css,module.css}\" \"../../packages/ui/src/**/*.css\" --max-warnings=0",
+    "validate:hardcoded-copy": "node scripts/validate-hardcoded-copy.mjs",
+    "build:deps": "pnpm --filter @honey/i18n... --filter @honey/ui... --filter @honey/contracts... --filter @honey/core... --filter @honey/utils... run build"
   },
   "dependencies": {
-    "@honey/ui": "workspace:*",
-    "@honey/i18n": "workspace:*",
     "@honey/contracts": "workspace:*",
     "@honey/core": "workspace:*",
-    "@honey/utils": "workspace:*"
+    "@honey/i18n": "workspace:*",
+    "@honey/ui": "workspace:*",
+    "@honey/utils": "workspace:*",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
-    "@honey/config-ts": "workspace:*"
+    "@axe-core/playwright": "4.12.1",
+    "@honey/config-ts": "workspace:*",
+    "@playwright/test": "1.62.1",
+    "@types/node": "22.17.0",
+    "@types/react": "19.2.8",
+    "@types/react-dom": "19.2.3",
+    "stylelint": "17.14.1",
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
   }
 }

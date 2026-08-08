@@ -5,6 +5,10 @@ identity, Phase 7 staff media, cookie authentication, safe DTOs, and RFC 9457
 problems. Phase 8 adds localized public catalog and permission-scoped admin
 catalog contracts.
 
+`apps/web` consumes the generated TypeScript types (`src/generated/api.ts`)
+through its **server-only** API client (`INTERNAL_API_URL`). The browser never
+imports this package for live HTTP; opaque session cookies stay server-side.
+
 - `openapi.json` is the generated OpenAPI 3.1 source of truth.
 - `src/generated/api.ts` is generated from that document; do not edit it.
 - `src/problem-details.ts` contains the shared transport type.

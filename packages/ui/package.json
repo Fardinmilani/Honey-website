@@ -3,26 +3,35 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
+    "build": "tsc -p tsconfig.json --noEmit false --outDir dist && node ./scripts/copy-css.mjs",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "node --test test/**/*.test.mjs"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./styles.css": "./dist/styles.css",
+    "./tokens.css": "./dist/tokens.css"
   },
   "files": [
     "dist"
   ],
-  "dependencies": {
-    "@honey/core": "workspace:*",
-    "@honey/utils": "workspace:*"
+  "peerDependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@honey/config-ts": "workspace:*"
+    "@honey/config-ts": "workspace:*",
+    "@types/react": "19.2.8",
+    "@types/react-dom": "19.2.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   }
 }

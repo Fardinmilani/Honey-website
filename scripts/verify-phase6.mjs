@@ -69,7 +69,16 @@ assert.doesNotMatch(
   manifestText,
   /"(?:jsonwebtoken|jose|passport-jwt|next-auth|oauth|openid-client)"\s*:/iu,
 );
-assert.doesNotMatch(manifestText, /"next"\s*:/u);
+const nonWebManifestText = (
+  await Promise.all(
+    [resolve(root, 'package.json'), ...(await files('apps')), ...(await files('packages'))]
+      .filter((path) => path.endsWith('package.json'))
+      .filter((path) => !path.includes('node_modules'))
+      .filter((path) => !relative(root, path).replaceAll('\\', '/').startsWith('apps/web/'))
+      .map((path) => readFile(path, 'utf8')),
+  )
+).join('\n');
+assert.doesNotMatch(nonWebManifestText, /"next"\s*:/u);
 
 const identitySources = await Promise.all(
   [

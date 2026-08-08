@@ -1,0 +1,292 @@
+/**
+ * @honey/ui primitive class names
+ *
+ * Semantic classes (not CSS Modules) so apps/web can import
+ * `@honey/ui/styles.css` once and consume React components from the package.
+ * Logical properties only — no physical left/right.
+ */
+
+/* —— Container —— */
+.ui-container {
+  box-sizing: border-box;
+  inline-size: 100%;
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+.ui-container--sm {
+  max-inline-size: var(--container-sm);
+}
+
+.ui-container--md {
+  max-inline-size: var(--container-md);
+}
+
+.ui-container--lg {
+  max-inline-size: var(--container-lg);
+}
+
+.ui-container--full {
+  max-inline-size: none;
+}
+
+/* —— Stack (vertical) —— */
+.ui-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-inline-size: 0;
+}
+
+.ui-stack--gap-none {
+  gap: var(--space-0);
+}
+
+.ui-stack--gap-xs {
+  gap: var(--space-1);
+}
+
+.ui-stack--gap-sm {
+  gap: var(--space-2);
+}
+
+.ui-stack--gap-md {
+  gap: var(--space-4);
+}
+
+.ui-stack--gap-lg {
+  gap: var(--space-6);
+}
+
+.ui-stack--gap-xl {
+  gap: var(--space-8);
+}
+
+.ui-stack--align-start {
+  align-items: flex-start;
+}
+
+.ui-stack--align-center {
+  align-items: center;
+}
+
+.ui-stack--align-end {
+  align-items: flex-end;
+}
+
+.ui-stack--align-stretch {
+  align-items: stretch;
+}
+
+/* —— Inline (horizontal) —— */
+.ui-inline {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.ui-inline--nowrap {
+  flex-wrap: nowrap;
+}
+
+.ui-inline--gap-none {
+  gap: var(--space-0);
+}
+
+.ui-inline--gap-xs {
+  gap: var(--space-1);
+}
+
+.ui-inline--gap-sm {
+  gap: var(--space-2);
+}
+
+.ui-inline--gap-md {
+  gap: var(--space-4);
+}
+
+.ui-inline--gap-lg {
+  gap: var(--space-6);
+}
+
+.ui-inline--gap-xl {
+  gap: var(--space-8);
+}
+
+.ui-inline--align-start {
+  align-items: flex-start;
+}
+
+.ui-inline--align-center {
+  align-items: center;
+}
+
+.ui-inline--align-end {
+  align-items: flex-end;
+}
+
+.ui-inline--align-baseline {
+  align-items: baseline;
+}
+
+.ui-inline--align-stretch {
+  align-items: stretch;
+}
+
+.ui-inline--justify-start {
+  justify-content: flex-start;
+}
+
+.ui-inline--justify-center {
+  justify-content: center;
+}
+
+.ui-inline--justify-end {
+  justify-content: flex-end;
+}
+
+.ui-inline--justify-between {
+  justify-content: space-between;
+}
+
+/* —— Button —— */
+.ui-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0;
+  border-style: solid;
+  border-width: var(--border-width);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+.ui-button:disabled,
+.ui-button[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ui-button:focus {
+  outline: none;
+}
+
+.ui-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.ui-button--sm {
+  min-block-size: 2rem;
+  padding-block: var(--space-1);
+  padding-inline: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.ui-button--md {
+  min-block-size: 2.5rem;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4);
+  font-size: var(--text-md);
+}
+
+.ui-button--lg {
+  min-block-size: 3rem;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-5);
+  font-size: var(--text-lg);
+}
+
+.ui-button--primary {
+  border-color: var(--color-amber-strong);
+  background-color: var(--color-amber);
+  color: #fffbf5;
+}
+
+.ui-button--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--color-amber-strong);
+  background-color: var(--color-amber-strong);
+}
+
+.ui-button--secondary {
+  border-color: var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.ui-button--secondary:hover:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--color-gold);
+  background-color: var(--color-bg);
+}
+
+.ui-button--ghost {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--color-ink);
+}
+
+.ui-button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  background-color: rgb(28 25 23 / 0.05);
+}
+
+/* —— Link —— */
+.ui-link {
+  color: var(--color-amber);
+  font-family: var(--font-body);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.ui-link:hover {
+  color: var(--color-amber-strong);
+}
+
+.ui-link:focus {
+  outline: none;
+}
+
+.ui-link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.ui-link--muted {
+  color: var(--color-ink-muted);
+  text-decoration-line: none;
+}
+
+.ui-link--muted:hover {
+  color: var(--color-ink);
+  text-decoration-line: underline;
+}
+
+/* —— Visually hidden —— */
+.ui-visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

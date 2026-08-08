@@ -146,12 +146,10 @@ const manifests = await Promise.all(
   [resolve(root, 'package.json'), ...(await files('apps')), ...(await files('packages'))]
     .filter((path) => path.endsWith('package.json'))
     .filter((path) => !path.includes('node_modules'))
+    .filter((path) => !relative(root, path).replaceAll('\\', '/').startsWith('apps/web/'))
     .map((path) => readFile(path, 'utf8')),
 );
-assert.doesNotMatch(
-  manifests.join('\n'),
-  /"(?:bullmq|ffmpeg|fluent-ffmpeg|cloudinary|next)"\s*:/iu,
-);
+assert.doesNotMatch(manifests.join('\n'), /"(?:bullmq|ffmpeg|fluent-ffmpeg|cloudinary)"\s*:/iu);
 
 for (const [path, expected] of [
   [

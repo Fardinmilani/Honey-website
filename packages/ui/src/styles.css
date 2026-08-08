@@ -1,0 +1,71 @@
+/**
+ * @honey/ui entry stylesheet
+ *
+ * Import once in the app root layout:
+ *   import '@honey/ui/styles.css';
+ */
+
+@import './tokens.css';
+@import './primitives.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color: var(--color-ink);
+  background-color: var(--color-bg);
+  font-family: var(--font-body);
+  font-size: 100%;
+  line-height: var(--leading-normal);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-block-size: 100%;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-block: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+  color: var(--color-ink);
+}
+
+p {
+  margin-block: 0;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-inline-size: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}

@@ -76,11 +76,7 @@ assert.ok(
   `unexpected @honey/db consumers: ${dbConsumers.join(', ')}`,
 );
 
-for (const forbidden of [
-  'docker/worker.Dockerfile',
-  'docker/web.Dockerfile',
-  'docker-compose.prod.yml',
-]) {
+for (const forbidden of ['docker/worker.Dockerfile', 'docker-compose.prod.yml']) {
   await assert.rejects(
     access(resolve(root, forbidden)),
     undefined,
@@ -92,9 +88,10 @@ assert.match(worker, /Phase 2 workspace marker/u);
 const manifests = await Promise.all(
   (await files('apps'))
     .filter((path) => path.endsWith('package.json'))
+    .filter((path) => !relative(root, path).replaceAll('\\', '/').startsWith('apps/web/'))
     .map((path) => readFile(path, 'utf8')),
 );
-assert.doesNotMatch(manifests.join('\n'), /"(?:bullmq|next)"\s*:/u);
+assert.doesNotMatch(manifests.join('\n'), /"bullmq"\s*:/u);
 
 const appModule = await readFile(resolve(root, 'apps/api/src/app.module.ts'), 'utf8');
 assert.match(appModule, /AppModule\.controllers\(options\.enableTestRoutes/u);

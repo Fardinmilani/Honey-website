@@ -16,7 +16,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    'timeout-minutes': 45,
     services:
       postgres:
         image: postgres:16.14-alpine3.23
@@ -180,6 +180,35 @@ jobs:
       - name: Verify Phase 8 catalog and content
         run: pnpm phase8:verify
 
+      - name: Validate i18n message catalogs
+        run: pnpm i18n:validate
+
+      - name: Stylelint logical CSS
+        run: pnpm stylelint
+
+      - name: Validate hardcoded storefront UI copy
+        run: pnpm --filter @honey/web validate:hardcoded-copy
+
+      - name: Install Playwright browser
+        run: pnpm --filter @honey/web exec playwright install --with-deps chromium
+
+      - name: Build web for Playwright
+        run: pnpm --filter @honey/web build
+        env:
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+          PUBLIC_SITE_URL: http://127.0.0.1:3000
+          INTERNAL_API_URL: http://127.0.0.1:4000
+
+      - name: Run Playwright, axe, reduced-motion, and visual gates
+        run: pnpm test:e2e
+        env:
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+          PUBLIC_SITE_URL: http://127.0.0.1:3000
+          INTERNAL_API_URL: http://127.0.0.1:4000
+
+      - name: Verify Phase 9 web foundation
+        run: pnpm phase9:verify
+
       - name: Prove Hero media never entered object storage
         run: |
           for bucket in honey-media-ci honey-private-ci; do
@@ -191,3 +220,6 @@ jobs:
 
       - name: Build API container
         run: pnpm api:docker:build
+
+      - name: Build web container
+        run: pnpm web:docker:build

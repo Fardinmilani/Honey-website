@@ -6,11 +6,13 @@ integration harness. Phase 5 adds the NestJS/Fastify API and backend platform
 foundation. Phase 6 uses PostgreSQL for opaque sessions/audit, Redis for
 authentication lockout and pre-auth challenges, and Mailpit for local identity
 mail. Phase 7 uses Redis for owner-bound upload intents and MinIO for private
-quarantine, verified public media, and signed private retrieval. The API remains
-outside the default Compose profile and no UI exists yet. Phase 8 uses the same
-Redis service for short-lived, locale-scoped catalog response caching; reads
-fall back to PostgreSQL when Redis is unavailable and mutations still require
-successful persistence before invalidation is attempted.
+quarantine, verified public media, and signed private retrieval. Phase 8 uses
+the same Redis service for short-lived, locale-scoped catalog response caching;
+reads fall back to PostgreSQL when Redis is unavailable and mutations still
+require successful persistence before invalidation is attempted. Phase 9 adds
+the Next.js web app (`pnpm web:dev` on port 3000); the Compose stack still runs
+infrastructure only — the web and API processes are started from the host (or
+built as standalone images on demand).
 
 ## Prerequisites
 
@@ -102,6 +104,9 @@ All published ports bind to `127.0.0.1` and can be overridden in `.env`.
 | MinIO console | 9001 | 9001 | `MINIO_CONSOLE_PORT` | browser administration |
 | Mailpit SMTP | 1025 | 1025 | `MAILPIT_SMTP_PORT` | local SMTP catcher |
 | Mailpit UI | 8025 | 8025 | `MAILPIT_UI_PORT` | captured-message UI |
+
+Next.js (`pnpm web:dev`) and the API (`pnpm api:dev`) bind on the host —
+defaults `WEB_PORT=3000` and `API_PORT=4000` — and are not Compose services.
 
 The containers use the explicitly named internal bridge network
 `honey-local-internal`. Persistent data lives in the named volumes
@@ -199,6 +204,32 @@ and deterministic test behavior are documented in
 [`identity-development.md`](identity-development.md).
 Media endpoint addressing, direct uploads, limits, and focused tests are in
 [`media-development.md`](media-development.md).
+
+## Web development
+
+Phase 9 runs Next.js on the host (default port `WEB_PORT=3000`). Copy
+`.env.example` to `.env` so web-oriented variables are present:
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL` | Public site origin for metadata |
+| `INTERNAL_API_URL` | Server-only API base (never `NEXT_PUBLIC_*`) |
+| `WEB_API_TIMEOUT_MS` | Upstream fetch timeout (default `5000`) |
+| `WEB_PORT` | Local Next listen port |
+| `SESSION_COOKIE_NAME` / `CSRF_*` | Cookie names aligned with the API |
+
+```sh
+pnpm web:dev
+pnpm i18n:validate
+pnpm stylelint
+pnpm test:e2e
+pnpm phase9:verify
+pnpm web:docker:build
+```
+
+Storefront: `http://localhost:3000/fa` and `http://localhost:3000/en`. Visiting
+`/` issues a 307 to the negotiated locale. The focused runbook is
+[`web-development.md`](web-development.md).
 
 ## Redis verification
 

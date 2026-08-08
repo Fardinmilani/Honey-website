@@ -147,21 +147,19 @@ const manifests = await Promise.all(
   [resolve(root, 'package.json'), ...(await files('apps')), ...(await files('packages'))]
     .filter((path) => path.endsWith('package.json'))
     .filter((path) => !path.includes('node_modules'))
+    .filter((path) => !relative(root, path).replaceAll('\\', '/').startsWith('apps/web/'))
     .map((path) => readFile(path, 'utf8')),
 );
 assert.doesNotMatch(
   manifests.join('\n'),
-  /"(?:next|bullmq|@elastic\/elasticsearch|meilisearch|algoliasearch)"\s*:/iu,
+  /"(?:bullmq|@elastic\/elasticsearch|meilisearch|algoliasearch)"\s*:/iu,
 );
 
-const web = await readFile(resolve(root, 'apps/web/src/index.ts'), 'utf8');
 const worker = await readFile(resolve(root, 'apps/worker/src/index.ts'), 'utf8');
-assert.match(web, /Phase 2 workspace marker/u);
 assert.match(worker, /Phase 2 workspace marker/u);
 for (const path of [
   'packages/backend/src/modules/pricing',
   'packages/backend/src/modules/inventory',
-  'apps/web/src/app',
 ]) {
   await assert.rejects(access(resolve(root, path)));
 }

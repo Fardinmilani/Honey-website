@@ -6,13 +6,16 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 8 adds the transport-independent catalog module, localized public catalog
-and search APIs, staff authoring/publication routes, materialized category paths,
-slug history, PostgreSQL Persian normalization, cursor pagination, and Redis
-tagged caching. Pricing, inventory, Next.js, storefront/admin UI, and workers are
-still absent. Phase 7 media is consumed only through its public application
-service. The existing Hero media under `apps/web/public/media/hero/` remains
-protected, byte-identical, and outside object storage.
+Phase 9 delivers the Next.js App Router foundation: bilingual locale routing,
+RTL/LTR shell, `@honey/i18n` and `@honey/ui`, Hero integration with protected
+assets, a server-only API client with an explicit BFF probe, Playwright/axe,
+and a standalone web Docker image. Catalog listing/PDP pages, cart, checkout,
+and admin screens are **not** implemented (Phase 10+). Phase 8 catalog APIs
+remain the source of product data when the storefront catalog phase begins.
+The existing Hero media under `apps/web/public/media/hero/` remains protected,
+byte-identical, and outside object storage.
+
+See [`docs/web-development.md`](docs/web-development.md).
 
 ## Requirements
 
@@ -75,6 +78,19 @@ tests are documented in [`docs/media-development.md`](docs/media-development.md)
 Catalog routes, publication, locales, redirects, search, cursors, caching, and
 tests are documented in [`docs/catalog-development.md`](docs/catalog-development.md).
 
+## Web foundation
+
+With `.env` copied from `.env.example` (web vars documented there):
+
+```sh
+pnpm web:dev
+```
+
+Default storefront URLs are `http://localhost:3000/fa` and
+`http://localhost:3000/en` (`/` redirects with 307). See
+[`docs/web-development.md`](docs/web-development.md) for locale middleware, Hero,
+BFF, security headers, Playwright, and the web image.
+
 ## Commands
 
 | Command                     | Purpose                                                 |
@@ -93,6 +109,12 @@ tests are documented in [`docs/catalog-development.md`](docs/catalog-development
 | `pnpm phase6:verify`        | Verify identity, authorization, scope, and integrity    |
 | `pnpm phase7:verify`        | Verify media/storage scope, boundaries, and integrity   |
 | `pnpm phase8:verify`        | Verify catalog scope, search, cache, and integrity      |
+| `pnpm phase9:verify`        | Verify web foundation scope, Hero integrity, and gates  |
+| `pnpm web:dev`              | Start the Next.js storefront on port 3000               |
+| `pnpm web:docker:build`     | Build the non-root Phase 9 web image                    |
+| `pnpm i18n:validate`        | Validate en/fa message catalog parity                   |
+| `pnpm stylelint`            | Enforce logical CSS (no physical left/right)            |
+| `pnpm test:e2e`             | Run Playwright a11y, Hero motion, and visual specs      |
 | `pnpm api:dev`              | Start the API in TypeScript watch mode                  |
 | `pnpm api:start`            | Start the built API                                     |
 | `pnpm api:test`             | Run the focused API test suite                          |
@@ -117,7 +139,7 @@ tests are documented in [`docs/catalog-development.md`](docs/catalog-development
 
 ```text
 apps/
-  web/       future Next.js composition root
+  web/       Next.js App Router — storefront + admin shell (Phase 9)
   api/       NestJS/Fastify HTTP composition root and transport policy
   worker/    future BullMQ composition root
 packages/
@@ -125,8 +147,8 @@ packages/
   core/      framework-free primitives
   db/        Prisma schema, migrations, typed client, seed, test harness
   contracts/ committed OpenAPI 3.1 and generated transport types
-  i18n/      locale configuration and formatting
-  ui/        future design-system package
+  i18n/      locale configuration, catalogs, formatters
+  ui/        design tokens and primitives
   config-ts/ shared strict TypeScript bases
   config-eslint/ shared ESLint flat configuration
   utils/     dependency-free helpers

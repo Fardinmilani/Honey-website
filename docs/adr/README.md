@@ -45,6 +45,8 @@ that costs, and what was rejected.
 | [0023](0023-self-hosted-vps-deployment.md) | Initial deployment: self-hosted Linux VPS + Docker Compose | Accepted |
 | [0024](0024-media-upload-processing.md) | Quarantined direct uploads with bounded media processing | Accepted |
 | [0025](0025-catalog-hierarchy-search-cache.md) | Materialized catalog hierarchy, normalized PostgreSQL search, and tagged Redis cache | Accepted |
+| [0026](0026-ui-tokens-semantic-classes.md) | Token CSS + semantic `.ui-*` classes for `@honey/ui` (no Tailwind) | Accepted |
+| [0027](0027-web-bff-and-i18n-runtime.md) | Custom `@honey/i18n` runtime, server-only API client, explicit BFF; no GSAP in Phase 9 | Accepted |
 
 ### Supersession chain
 

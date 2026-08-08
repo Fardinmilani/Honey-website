@@ -12,13 +12,18 @@
     "S3_SECRET_KEY",
     "S3_PUBLIC_BUCKET",
     "S3_PRIVATE_BUCKET",
-    "PUBLIC_MEDIA_BASE_URL"
+    "PUBLIC_MEDIA_BASE_URL",
+    "NEXT_PUBLIC_SITE_URL",
+    "PUBLIC_SITE_URL",
+    "INTERNAL_API_URL",
+    "WEB_API_TIMEOUT_MS",
+    "NEXT_PHASE"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "../../packages/config-ts/*.json"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", ".next/**"]
     },
     "lint": {
       "dependsOn": ["^lint"],

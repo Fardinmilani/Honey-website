@@ -267,31 +267,43 @@ Rules:
 
 ### 6.3 `apps/web` — presentation and BFF
 
+Phase 9 shape (as implemented). Catalog/feature folders arrive in later phases.
+
 ```
 apps/web/src/
-├── app/[locale]/(storefront)/…    public routes
-├── app/[locale]/(admin)/admin/…   staff routes — UX gating only
-├── app/api/…                      BFF handlers (session cookie, revalidation hook)
-├── features/<feature>/            feature-scoped components, hooks, server actions
-├── lib/api-client/                generated from OpenAPI — the only way to call the API
-├── lib/session/                   cookie read/write, server-side only
-└── lib/seo/                       metadata, hreflang, JSON-LD builders
+├── app/[locale]/(storefront)/…    public routes (home only in Phase 9)
+├── app/[locale]/(admin)/admin/…   staff shell — UX gating only; no admin pages yet
+├── app/api/bff/…                  explicit allow-listed BFF handlers (not a proxy)
+├── components/                    hero, language switcher, shell (Phase 9)
+├── lib/api-client/                server-only client typed from @honey/contracts
+├── lib/session.ts                 opaque cookie read, server-side only
+├── lib/session-forward.ts         Cookie / CSRF forwarding helpers
+├── lib/env.ts                     validated web env (server-only)
+└── middleware.ts                  locale negotiate, cookie align, 307 from /
 ```
+
+Later phases may add `features/<feature>/` and `lib/seo/` without changing these
+rules.
 
 Rules:
 
-- A `features/*` module may import from `packages/ui`, `packages/i18n`,
-  `lib/api-client`, and its own directory. It may not import another feature's
-  internals; shared pieces move up into `packages/ui` or `lib/`.
+- Feature modules (when added) may import from `packages/ui`, `packages/i18n`,
+  `lib/api-client`, and their own directory. They may not import another
+  feature's internals; shared pieces move up into `packages/ui` or `lib/`.
 - Only `lib/api-client` performs HTTP to the API. No `fetch` to the API elsewhere.
-- Only server code touches `lib/session`. A `'use client'` file importing it is a
-  lint error.
-- `packages/ui` contains **no copy strings** — text arrives as props or via the
-  i18n hook, so a component is never coupled to a language.
-- The `(admin)` group's layout applies stricter cache headers and session policy,
-  but the real gate is the API's permission check on every call.
+  Paths are allow-listed (`/readyz`, `/livez`, `/v1/…`). Absolute upstream URLs
+  are rejected. There is no generic `/api/proxy`.
+- Only server code touches `lib/session` / `lib/env` / `lib/api-client`
+  (`server-only`). A `'use client'` file importing them is a lint error.
+- Opaque session cookie values are never passed into Client Components or
+  `NEXT_PUBLIC_*`.
+- `packages/ui` contains **no copy strings** — text arrives as props or via
+  `createTranslator` from `@honey/i18n`.
+- The `(admin)` group's layout applies noindex and structural shell only in
+  Phase 9; the real gate remains the API's permission check on every call.
 - **Never** imports `packages/backend` or `packages/db`. Business logic is reached
   over HTTP or not at all, including from Server Components and server actions.
+- Hero assets under `public/media/hero/` are immutable static files (ADR-0019).
 
 ---
 

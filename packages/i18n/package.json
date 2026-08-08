@@ -5,14 +5,19 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
-    "lint": "eslint src --max-warnings=0",
+    "lint": "eslint src test --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "pnpm build && node --test",
+    "validate:messages": "pnpm build && node scripts/validate-messages.mjs"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./messages/*": {
+      "types": "./dist/messages/*.d.ts",
+      "default": "./dist/messages/*.js"
     }
   },
   "files": [

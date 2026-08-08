@@ -41,6 +41,9 @@ const ignores = [
   '**/dist/**',
   '**/.turbo/**',
   '**/coverage/**',
+  '**/.next/**',
+  '**/playwright-report/**',
+  '**/test-results/**',
   'packages/db/src/generated/prisma/**',
   'apps/web/public/media/**',
   'pnpm-lock.yaml',
@@ -96,10 +99,27 @@ export function createHoneyEslintConfig() {
     {
       files: ['apps/web/src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
       rules: {
-        'no-restricted-imports': restriction(
-          ['backend', 'db', 'prisma', 'apps', 'configs'],
-          'apps/web may import only @honey/ui, @honey/i18n, @honey/contracts, @honey/core, and @honey/utils.',
-        ),
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: [
+                  ...workspaceGroups.backend,
+                  ...workspaceGroups.db,
+                  ...workspaceGroups.prisma,
+                  ...workspaceGroups.apps,
+                  ...workspaceGroups.configs,
+                  ...workspaceGroups.dbDrivers,
+                  ...workspaceGroups.cacheProviders,
+                  ...workspaceGroups.storageProcessing,
+                ],
+                message:
+                  'apps/web may import only @honey/ui, @honey/i18n, @honey/contracts, @honey/core, and @honey/utils — never backend, db, Prisma, Redis, S3, or Sharp.',
+              },
+            ],
+          },
+        ],
       },
     },
     {

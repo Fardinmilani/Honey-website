@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 9 — Web Foundation (**not started**)
-**Completed phase:** Phase 8 — Catalog & Content Model (**complete 2026-08-06**)
+**Current phase:** Phase 10 — Storefront Catalog & SEO (**CURRENT but NOT STARTED**)
+**Completed phase:** Phase 9 — Web Foundation (**complete 2026-08-08**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -70,8 +70,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 6 | Identity & Authorization | **Complete 2026-08-06** — users, opaque sessions, RBAC, staff TOTP, audit log |
 | 7 | Media & Storage | **Complete 2026-08-06** — S3 abstraction, MinIO adapter, quarantined direct-upload pipeline |
 | 8 | Catalog & Content Model | **Complete 2026-08-06** — catalog domain/API, publication, search, cursors, Redis cache |
-| 9 | Web Foundation | **Not started (current)** — App Router shell, i18n routing, RTL/LTR, design system, **Hero integration** |
-| 10 | Storefront Catalog | Listing, filtering, PDP, SEO, structured data, sitemaps |
+| 9 | Web Foundation | **Complete 2026-08-08** — App Router shell, `@honey/i18n` + `@honey/ui`, Hero, Playwright/axe, web image |
+| 10 | Storefront Catalog | **CURRENT but NOT STARTED** — listing, filtering, PDP, SEO, structured data, sitemaps |
 | 11 | Sourcing, Procurement & Inventory | Suppliers, purchase orders, batches, stock ledger |
 | 12 | Cart & Pricing | Server-authoritative cart and price engine |
 | 13 | Checkout & Orders | Reservations, checkout transaction, immutable order snapshots |
@@ -145,7 +145,7 @@ These block or shape later phases and need a human decision. Tracked in
 7. **Reviews** — are customer reviews in scope for launch? *Shapes Phase 18.*
 8. **Production domain** — the domain name, and whether the canonical host is the
    apex or `www`. *Shapes Phase 10.*
-9. **Brand fonts** — licensed Persian and Latin webfonts. *Shapes Phase 9.*
+9. **Brand fonts** — licensed Persian and Latin webfonts. *Opened in Phase 9 with system fallbacks; CSS-variable replacement later. Still shapes storefront polish.*
 
 **Resolved:** ~~Hosting target~~ — decided on 2026-08-05 as a self-hosted Linux
 VPS running Docker Compose behind a reverse proxy with TLS, provider-neutral and

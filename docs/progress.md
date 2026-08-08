@@ -18,8 +18,8 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 6 | Identity & Authorization | Complete | 2026-08-06 |
 | 7 | Media & Storage | Complete | 2026-08-06 |
 | 8 | Catalog & Content Model | Complete | 2026-08-06 |
-| 9 | Web Foundation | â¬œ Not started | â€” |
-| 10 | Storefront Catalog & SEO | â¬œ Not started | â€” |
+| 9 | Web Foundation | ✅ Complete | 2026-08-08 |
+| 10 | Storefront Catalog & SEO | ❌ Not started (CURRENT) | — |
 | 11 | Sourcing, Procurement & Inventory | â¬œ Not started | â€” |
 | 12 | Cart & Pricing | â¬œ Not started | â€” |
 | 13 | Checkout, Reservations & Orders | â¬œ Not started | â€” |
@@ -31,8 +31,194 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 9 — Web Foundation (**not started**).
-**Previous phase:** Phase 8 — Catalog & Content Model (**complete 2026-08-06**).
+**Current phase:** Phase 10 — Storefront Catalog & SEO (**CURRENT but NOT STARTED**).
+**Previous phase:** Phase 9 — Web Foundation (**complete 2026-08-08**).
+
+---
+
+## Phase 9 — Web Foundation
+
+**Completed:** 2026-08-08 · **Status:** Complete
+
+Next.js App Router shell for storefront and admin route groups, custom
+`@honey/i18n` and `@honey/ui`, Hero integration with protected assets, language
+switcher, server-only API client with an explicit BFF readiness probe, opaque
+session cookie forwarding, security headers (HSTS only when the public site
+origin is HTTPS), Playwright /
+axe / visual coverage, and a standalone web Docker image. Catalog pages, cart,
+checkout, and admin screens remain absent (later phases). Phase 10 is **not**
+implemented.
+
+### Dependencies (exact versions)
+
+| Package | Version | Notes |
+|---|---|---|
+| `next` | `16.3.0` | App Router, standalone output |
+| `react` / `react-dom` | `19.2.8` | Also `@honey/ui` peers |
+| `@playwright/test` | `1.62.1` | E2E |
+| `@axe-core/playwright` | `4.12.1` | Accessibility scans |
+| `stylelint` | `17.14.1` | Logical CSS gate |
+| `stylelint-config-standard` | `40.0.0` | Stylelint base |
+| `server-only` | `0.0.1` | API client / env / session modules |
+| `vitest` | `4.1.10` | Web unit tests |
+
+**GSAP was intentionally not added.** Hero motion uses native CSS and Web APIs
+per [ADR-0019](adr/0019-hero-media-preservation.md) and
+[ADR-0027](adr/0027-web-bff-and-i18n-runtime.md).
+
+**Font limitation:** system fallback stacks only via CSS variables. No
+self-hosted brand fonts and no remote webfont CDN. Licensed faces remain open
+question #10 / PLANS open question #9.
+
+**Earlier verifier updates:** `scripts/verify-phase5.mjs` through
+`scripts/verify-phase8.mjs` exclude `apps/web/` from “no Next.js yet” / scope
+scans so Phase 9 web sources do not fail historical phase verifiers.
+
+### Files created
+
+- `docs/web-development.md`
+- `docs/adr/0026-ui-tokens-semantic-classes.md`
+- `docs/adr/0027-web-bff-and-i18n-runtime.md`
+- `docker/web.Dockerfile`
+- `apps/web/next.config.ts`
+- `apps/web/playwright.config.ts`
+- `apps/web/stylelint.config.mjs`
+- `apps/web/vitest.config.ts`
+- `apps/web/scripts/validate-hardcoded-copy.mjs`
+- `apps/web/e2e/hero-motion.spec.ts`
+- `apps/web/e2e/locale-a11y.spec.ts`
+- `apps/web/e2e/visual.spec.ts`
+- `apps/web/src/middleware.ts`
+- `apps/web/src/styles/global.css`
+- `apps/web/src/lib/env.ts`
+- `apps/web/src/lib/env.test.ts`
+- `apps/web/src/lib/session.ts`
+- `apps/web/src/lib/session-forward.ts`
+- `apps/web/src/lib/api-client/index.ts`
+- `apps/web/src/lib/api-client/server.ts`
+- `apps/web/src/app/layout.tsx`
+- `apps/web/src/app/page.tsx`
+- `apps/web/src/app/_unsupported-locale/page.tsx`
+- `apps/web/src/app/api/bff/readyz/route.ts`
+- `apps/web/src/app/[locale]/layout.tsx`
+- `apps/web/src/app/[locale]/(storefront)/layout.tsx`
+- `apps/web/src/app/[locale]/(storefront)/page.tsx`
+- `apps/web/src/app/[locale]/(admin)/layout.tsx`
+- `apps/web/src/app/[locale]/(admin)/admin/layout.tsx`
+- `apps/web/src/components/hero/hero-assets.ts`
+- `apps/web/src/components/hero/hero-motion-media.tsx`
+- `apps/web/src/components/hero/hero.tsx`
+- `apps/web/src/components/language-switcher/language-switcher.tsx`
+- `apps/web/src/components/shell/site-footer.tsx`
+- `apps/web/src/components/shell/site-header.tsx`
+- `apps/web/src/components/shell/skip-to-content.tsx`
+- `packages/i18n/README.md`
+- `packages/i18n/scripts/validate-messages.mjs`
+- `packages/i18n/src/config.ts`
+- `packages/i18n/src/format.ts`
+- `packages/i18n/src/negotiate.ts`
+- `packages/i18n/src/pathnames.ts`
+- `packages/i18n/src/translate.ts`
+- `packages/i18n/src/messages/types.ts`
+- `packages/i18n/src/messages/index.ts`
+- `packages/i18n/src/messages/validate.ts`
+- `packages/i18n/src/messages/en/{common,navigation,home,accessibility,errors,index}.ts`
+- `packages/i18n/src/messages/fa/{common,navigation,home,accessibility,errors,index}.ts`
+- `packages/i18n/test/{config,negotiate,pathnames,parity,format,translate}.test.mjs`
+- `packages/ui/README.md`
+- `packages/ui/scripts/copy-css.mjs`
+- `packages/ui/src/cx.ts`
+- `packages/ui/src/primitives.css`
+- `packages/ui/src/primitives/{Button,Container,Inline,Link,Stack,VisuallyHidden}.tsx`
+- `packages/ui/src/styles.css`
+- `packages/ui/src/tokens.css`
+- `packages/ui/src/types.ts`
+- `packages/ui/test/css-logical.test.mjs`
+- `packages/ui/test/exports.test.mjs`
+- `scripts/verify-phase9.mjs`
+
+### Files modified
+
+- `.env.example` — web-only vars including `WEB_API_TIMEOUT_MS=5000`
+- `.github/workflows/ci.yml` — Phase 9 / web gates as applicable
+- `PLANS.md` — Phase 9 complete; Phase 10 current but not started
+- `README.md` — Phase 9 status and commands
+- `docs/adr/README.md` — indexed ADR-0026 and ADR-0027
+- `docs/local-development.md` — web env and commands
+- `docs/module-boundaries.md` — web boundaries as implemented
+- `docs/progress.md` — this completion record
+- `package.json` — `web:dev`, `i18n:validate`, `stylelint`, `test:e2e`, `phase9:verify`, `web:docker:build`
+- `turbo.json` — web package pipeline wiring
+- `apps/web/package.json` — Next/React/Playwright/Stylelint/Vitest dependencies and scripts
+- `apps/web/tsconfig.json` — App Router TypeScript project
+- `packages/i18n/package.json` / `src/index.ts` / `tsconfig.json` — full i18n package
+- `packages/ui/package.json` / `src/index.ts` / `tsconfig.json` — tokens and primitives
+- `packages/contracts/README.md` — web consumes generated types via server API client
+- `packages/config-eslint/index.mjs` — web boundary / import restrictions as needed
+- `pnpm-lock.yaml` — Phase 9 dependency graph
+- `scripts/verify-phase5.mjs` … `verify-phase8.mjs` — allow `apps/web` for later-phase Next sources
+
+### Decisions made
+
+- [ADR-0026](adr/0026-ui-tokens-semantic-classes.md) — token CSS + semantic `.ui-*` classes; no Tailwind in `@honey/ui`.
+- [ADR-0027](adr/0027-web-bff-and-i18n-runtime.md) — custom `@honey/i18n` (not `next-intl`); server-only API client; explicit allow-listed BFF only; no GSAP in Phase 9.
+- Locale negotiation: `NEXT_LOCALE` → `Accept-Language` → default `fa`; `/` → 307 to `/{locale}`.
+- Pathname map Phase 9: home `/` only.
+- Hero: poster-first, `preload="none"`, progressive client video, reduced-motion omits `<video>` entirely.
+- Fonts: system fallbacks via CSS variables only; no claim of self-hosted brand fonts.
+
+### Unresolved decisions
+
+- Licensed Persian/Latin webfonts (open question #10 / PLANS #9) — CSS-variable swap later; does not block Phase 10 catalog work.
+- Toman vs IRR display for Persian storefront — formatter-ready; shapes Phases 12–14.
+- Phase 10 may begin only on explicit instruction; nothing for Phase 10 is scaffolded beyond the empty admin layout shell and home pathname helpers.
+
+### Risks
+
+- Simple `{name}` message interpolation is adequate for Phase 9; cart/checkout plurals will need richer support later.
+- CSP allows `'unsafe-inline'` for scripts/styles to accommodate Next defaults; tighten in a later observability/hardening phase if feasible.
+- Visual Playwright snapshots are environment-sensitive; update with `test:e2e:update` only after intentional UI change.
+- Web Docker image healthcheck hits `/fa` and assumes the standalone server is reachable on port 3000 inside the container.
+
+### Acceptance checklist
+
+- [x] App Router with `[locale]`, `(storefront)`, `(admin)` groups, middleware, and BFF probe
+- [x] `@honey/i18n` catalogs, negotiation, pathname map (home), formatters, `createTranslator`
+- [x] `@honey/ui` tokens/primitives, logical CSS, Stylelint physical-property ban
+- [x] `<html lang dir>` from `localeConfig`; language switcher
+- [x] Hero uses protected assets unmodified; poster LCP; reduced-motion loads no video
+- [x] Server-only API client + opaque session forwarding; no browser-readable tokens
+- [x] Security headers including HTTPS-conditional HSTS (no HSTS on local HTTP)
+
+### Release-readiness follow-up (2026-08-08)
+
+- HSTS gated on HTTPS public site origin (`NEXT_PUBLIC_SITE_URL` /
+  `PUBLIC_SITE_URL`), not `NODE_ENV=production` alone; covered by
+  `apps/web/src/lib/security-headers.test.ts`.
+- Full monorepo `format` / `lint` / `boundaries` / `typecheck` / `test` /
+  `build`, Phase 4–9 verifiers, Playwright (24), Docker web/API images, and
+  live MinIO Hero-key scan re-verified before commit.
+- [x] Playwright + axe + visual coverage for both locales
+- [x] Web Docker image build path documented
+- [x] No catalog/cart/checkout/admin feature pages
+- [x] Hero git status/diff empty; no commit/push by agents
+- [x] Docs updated (`web-development.md`, progress, ADRs, README, PLANS, boundaries, local-dev)
+
+### Verification results
+
+Documented commands for human/CI confirmation (agents must not invent pass marks):
+
+| Command | Expected role |
+|---|---|
+| `pnpm i18n:validate` | Catalog parity |
+| `pnpm stylelint` | Logical CSS |
+| `pnpm --filter @honey/web lint` / `typecheck` / `test` / `build` | Web quality gates |
+| `pnpm --filter @honey/i18n test` / `pnpm --filter @honey/ui test` | Package suites |
+| `pnpm test:e2e` | Playwright a11y / Hero / visuals |
+| `pnpm phase9:verify` | Structural + Hero integrity |
+| `pnpm web:docker:build` | Image build |
+| `git status --porcelain apps/web/public/media/hero` | Must be empty |
+| `git diff --stat HEAD -- apps/web/public/media/hero` | Must be empty |
 
 ---
 
@@ -1397,12 +1583,14 @@ architecture kept portable to managed services later
 Questions 1â€“7, 9, and 10 remain open and are **not** affected by this decision.
 
 **Technical decisions deliberately deferred**, with a default recorded so nothing
-is blocked: Tailwind vs. CSS Modules for `packages/ui` (Phase 9 â€” either
-satisfies the logical-properties
-requirement); search engine beyond Postgres (Phase 19, only if measurement
-demands it); CDN provider (Phase 20 â€” now an optional layer in front of the
+is blocked: search engine beyond Postgres (Phase 19, only if measurement
+demands it); CDN provider (Phase 20 — now an optional layer in front of the
 self-hosted proxy rather than a hosting decision); VPS provider and sizing
-(Phase 20 â€” deliberately interchangeable, which is the point of ADR-0023).
+(Phase 20 — deliberately interchangeable, which is the point of ADR-0023).
+
+**Resolved — Tailwind vs CSS Modules for `packages/ui` (2026-08-08).** Neither:
+token CSS + semantic `.ui-*` classes, no Tailwind
+([ADR-0026](adr/0026-ui-tokens-semantic-classes.md)).
 
 ### Notes for the next phase
 
