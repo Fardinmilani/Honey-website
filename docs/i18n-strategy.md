@@ -101,9 +101,14 @@ each language, while staying ASCII for copy-paste and analytics safety:
 
 ```ts
 export const pathnames = {
+  '/':                { fa: '/', en: '/' },
   '/products':        { fa: '/mahsoulat',  en: '/products' },
   '/products/[slug]': { fa: '/mahsoulat/[slug]', en: '/products/[slug]' },
+  '/categories':      { fa: '/dasteha', en: '/categories' },
+  '/categories/[slug]': { fa: '/dasteha/[slug]', en: '/categories/[slug]' },
   '/collections':     { fa: '/majmooeha', en: '/collections' },
+  '/collections/[slug]': { fa: '/majmooeha/[slug]', en: '/collections/[slug]' },
+  '/search':          { fa: '/jostoju', en: '/search' },
   '/cart':            { fa: '/sabad',     en: '/cart' },
   '/checkout':        { fa: '/pardakht',  en: '/checkout' },
   '/account':         { fa: '/hesab',     en: '/account' },

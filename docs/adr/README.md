@@ -47,6 +47,7 @@ that costs, and what was rejected.
 | [0025](0025-catalog-hierarchy-search-cache.md) | Materialized catalog hierarchy, normalized PostgreSQL search, and tagged Redis cache | Accepted |
 | [0026](0026-ui-tokens-semantic-classes.md) | Token CSS + semantic `.ui-*` classes for `@honey/ui` (no Tailwind) | Accepted |
 | [0027](0027-web-bff-and-i18n-runtime.md) | Custom `@honey/i18n` runtime, server-only API client, explicit BFF; no GSAP in Phase 9 | Accepted |
+| [0028](0028-cursor-pagination-seo.md) | Cursor-only catalog pagination; indexable URLs are facetless/cursorless; no `?page=n` | Accepted |
 
 ### Supersession chain
 

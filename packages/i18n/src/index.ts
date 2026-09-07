@@ -42,15 +42,19 @@ export {
 } from './negotiate.js';
 
 export {
+  filesystemPath,
   localizePathname,
   localizedHref,
   parseLocalePath,
   pathnames,
   resolveInternalPathname,
   switchLocalePath,
+  toFilesystemLocalePath,
   type InternalPathname,
   type LocalizedPathSegment,
   type ParsedLocalePath,
+  type PathParams,
+  type SwitchLocalePathOptions,
 } from './pathnames.js';
 
 export { createTranslator, interpolate, type Translator } from './translate.js';
@@ -75,11 +79,15 @@ export {
 
 export type {
   AccessibilityMessages,
+  CatalogMessages,
   CommonMessages,
   ErrorsMessages,
   HomeMessages,
   InterpolationValues,
   NavigationMessages,
+  ProductMessages,
+  SearchMessages,
+  SeoMessages,
 } from './messages/types.js';
 
 export {

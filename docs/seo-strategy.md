@@ -45,7 +45,8 @@ https://example.com/en/about
 | Persian route segments are transliterated, not Persian script | A percent-encoded UTF-8 URL is unreadable everywhere a URL appears as plain text |
 | Filters and sorting are query parameters, never path segments | Prevents an infinite crawlable path space |
 | Slugs are per-locale and stored in the translation table | `product_translation(locale, slug)` is unique |
-| Pagination is `?page=n`, self-canonical | Page 2 is a real page with real content, not a duplicate of page 1 |
+| List pagination uses opaque cursors (Phase 8 API) | See [ADR-0028](adr/0028-cursor-pagination-seo.md) — no `?page=n` |
+| Indexable listing URLs are filterless, sort-default, cursorless | `?cursor=` and facet params are `noindex,follow` |
 
 **Slug changes** write a `slug_history` row and the old URL issues a permanent
 `301` to the new one, forever. Link equity is expensive to earn and trivial to
@@ -69,7 +70,8 @@ of `hreflang` alternates:
 
 - Canonicals are absolute, on the production origin, and self-referencing.
   A cross-locale canonical would tell Google the other language does not deserve
-  indexing.
+  indexing. The origin comes from `PUBLIC_SITE_URL` / `NEXT_PUBLIC_SITE_URL`
+  (configuration-driven), never from request headers.
 - hreflang sets are **reciprocal and complete**: every locale's page lists every
   locale including itself. A one-way declaration is ignored.
 - `x-default` points at the **English** version: it serves users whose language
@@ -99,7 +101,7 @@ title.
 | `<html lang>` / `dir` | From locale config |
 | Open Graph | `og:title`, `og:description`, `og:image` (1200×630, per locale), `og:type`, `og:url` (canonical), `og:locale`, `og:locale:alternate` for every other locale |
 | Twitter | `summary_large_image` |
-| `robots` | `index,follow` by default; `noindex` on cart, checkout, account, admin, search results, and filtered facets |
+| `robots` | `index,follow` when `WEB_INDEXING_ENABLED=true` on indexable surfaces; fail-closed `noindex` otherwise; `noindex` on cart, checkout, account, admin, search results, filtered facets, and cursor pages |
 | Favicons / manifest | Per-brand, with a locale-aware `name` in the web manifest |
 
 Titles and descriptions are **authored per locale**, not translated word for word.
@@ -116,7 +118,8 @@ JSON-LD only, injected server-side, generated from typed builders in
 | Page | Types |
 |---|---|
 | All | `Organization`, `WebSite` (with `SearchAction`) |
-| Product | `Product` + `Offer` + `BreadcrumbList` |
+| Product (Phase 10) | `Product` + `BreadcrumbList` — **no `Offer`** |
+| Product (Phase 12 + 11) | `Product` + `Offer` + `BreadcrumbList` when pricing and availability exist |
 | Category / collection | `CollectionPage` + `BreadcrumbList` + `ItemList` |
 | Article | `Article` + `BreadcrumbList` |
 | FAQ page | `FAQPage` |
@@ -132,15 +135,9 @@ JSON-LD only, injected server-side, generated from typed builders in
   "brand":  { "@type": "Brand", "name": "…" },
   "category": "Honey",
   "inLanguage": "fa-IR",
-  "offers": {
-    "@type": "Offer",
-    "url": "https://example.com/fa/mahsoulat/asal-konar",
-    "priceCurrency": "IRR",
-    "price": "4850000",
-    "availability": "https://schema.org/InStock",
-    "itemCondition": "https://schema.org/NewCondition",
-    "seller": { "@type": "Organization", "name": "…" }   // us, always
-  }
+  "url": "https://example.com/fa/mahsoulat/asal-konar"
+  // Phase 10: no "offers" block. Offer is added in Phase 12 when price exists
+  // and Phase 11 when availability bands exist.
 }
 ```
 
@@ -167,15 +164,11 @@ in any structured-data output.
 
 ```
 /sitemap.xml                  index
-├── /sitemaps/static-fa.xml   home, about, contact, legal, FAQ
-├── /sitemaps/static-en.xml
-├── /sitemaps/products-fa.xml
-├── /sitemaps/products-en.xml
-├── /sitemaps/categories-fa.xml
-├── /sitemaps/categories-en.xml
-├── /sitemaps/articles-fa.xml
-└── /sitemaps/articles-en.xml
+└── /sitemaps/{locale}/{type} static, products, categories, collections
 ```
+
+Phase 10 implements the index + per-locale child sitemaps. Article sitemaps
+ship when editorial content exists in a later phase.
 
 - Each URL entry includes `<xhtml:link rel="alternate" hreflang="…">` for every
   published locale — the sitemap is the most reliable place to declare alternates
@@ -202,7 +195,7 @@ Disallow: /*/checkout
 Disallow: /*/account
 Disallow: /api/
 Disallow: /*?*sort=
-Disallow: /*?*page=
+Disallow: /*?*cursor=
 Disallow: /*?*filter=
 
 Sitemap: https://example.com/sitemap.xml
@@ -213,8 +206,11 @@ also send `X-Robots-Tag: noindex` and require authentication — robots.txt is a
 crawl-budget tool, not an access control.
 
 Staging and preview environments serve `Disallow: /` **and** `noindex`, enforced
-by an environment check and asserted by an e2e test, because an indexed staging
-site is a genuine and common disaster.
+by `WEB_INDEXING_ENABLED=false` (fail closed) and asserted by e2e tests, because
+an indexed staging site is a genuine and common disaster. Enabling production
+indexing requires `WEB_INDEXING_ENABLED=true` **and** a real HTTPS public origin;
+the final production domain and apex-vs-`www` choice is a deployment decision
+before go-live, not a Phase 10 blocker.
 
 ---
 
@@ -222,8 +218,8 @@ site is a genuine and common disaster.
 
 | Surface | Directive |
 |---|---|
-| Product, category, collection, article, static pages | `index, follow` |
-| Paginated pages (`?page=2+`) | `index, follow`, self-canonical |
+| Product, category, collection, article, static pages | `index, follow` when `WEB_INDEXING_ENABLED=true` |
+| Cursor pages (`?cursor=`) | `noindex, follow` — opaque, not canonical |
 | Filtered / sorted facets | `noindex, follow` — near-infinite combinations |
 | Internal search results | `noindex, follow` |
 | Cart, checkout, account, admin | `noindex, nofollow`, auth-required |

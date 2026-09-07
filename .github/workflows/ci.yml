@@ -205,9 +205,21 @@ jobs:
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
           PUBLIC_SITE_URL: http://127.0.0.1:3000
           INTERNAL_API_URL: http://127.0.0.1:4000
+          WEB_INDEXING_ENABLED: 'false'
+
+      - name: Run Playwright performance budget
+        run: pnpm test:e2e:performance
+        env:
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+          PUBLIC_SITE_URL: http://127.0.0.1:3000
+          INTERNAL_API_URL: http://127.0.0.1:4000
+          WEB_INDEXING_ENABLED: 'false'
 
       - name: Verify Phase 9 web foundation
         run: pnpm phase9:verify
+
+      - name: Verify Phase 10 storefront catalog and SEO
+        run: pnpm phase10:verify
 
       - name: Prove Hero media never entered object storage
         run: |

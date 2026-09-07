@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { isLocale, LOCALE_COOKIE_NAME, negotiateLocale } from '@honey/i18n';
+import {
+  isLocale,
+  LOCALE_COOKIE_NAME,
+  negotiateLocale,
+  parseLocalePath,
+  toFilesystemLocalePath,
+} from '@honey/i18n';
 
 const PUBLIC_FILE = /\.[^/]+$/u;
 
@@ -13,12 +19,36 @@ function cookieSecure(request: NextRequest): boolean {
   );
 }
 
+/**
+ * Rewrites localized public segments (e.g. /fa/mahsoulat) to App Router
+ * filesystem paths (/fa/products) while keeping the browser URL unchanged.
+ */
+function maybeRewriteLocalizedPath(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl;
+  const parsed = parseLocalePath(pathname);
+  if (parsed.locale === null) {
+    return null;
+  }
+
+  const filesystemPath = toFilesystemLocalePath(pathname);
+  if (filesystemPath === null || filesystemPath === pathname) {
+    return null;
+  }
+
+  const url = request.nextUrl.clone();
+  url.pathname = filesystemPath;
+  return NextResponse.rewrite(url);
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname.startsWith('/sitemaps/') ||
     pathname === '/unsupported-locale' ||
     pathname.startsWith('/unsupported-locale/') ||
     PUBLIC_FILE.test(pathname)
@@ -53,7 +83,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  const response = NextResponse.next();
+  const rewritten = maybeRewriteLocalizedPath(request);
+  const response = rewritten ?? NextResponse.next();
   response.cookies.set(LOCALE_COOKIE_NAME, first, {
     path: '/',
     sameSite: 'lax',

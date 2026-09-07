@@ -10,9 +10,11 @@ quarantine, verified public media, and signed private retrieval. Phase 8 uses
 the same Redis service for short-lived, locale-scoped catalog response caching;
 reads fall back to PostgreSQL when Redis is unavailable and mutations still
 require successful persistence before invalidation is attempted. Phase 9 adds
-the Next.js web app (`pnpm web:dev` on port 3000); the Compose stack still runs
-infrastructure only — the web and API processes are started from the host (or
-built as standalone images on demand).
+the Next.js web app (`pnpm web:dev` on port 3000). Phase 10 adds storefront
+catalog routes; `WEB_INDEXING_ENABLED` defaults to `false` so local and staging
+builds stay noindex. The Compose stack still runs infrastructure only — the web
+and API processes are started from the host (or built as standalone images on
+demand).
 
 ## Prerequisites
 
@@ -207,13 +209,15 @@ Media endpoint addressing, direct uploads, limits, and focused tests are in
 
 ## Web development
 
-Phase 9 runs Next.js on the host (default port `WEB_PORT=3000`). Copy
+Phase 9–10 run Next.js on the host (default port `WEB_PORT=3000`). Copy
 `.env.example` to `.env` so web-oriented variables are present:
 
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL` | Public site origin for metadata |
 | `INTERNAL_API_URL` | Server-only API base (never `NEXT_PUBLIC_*`) |
+| `WEB_INDEXING_ENABLED` | Fail-closed indexing switch (default `false`) |
+| `WEB_REVALIDATE_SECRET` | Bearer secret for catalog cache invalidation |
 | `WEB_API_TIMEOUT_MS` | Upstream fetch timeout (default `5000`) |
 | `WEB_PORT` | Local Next listen port |
 | `SESSION_COOKIE_NAME` / `CSRF_*` | Cookie names aligned with the API |
@@ -223,13 +227,17 @@ pnpm web:dev
 pnpm i18n:validate
 pnpm stylelint
 pnpm test:e2e
+pnpm test:e2e:performance
 pnpm phase9:verify
+pnpm phase10:verify
 pnpm web:docker:build
 ```
 
-Storefront: `http://localhost:3000/fa` and `http://localhost:3000/en`. Visiting
-`/` issues a 307 to the negotiated locale. The focused runbook is
-[`web-development.md`](web-development.md).
+Storefront: `http://localhost:3000/fa` and `http://localhost:3000/en`. Catalog
+routes use localized segments (`/fa/mahsoulat`, `/en/products`, etc.). Visiting
+`/` issues a 307 to the negotiated locale. Runbooks:
+[`web-development.md`](web-development.md),
+[`storefront-development.md`](storefront-development.md).
 
 ## Redis verification
 

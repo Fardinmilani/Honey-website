@@ -19,8 +19,8 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 7 | Media & Storage | Complete | 2026-08-06 |
 | 8 | Catalog & Content Model | Complete | 2026-08-06 |
 | 9 | Web Foundation | ✅ Complete | 2026-08-08 |
-| 10 | Storefront Catalog & SEO | ❌ Not started (CURRENT) | — |
-| 11 | Sourcing, Procurement & Inventory | â¬œ Not started | â€” |
+| 10 | Storefront Catalog & SEO | ✅ Complete | 2026-08-09 |
+| 11 | Sourcing, Procurement & Inventory | ❌ Not started (CURRENT) | — |
 | 12 | Cart & Pricing | â¬œ Not started | â€” |
 | 13 | Checkout, Reservations & Orders | â¬œ Not started | â€” |
 | 14 | Payments | â¬œ Not started | â€” |
@@ -31,8 +31,64 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 10 — Storefront Catalog & SEO (**CURRENT but NOT STARTED**).
-**Previous phase:** Phase 9 — Web Foundation (**complete 2026-08-08**).
+**Current phase:** Phase 11 — Sourcing, Procurement & Inventory (**CURRENT but NOT STARTED**).
+**Previous phase:** Phase 10 — Storefront Catalog & SEO (**complete 2026-08-09**).
+
+---
+
+## Phase 10 — Storefront Catalog & SEO
+
+**Completed:** 2026-08-09 · **Status:** Complete
+
+Browsable, indexable bilingual catalog on the Phase 9 web foundation: localized
+product/category/collection/search routes, cursor pagination with SEO noindex on
+facets/cursors ([ADR-0028](adr/0028-cursor-pagination-seo.md)), configuration-
+driven canonical origin + `WEB_INDEXING_ENABLED` fail-closed indexing, metadata /
+hreflang / x-default, Product JSON-LD **without** Offer, sitemaps, robots,
+tagged cache revalidation BFF, Playwright/axe/visual/performance gates, and
+`scripts/verify-phase10.mjs`. No price, stock, cart, supplier, or Phase 11+ code.
+
+### Dependencies (exact versions)
+
+No new runtime dependencies. Existing stack retained (`next@16.3.0`,
+`react@19.2.8`, `@playwright/test@1.62.1`, `@axe-core/playwright@4.12.1`,
+`vitest@4.1.10`, `stylelint@17.14.1`). Performance budgets use Playwright
+PerformanceObserver helpers (no Lighthouse dependency).
+
+### Decisions made
+
+- Canonical origin is configuration-driven (`getSiteOrigin()` /
+  `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL`); never from request Host.
+- `WEB_INDEXING_ENABLED` defaults false; production indexing requires HTTPS
+  non-loopback non-placeholder origin.
+- Cursor pagination retained; indexable listings are facetless and cursorless
+  ([ADR-0028](adr/0028-cursor-pagination-seo.md)).
+- Product JSON-LD ships without Offer/price/availability (Phases 11–12 later).
+- Middleware rewrites Persian segments (`mahsoulat`, `dasteha`, `majmooeha`,
+  `jostoju`) to English App Router paths.
+- Entity language switch uses `LocaleHrefsProvider` + published locale slug maps.
+- Final real production domain / apex-vs-www remains a **deployment** prerequisite
+  before enabling indexing — not a Phase 10 implementation blocker.
+
+### Unresolved decisions
+
+- Real production HTTPS origin + apex vs `www` (blocks enabling indexing only).
+- Licensed brand fonts (open question #10).
+
+### Risks
+
+- Seed trigram search needs high query/document overlap (documented in e2e).
+- Sitemap product pagination at request time may need Phase 16 worker later.
+- Aggressive parallel e2e can hit API rate limits (tests still passed).
+
+### Verification (executed)
+
+- `pnpm format:check`, `pnpm lint`, `pnpm boundaries`, `pnpm typecheck`, `pnpm test` — pass
+- `pnpm build`, `pnpm stylelint`, `pnpm i18n:validate`, `pnpm api:openapi:check` — pass
+- `pnpm phase4:verify` … `pnpm phase10:verify` — pass
+- `pnpm test:e2e` — **76 passed**, 0 failed, 0 skipped
+- `pnpm web:docker:build` (`honey-web:phase10`) — pass
+- Hero git status/diff — empty; `.env` untracked; staging empty; no new migrations
 
 ---
 
@@ -1573,8 +1629,15 @@ Business decisions needed before the phases they block. Also listed in
 | 6 | Invoice format, numbering scheme, and any statutory fields | Phase 13 | Before Phase 13 |
 | 7 | Are customer reviews in scope for launch? | Phase 18 | Before Phase 18 |
 | ~~8~~ | ~~Hosting target~~ | â€” | **âœ… Resolved 2026-08-05** |
-| 9 | Production domain, and whether the canonical host is apex or `www` | Phase 10 | Before Phase 10 |
-| 10 | Licensed Persian and Latin webfonts for the brand | Phase 9 | Before Phase 9 |
+| 9 | Production domain / apex vs `www` | Enabling `WEB_INDEXING_ENABLED=true`, production SEO launch, sitemap submission | Before production indexing |
+| 10 | Licensed Persian and Latin webfonts for the brand | Phase 9 polish | Open |
+
+**Revised — #9 Production domain (2026-08-09).** Phase 10 no longer requires a
+fixed brand domain to implement. Canonical/hreflang/sitemap/JSON-LD URLs derive
+from validated `PUBLIC_SITE_URL` / `NEXT_PUBLIC_SITE_URL`. Indexing stays fail-
+closed (`WEB_INDEXING_ENABLED=false`) until a real HTTPS production origin is
+configured. Apex vs `www` is chosen by that configured origin; the other host
+must redirect at the edge. Tests may use `https://example.com` as a fixture only.
 
 **Resolved â€” #8 Hosting target (2026-08-05).** Self-hosted Linux VPS running
 Docker Compose behind a reverse proxy with TLS. Provider-neutral, with the

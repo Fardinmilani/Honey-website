@@ -1,14 +1,20 @@
 # Web development
 
-Phase 9 delivers the Next.js App Router foundation: bilingual locale routing,
+Phase 9 delivers the Next.js App Router foundation. Phase 10 adds the storefront
+catalog pages, SEO, and structured data. See
+[`storefront-development.md`](storefront-development.md) for the Phase 10 route map,
+cache tags, and indexing rules.
+
+Phase 9 scope: bilingual locale routing,
 RTL/LTR shell, design tokens and primitives, Hero integration with protected
 assets, a server-only API client with an explicit BFF probe, opaque session
 cookie forwarding, security headers, Playwright/axe/visual coverage, and a
 standalone web Docker image.
 
-This is **not** the storefront catalog, cart, checkout, or admin console.
-Those belong to later phases. See [ADR-0027](adr/0027-web-bff-and-i18n-runtime.md)
-and [ADR-0026](adr/0026-ui-tokens-semantic-classes.md).
+This is **not** the cart, checkout, or admin console.
+Those belong to later phases. See [ADR-0027](adr/0027-web-bff-and-i18n-runtime.md),
+[ADR-0026](adr/0026-ui-tokens-semantic-classes.md), and
+[storefront-development.md](storefront-development.md) for Phase 10 catalog scope.
 
 ## App Router structure
 
@@ -21,9 +27,13 @@ apps/web/src/
 │   ├── api/bff/readyz/            explicit allow-listed BFF probe (not a proxy)
 │   └── [locale]/
 │       ├── layout.tsx             <html lang dir> from localeConfig; imports UI CSS
-│       ├── (storefront)/          public shell + homepage
+│       ├── (storefront)/          public shell, homepage, catalog (Phase 10)
 │       │   ├── layout.tsx         header / footer / skip link
-│       │   └── page.tsx           Hero + home copy
+│       │   ├── page.tsx           Hero + home copy + featured catalog
+│       │   ├── products/          listing + PDP
+│       │   ├── categories/        index + detail
+│       │   ├── collections/       index + detail
+│       │   └── search/            search results (noindex)
 │       └── (admin)/
 │           ├── layout.tsx         admin route-group shell
 │           └── admin/layout.tsx   noindex shell; no admin pages in Phase 9
@@ -70,7 +80,9 @@ Custom lightweight runtime — **not** `next-intl`. Public surface:
 - Locale config (`locales`, `defaultLocale`, `localeConfig`, cookie name)
 - Message catalogs (`common`, `navigation`, `home`, `accessibility`, `errors`)
   with English key authority and Persian parity validation
-- Pathname map Phase 9 scope: **home `/` only** (`localizedHref`, `switchLocalePath`)
+- Pathname map: home `/` plus catalog routes (`/products`, `/categories`,
+  `/collections`, `/search` and `[slug]` variants) — see
+  [`storefront-development.md`](storefront-development.md)
 - `Intl` formatters + digit normalization
 - `createTranslator(locale)` with dotted keys (`t('home.headline')`)
 
@@ -188,9 +200,11 @@ built on demand for Phase 9 verification.
 | `pnpm web:dev` | Next.js dev server on port 3000 |
 | `pnpm i18n:validate` | Message catalog parity / HTML / empty checks |
 | `pnpm stylelint` | Logical-CSS Stylelint over web + `@honey/ui` CSS |
-| `pnpm test:e2e` | Playwright e2e (a11y, Hero motion, visuals) |
+| `pnpm test:e2e` | Playwright e2e (a11y, Hero motion, visuals, catalog SEO) |
+| `pnpm test:e2e:performance` | Playwright Core Web Vitals budget on homepage |
 | `pnpm phase9:verify` | Phase 9 structural / Hero integrity verifier |
-| `pnpm web:docker:build` | Build `honey-web:phase9` image |
+| `pnpm phase10:verify` | Phase 10 catalog / SEO structural verifier |
+| `pnpm web:docker:build` | Build `honey-web:phase10` image |
 
 Also useful from the web package: `pnpm --filter @honey/web build`, `lint`,
 `typecheck`, `test` (Vitest after dependency builds).
@@ -202,20 +216,26 @@ Documented in `.env.example` (no secrets):
 | Variable | Role |
 |---|---|
 | `WEB_PORT` / `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL` | Public site URL and local port |
+| `WEB_INDEXING_ENABLED` | Fail-closed indexing switch (default `false`) |
+| `WEB_REVALIDATE_SECRET` | Bearer secret for catalog cache invalidation |
 | `INTERNAL_API_URL` | Server-side API base (never exposed as `NEXT_PUBLIC_`) |
 | `WEB_API_TIMEOUT_MS` | Upstream fetch timeout (default `5000`) |
 | `SESSION_COOKIE_NAME` / `CSRF_*` | Cookie names aligned with the API |
 
 ## Phase 9 scope limits
 
-**In scope:** App Router shell, i18n/ui packages, Hero, language switcher,
+**In scope (Phase 9):** App Router shell, i18n/ui packages, Hero, language switcher,
 middleware, server API client, one BFF probe, security headers, Playwright/axe,
 web Docker image.
 
+**Phase 10 adds:** catalog listing, category, collection, PDP, search, SEO,
+sitemaps, robots, cache revalidation — see
+[`storefront-development.md`](storefront-development.md).
+
 **Out of scope (do not add):**
 
-- Catalog listing, category, collection, PDP, search pages (Phase 10)
 - Cart and checkout UI (Phases 12–13)
+- Price, stock, Add to Cart (Phases 11–12)
 - Admin screens beyond an empty noindex layout shell (Phase 17)
 - GSAP or other animation libraries
 - Self-hosted brand webfonts claimed as final

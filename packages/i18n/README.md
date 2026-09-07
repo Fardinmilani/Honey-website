@@ -59,19 +59,24 @@ t('accessibility.currentLanguage', { language: localeConfig.fa.label });
 
 Priority: `NEXT_LOCALE` cookie → `Accept-Language` → `defaultLocale` (`fa`).
 
-### Pathnames (Phase 9)
+### Pathnames (Phase 10 catalog)
 
-Only home is mapped:
+Home and catalog routes are mapped:
 
 ```ts
-pathnames['/']; // { fa: '/', en: '/' }
-localizedHref('/', 'fa'); // '/fa'
-switchLocalePath('/fa', 'en'); // '/en'
+pathnames['/'];
+pathnames['/products']; // fa: /mahsoulat, en: /products
+pathnames['/categories']; // fa: /dasteha, en: /categories
+pathnames['/collections']; // fa: /majmooeha, en: /collections
+pathnames['/search']; // fa: /jostoju, en: /search
+localizedHref('/products', 'fa'); // '/fa/mahsoulat'
+switchLocalePath('/fa/mahsoulat', 'en'); // '/en/products' (entity slugs via context)
 ```
 
-Later phases add transliterated segments to `pathnames` without changing helpers.
+Later phases add cart, checkout, and account segments without changing helpers.
+See [`docs/storefront-development.md`](../../docs/storefront-development.md).
 
-### Phase 9 namespaces
+### Phase 9–10 namespaces
 
 `common`, `navigation`, `home`, `accessibility`, `errors`
 

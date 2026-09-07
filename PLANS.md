@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 10 — Storefront Catalog & SEO (**CURRENT but NOT STARTED**)
-**Completed phase:** Phase 9 — Web Foundation (**complete 2026-08-08**)
+**Current phase:** Phase 11 — Sourcing, Procurement & Inventory (**CURRENT but NOT STARTED**)
+**Completed phase:** Phase 10 — Storefront Catalog & SEO (**complete 2026-08-09**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -71,7 +71,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 7 | Media & Storage | **Complete 2026-08-06** — S3 abstraction, MinIO adapter, quarantined direct-upload pipeline |
 | 8 | Catalog & Content Model | **Complete 2026-08-06** — catalog domain/API, publication, search, cursors, Redis cache |
 | 9 | Web Foundation | **Complete 2026-08-08** — App Router shell, `@honey/i18n` + `@honey/ui`, Hero, Playwright/axe, web image |
-| 10 | Storefront Catalog | **CURRENT but NOT STARTED** — listing, filtering, PDP, SEO, structured data, sitemaps |
+| 10 | Storefront Catalog | **Complete 2026-08-09** — listing, filtering, PDP, SEO, structured data, sitemaps |
+| 11 | Sourcing, Procurement & Inventory | **CURRENT but NOT STARTED** |
 | 11 | Sourcing, Procurement & Inventory | Suppliers, purchase orders, batches, stock ledger |
 | 12 | Cart & Pricing | Server-authoritative cart and price engine |
 | 13 | Checkout & Orders | Reservations, checkout transaction, immutable order snapshots |
@@ -144,7 +145,11 @@ These block or shape later phases and need a human decision. Tracked in
    fields required. *Shapes Phase 13.*
 7. **Reviews** — are customer reviews in scope for launch? *Shapes Phase 18.*
 8. **Production domain** — the domain name, and whether the canonical host is the
-   apex or `www`. *Shapes Phase 10.*
+   apex or `www`. *No longer blocks Phase 10 implementation.* Canonical URLs are
+   configuration-driven (`PUBLIC_SITE_URL` / `NEXT_PUBLIC_SITE_URL`) with
+   `WEB_INDEXING_ENABLED=false` by default. Selecting the real HTTPS origin
+   (and apex vs `www`) **blocks enabling production indexing**, sitemap
+   submission, and SEO launch — not storefront delivery.
 9. **Brand fonts** — licensed Persian and Latin webfonts. *Opened in Phase 9 with system fallbacks; CSS-variable replacement later. Still shapes storefront polish.*
 
 **Resolved:** ~~Hosting target~~ — decided on 2026-08-05 as a self-hosted Linux

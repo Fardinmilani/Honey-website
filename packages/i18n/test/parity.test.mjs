@@ -13,7 +13,17 @@ test('English and Persian catalogs have exact key parity', () => {
   assert.deepEqual(faKeys, enKeys);
   assert.deepEqual(
     [...messageNamespaces],
-    ['common', 'navigation', 'home', 'accessibility', 'errors'],
+    [
+      'common',
+      'navigation',
+      'home',
+      'accessibility',
+      'errors',
+      'catalog',
+      'product',
+      'search',
+      'seo',
+    ],
   );
 });
 

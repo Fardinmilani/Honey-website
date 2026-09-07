@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm build:deps && vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:performance": "playwright test e2e/performance.spec.ts",
     "test:e2e:update": "playwright test --update-snapshots",
     "stylelint": "stylelint \"src/**/*.{css,module.css}\" \"../../packages/ui/src/**/*.css\" --max-warnings=0",
     "validate:hardcoded-copy": "node scripts/validate-hardcoded-copy.mjs",

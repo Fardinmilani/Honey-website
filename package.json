@@ -49,13 +49,15 @@
     "phase7:verify": "node scripts/verify-phase7.mjs",
     "phase8:verify": "node scripts/verify-phase8.mjs",
     "phase9:verify": "node scripts/verify-phase9.mjs",
+    "phase10:verify": "node scripts/verify-phase10.mjs",
     "i18n:validate": "pnpm --filter @honey/i18n validate:messages",
     "stylelint": "pnpm --filter @honey/web stylelint",
     "test:e2e": "pnpm --filter @honey/web test:e2e",
+    "test:e2e:performance": "pnpm --filter @honey/web test:e2e:performance",
     "web:dev": "pnpm --filter @honey/web dev",
     "web:build": "pnpm --filter @honey/web build",
     "web:start": "pnpm --filter @honey/web start",
-    "web:docker:build": "docker build --file docker/web.Dockerfile --tag honey-web:phase9 ."
+    "web:docker:build": "docker build --file docker/web.Dockerfile --tag honey-web:phase10 ."
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

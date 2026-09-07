@@ -50,6 +50,10 @@ const files = (await Promise.all(scanRoots.map((path) => collect(resolve(root, p
 const violations = [];
 for (const file of files) {
   if (!textExtensions.has(extname(file))) continue;
+  // SEO unit tests may mention forbidden tokens only as detection patterns.
+  if (file.replaceAll('\\', '/').includes('/lib/seo/') && /\.test\.(ts|tsx|mjs|js)$/u.test(file)) {
+    continue;
+  }
   const source = await readFile(file, 'utf8');
   if (file.endsWith('schema.prisma')) {
     for (const identifier of source.matchAll(schemaIdentifier)) {
