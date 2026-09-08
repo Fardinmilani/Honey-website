@@ -11,6 +11,7 @@ import type {
   PermissionCode,
   RequestMetadata,
 } from '../../identity/index.js';
+import type { CatalogAvailabilityPort } from '../domain/catalog-availability.port.js';
 import type { CatalogCache } from '../domain/catalog-cache.port.js';
 import type { CatalogMediaPort } from '../domain/catalog-media.port.js';
 import {
@@ -22,7 +23,7 @@ import {
   isPublicProductPage,
   normalizeProductTranslation,
   normalizeSearchText,
-  normalizeSlug,
+  parseSlugParam,
   normalizeTaxonomyTranslation,
   normalizeVariantTranslation,
   assertVariantShape,
@@ -164,6 +165,7 @@ export class CatalogService {
     private readonly repository: CatalogRepository,
     private readonly cache: CatalogCache,
     private readonly media: CatalogMediaPort,
+    private readonly availability: CatalogAvailabilityPort | undefined = undefined,
   ) {
     this.#config = validateCatalogConfig(config);
   }
@@ -210,7 +212,7 @@ export class CatalogService {
       ...filters,
     });
     const cached = await this.cache.get(key);
-    if (isPublicProductPage(cached)) return cached;
+    if (isPublicProductPage(cached)) return this.#overlayAvailability(cached);
     const rows = await this.repository.listProducts({ locale, sort, filters, limit, cursor });
     const data = await this.#enrichProducts(rows.items, locale);
     const result: PublicPage<PublicProduct> = {
@@ -230,7 +232,7 @@ export class CatalogService {
       },
     };
     await this.cache.set(key, result, this.#config.cacheTtlSeconds, ['catalog:products']);
-    return result;
+    return this.#overlayAvailability(result);
   }
 
   async searchProducts(input: PublicSearchInput): Promise<PublicPage<PublicProduct>> {
@@ -261,7 +263,7 @@ export class CatalogService {
       cursor: input.cursor ?? '',
     });
     const cached = await this.cache.get(key);
-    if (isPublicProductPage(cached)) return cached;
+    if (isPublicProductPage(cached)) return this.#overlayAvailability(cached);
     const rows = await this.repository.searchProducts({
       locale,
       normalizedQuery,
@@ -290,7 +292,7 @@ export class CatalogService {
       'catalog:products',
       'catalog:search',
     ]);
-    return result;
+    return this.#overlayAvailability(result);
   }
 
   async resolveProduct(
@@ -301,7 +303,11 @@ export class CatalogService {
     const slug = this.#slug(slugInput);
     const key = this.#key('product', { locale, slug });
     const cached = await this.cache.get(key);
-    if (isPublicProduct(cached)) return { kind: 'FOUND', entity: cached };
+    if (isPublicProduct(cached)) {
+      const [entity] = await this.#overlayProducts([cached]);
+      if (entity === undefined) return { kind: 'NOT_FOUND' };
+      return { kind: 'FOUND', entity };
+    }
     const resolution = await this.repository.resolveProductSlug(locale, slug);
     if (resolution.kind !== 'FOUND') return resolution;
     const [entity] = await this.#enrichProducts([resolution.entity], locale);
@@ -311,7 +317,9 @@ export class CatalogService {
       `product:${entity.id}`,
       `slug:${locale}:${slug}`,
     ]);
-    return { kind: 'FOUND', entity };
+    const [withBand] = await this.#overlayProducts([entity]);
+    if (withBand === undefined) return { kind: 'NOT_FOUND' };
+    return { kind: 'FOUND', entity: withBand };
   }
 
   async listCategories(localeInput: string): Promise<readonly PublicCategory[]> {
@@ -938,7 +946,7 @@ export class CatalogService {
 
   #slug(value: string): string {
     try {
-      return normalizeSlug(value);
+      return parseSlugParam(value);
     } catch {
       throw validation('slug', 'SLUG_INVALID');
     }
@@ -985,6 +993,10 @@ export class CatalogService {
     const byId = new Map(assets.map((asset) => [asset.id, asset]));
     return products.map((product) => ({
       ...product,
+      variants: product.variants.map((variant) => ({
+        ...variant,
+        availabilityBand: 'OUT_OF_STOCK' as const,
+      })),
       media: product.media.flatMap((attachment) => {
         const asset = byId.get(attachment.mediaAssetId);
         if (asset === undefined) return [];
@@ -1001,6 +1013,27 @@ export class CatalogService {
           },
         ];
       }),
+    }));
+  }
+
+  async #overlayAvailability(page: PublicPage<PublicProduct>): Promise<PublicPage<PublicProduct>> {
+    return { ...page, data: await this.#overlayProducts(page.data) };
+  }
+
+  async #overlayProducts(products: readonly PublicProduct[]): Promise<readonly PublicProduct[]> {
+    const ids = [
+      ...new Set(products.flatMap((product) => product.variants.map((variant) => variant.id))),
+    ];
+    const bands =
+      this.availability === undefined
+        ? new Map<string, 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>()
+        : await this.availability.bandsForVariants(ids);
+    return products.map((product) => ({
+      ...product,
+      variants: product.variants.map((variant) => ({
+        ...variant,
+        availabilityBand: bands.get(variant.id) ?? 'OUT_OF_STOCK',
+      })),
     }));
   }
 

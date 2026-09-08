@@ -9,6 +9,7 @@ import {
   InMemoryCatalogCache,
   normalizeSearchText,
   normalizeSlug,
+  parseSlugParam,
   sanitizeStoryHtml,
 } from '../src/modules/catalog/index.js';
 
@@ -18,6 +19,13 @@ describe('catalog domain policies', () => {
     expect(normalizeSlug('Mountain___Honey')).toBe('mountain-honey');
     expect(() => normalizeSlug('../private')).toThrow();
     expect(() => normalizeSlug('catalog/product.json')).toThrow();
+  });
+
+  it('accepts a once-percent-encoded Persian slug param', () => {
+    const slug = 'عسل-گلهای-وحشی';
+    expect(parseSlugParam(slug)).toBe(slug);
+    expect(parseSlugParam(encodeURIComponent(slug))).toBe(slug);
+    expect(parseSlugParam('asal-avishan')).toBe('asal-avishan');
   });
 
   it('normalizes Arabic and Persian Yeh, Kaf, ZWNJ, whitespace, diacritics, and tatweel', () => {

@@ -20,8 +20,8 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 8 | Catalog & Content Model | Complete | 2026-08-06 |
 | 9 | Web Foundation | ✅ Complete | 2026-08-08 |
 | 10 | Storefront Catalog & SEO | ✅ Complete | 2026-08-09 |
-| 11 | Sourcing, Procurement & Inventory | ❌ Not started (CURRENT) | — |
-| 12 | Cart & Pricing | â¬œ Not started | â€” |
+| 11 | Sourcing, Procurement & Inventory | ✅ Complete | 2026-08-10 |
+| 12 | Cart & Pricing | ❌ Not started (CURRENT) | — |
 | 13 | Checkout, Reservations & Orders | â¬œ Not started | â€” |
 | 14 | Payments | â¬œ Not started | â€” |
 | 15 | Shipping & Fulfilment | â¬œ Not started | â€” |
@@ -31,12 +31,82 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 11 — Sourcing, Procurement & Inventory (**CURRENT but NOT STARTED**).
-**Previous phase:** Phase 10 — Storefront Catalog & SEO (**complete 2026-08-09**).
+**Current phase:** Phase 12 — Cart & Pricing (**CURRENT but NOT STARTED**).
+**Previous phase:** Phase 11 — Sourcing, Procurement & Inventory (**complete 2026-08-10**).
+
+---
+
+## Phase 11 — Sourcing, Procurement & Inventory
+
+**Completed:** 2026-08-10 · **Status:** Complete
+
+Admin-only sourcing, procurement, and inventory in `packages/backend`, composed
+by Nest controllers under `/v1/admin/sourcing|procurement|inventory`. Public
+catalog variants carry `availabilityBand` only. The storefront shows localized
+bands (no counts, no Add to Cart, no price). Own-production inbound is production
+intake ([ADR-0029](adr/0029-own-production-inventory-inbound.md)), not a fake
+purchase order. Local Docker Compose infra was already running and was **not**
+restarted; migrate/seed targeted `honey_local`.
+
+### Dependencies (exact versions)
+
+No new runtime dependencies. Existing stack retained (`@prisma/client@7.9.0`,
+`vitest@4.1.10`, `@playwright/test@1.62.1`, `next@16.3.0`).
+
+### Decisions made
+
+- Own-production inbound is `receiveProduction` / `refType: batch_allocation` with
+  `inventory:adjust` ([ADR-0029](adr/0029-own-production-inventory-inbound.md)).
+- PO extras `freightCostMinor` + `dutyCostMinor` + `otherCostMinor`; allocate by
+  `lineTotalMinor`; remainder to last line by `id` asc
+  ([ADR-0030](adr/0030-landed-cost-allocation.md)).
+- `PurchaseOrder.destinationStockLocationId` required at confirm when any line
+  has `variantId`; GR location must match; incoming ± remaining qty
+  ([ADR-0031](adr/0031-incoming-stock-destination.md)).
+- `availableToSell = Σ sellable (onHand − reserved − allocated)`; threshold =
+  max sellable `reorderPoint`; `≤0 → OUT_OF_STOCK`; `threshold>0 && ≤threshold →
+  LOW_STOCK`; else `IN_STOCK` ([ADR-0032](adr/0032-availability-band-threshold.md)).
+- Sourcing reuses `inventory:read` / `inventory:adjust`. No new permissions.
+- Catalog Redis is not availability SoT; bands overlay after cache get/set.
+- Playwright-started API uses `API_RATE_LIMIT_MAX=10000` so parallel SSR e2e does
+  not 429; production default remains 300/min.
+
+### Unresolved decisions
+
+- Real production HTTPS origin + apex vs `www` (indexing only; inherited).
+- Licensed brand fonts (open question #10; inherited).
+
+### Risks
+
+- Public catalog HTTP cache (`max-age=60, stale-while-revalidate=300`) can lag
+  availability bands behind inventory writes until TTL/revalidation.
+- Trigram search can return extra published products (Acacia is now published for
+  the OUT_OF_STOCK fixture).
+- Inventory overlay adds work on every public product read.
+- Phase 16 must own the reconciliation worker consumer; this phase only ships
+  the application service.
+
+### Verification (executed)
+
+- `pnpm format:check`, `pnpm lint`, `pnpm boundaries`, `pnpm typecheck` — pass
+- `pnpm test` — pass (backend **76 passed / 0 skipped** with `MEDIA_MINIO_TESTS=true`; API 31 passed)
+- MinIO contract + integration (`storage.minio.contract.test.ts` + `media.minio.integration.test.ts`) — **6 passed**, 0 failed, 0 skipped
+  (expiry test waits past SigV4 second-granularity `expiresAt`; not a 1-second race)
+- `pnpm db:test`, `pnpm db:migrate` — pass; Phase 11 migration applied on `honey_local`
+- `pnpm build` — pass
+- `pnpm phase4:verify` … `pnpm phase11:verify` — pass (Phase 5 verifier now allows later modules)
+- `pnpm api:openapi:lint` / forbidden — pass; `pnpm api:openapi:breaking` — **skipped** (no PR base ref)
+- `pnpm docker:verify` — pass (existing Compose stack, no `compose down`)
+- `pnpm api:docker:build` (`honey-api:phase8` + `honey-api:phase11`) — pass
+- `pnpm web:docker:build` (`honey-web:phase10` + `honey-web:phase11`) — pass
+- `pnpm test:e2e` — **78 passed**, 0 failed, 0 skipped (workers=2)
+- Hero git status/diff — empty; MinIO `mc find` on `honey-media` / `honey-private` — no Hero keys
+- `.env` untracked; staging empty
 
 ---
 
 ## Phase 10 — Storefront Catalog & SEO
+
 
 **Completed:** 2026-08-09 · **Status:** Complete
 

@@ -131,7 +131,7 @@ product page lands on the same product in the other locale.
 
 ---
 
-## JSON-LD (no Offer in Phase 10)
+## JSON-LD (no Offer until Phase 12)
 
 Typed builders in `apps/web/src/lib/seo/builders/`:
 
@@ -141,10 +141,10 @@ Typed builders in `apps/web/src/lib/seo/builders/`:
 | Product detail | `Product`, `BreadcrumbList` |
 | Category / collection listing | `CollectionPage`, `BreadcrumbList`, `ItemList` (first page, no facets) |
 
-Phase 10 **Product** JSON-LD intentionally omits `offers`, `price`,
-`availability`, `review`, and `aggregateRating`. `Offer` ships only when Phase
-12 pricing and Phase 11 availability exist. Unit tests in `builders.test.ts` and
-`json-ld.test.ts` forbid commerce and health vocabulary.
+Phase 11 shows availability bands in the UI. **Product** JSON-LD still omits
+`offers`, `price`, `availability`, `review`, and `aggregateRating`. `Offer` ships
+only when Phase 12 provides authoritative pricing. Unit tests in
+`builders.test.ts` and `json-ld.test.ts` forbid commerce and health vocabulary.
 
 Inject JSON-LD with `JsonLdScript` (server-rendered `<script type="application/ld+json">`).
 
@@ -216,9 +216,9 @@ robots policy, and JSON-LD builders.
 **Do not add in Phase 10:**
 
 - Price, currency, or “Add to Cart” UI
-- Stock counts or availability bands (Phase 11)
+- Exact stock counts, locations, or supplier identity
 - Cart, checkout, or payment routes
-- Supplier, procurement, or inventory concepts
+- Admin procurement or inventory screens (Phase 17)
 - Review or rating structured data
 - Generic API proxy or catch-all BFF routes
 

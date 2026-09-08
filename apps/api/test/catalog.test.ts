@@ -37,7 +37,21 @@ const publicProduct: PublicProduct = {
   originAltitudeBand: null,
   harvestSeason: 'spring',
   publishedAt: '2026-08-06T00:00:00.000Z',
-  variants: [],
+  variants: [
+    {
+      id: '018f0000-0000-7000-8000-0000000000d8',
+      sku: 'WF-450',
+      name: '450 g',
+      netWeightGrams: 450,
+      jarSizeLabelKey: 'jar.450g',
+      packagingTypeKey: 'packaging.glass',
+      weightGramsShipping: 700,
+      dimensionsMm: [85, 85, 120],
+      position: 0,
+      isDefault: true,
+      availabilityBand: 'IN_STOCK',
+    },
+  ],
   media: [],
 };
 
@@ -119,7 +133,9 @@ describe('catalog HTTP transport', () => {
       expect(response.headers['cache-control']).toContain('stale-while-revalidate=300');
       expect(response.headers['vary']).toBe('Accept-Language');
       const body = response.body;
-      expect(body).not.toMatch(/sourcingType|apiaryId|supplier|price|stock|storageKey/u);
+      expect(body).not.toMatch(/sourcingType|apiaryId|supplier|price|storageKey/u);
+      expect(body).not.toMatch(/"onHand"|"reserved"|"allocated"|"incoming"|"stockLocation"/u);
+      expect(response.json().data[0]?.variants[0]?.availabilityBand).toBe('IN_STOCK');
     } finally {
       await api.close();
     }

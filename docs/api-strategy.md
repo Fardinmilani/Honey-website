@@ -60,7 +60,10 @@ and `Deprecation` headers.
 
 The admin surface is a separate route prefix with its own guard stack, its own
 rate limits, and its own audit logging. It is never reachable with a customer
-session.
+session. Phase 11 adds staff-only `/v1/admin/sourcing/*`,
+`/v1/admin/procurement/*`, and `/v1/admin/inventory/*`. Public catalog variants
+may include `availabilityBand` only (`IN_STOCK` | `LOW_STOCK` | `OUT_OF_STOCK`).
+Exact stock, suppliers, landed cost, and locations stay on admin schemas.
 
 ---
 

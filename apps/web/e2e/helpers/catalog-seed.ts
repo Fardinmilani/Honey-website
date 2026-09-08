@@ -7,10 +7,12 @@ export const CATALOG_SEED = {
     en: {
       wildflower: 'wildflower-honey',
       thyme: 'thyme-honey',
+      acacia: 'acacia-honey',
     },
     fa: {
       wildflower: 'عسل-گلهای-وحشی',
       thyme: 'asal-avishan',
+      acacia: 'asal-aghaqia',
     },
   },
   categories: {

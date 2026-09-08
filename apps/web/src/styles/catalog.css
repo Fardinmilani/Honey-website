@@ -131,6 +131,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+.product-card__availability {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+}
+
 .product-card__cta {
   margin-block-start: auto;
   padding-block-start: var(--space-2);

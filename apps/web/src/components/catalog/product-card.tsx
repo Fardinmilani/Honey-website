@@ -12,8 +12,17 @@ type ProductCardProps = {
   readonly priority?: boolean;
 };
 
-function defaultVariant(product: PublicProduct) {
+type PublicVariant = PublicProduct['variants'][number];
+type AvailabilityBand = PublicVariant extends { availabilityBand: infer Band } ? Band : never;
+
+function defaultVariant(product: PublicProduct): PublicVariant | undefined {
   return product.variants.find((variant) => variant.isDefault) ?? product.variants[0];
+}
+
+function availabilityCopy(t: ReturnType<typeof createTranslator>, band: AvailabilityBand): string {
+  if (band === 'LOW_STOCK') return t('product.availabilityLimited');
+  if (band === 'OUT_OF_STOCK') return t('product.availabilityUnavailable');
+  return t('product.availabilityAvailable');
 }
 
 export function ProductCard({ locale, product, priority = false }: ProductCardProps) {
@@ -47,6 +56,15 @@ export function ProductCard({ locale, product, priority = false }: ProductCardPr
           {variant !== undefined ? (
             <p className="product-card__variant">
               {t('catalog.variantWeight', { grams: variant.netWeightGrams })}
+            </p>
+          ) : null}
+          {variant !== undefined ? (
+            <p
+              className="product-card__availability"
+              data-testid="availability-band"
+              data-band={variant.availabilityBand}
+            >
+              {availabilityCopy(t, variant.availabilityBand)}
             </p>
           ) : null}
           <span className="product-card__cta">{t('catalog.viewProduct')}</span>

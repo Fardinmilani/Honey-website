@@ -80,6 +80,9 @@ export default defineConfig({
             INTERNAL_API_URL: internalApiUrl,
             PUBLIC_SITE_URL: sharedWebEnv.PUBLIC_SITE_URL,
             NEXT_PUBLIC_SITE_URL: sharedWebEnv.NEXT_PUBLIC_SITE_URL,
+            // Catalog e2e (especially Phase 11 availability + crawlability) exceeds
+            // the production anonymous cap of 300/min when two workers SSR in parallel.
+            API_RATE_LIMIT_MAX: process.env['E2E_API_RATE_LIMIT_MAX'] ?? '10000',
           },
         },
         {

@@ -100,6 +100,9 @@ export type ProductMessages = {
   readonly packaging: string;
   readonly galleryLabel: string;
   readonly mainImage: string;
+  readonly availabilityAvailable: string;
+  readonly availabilityLimited: string;
+  readonly availabilityUnavailable: string;
 };
 
 export type SearchMessages = {

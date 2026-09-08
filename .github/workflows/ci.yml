@@ -221,6 +221,22 @@ jobs:
       - name: Verify Phase 10 storefront catalog and SEO
         run: pnpm phase10:verify
 
+      - name: Run Phase 11 sourcing, procurement, and inventory unit tests
+        run: >-
+          pnpm --filter @honey/backend test -- --run
+          test/sourcing.test.ts
+          test/procurement.test.ts
+          test/inventory.test.ts
+
+      - name: Run Phase 11 PostgreSQL concurrency and constraint integration
+        run: pnpm --filter @honey/backend test -- --run test/phase11.integration.test.ts
+
+      - name: Run Phase 11 admin API authorization matrix
+        run: pnpm --filter @honey/api test -- --run test/phase11.test.ts
+
+      - name: Verify Phase 11 sourcing, procurement, and inventory
+        run: pnpm phase11:verify
+
       - name: Prove Hero media never entered object storage
         run: |
           for bucket in honey-media-ci honey-private-ci; do

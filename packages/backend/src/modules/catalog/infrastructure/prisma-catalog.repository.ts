@@ -6,10 +6,10 @@ import { ConflictAppError } from '../../../errors/index.js';
 import {
   assertPublicationCompleteness,
   type CatalogProductRecord,
+  type CatalogVariantRecord,
   type ProductTranslationInput,
   type PublicCategory,
   type PublicCollection,
-  type PublicVariant,
 } from '../domain/catalog.js';
 import type {
   ActorContext,
@@ -1438,7 +1438,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
   #publicProduct(product: StoredPublicProduct): CatalogProductRecord | null {
     const translation = product.translations[0];
     if (translation === undefined || product.publishedAt === null) return null;
-    const variants: PublicVariant[] = product.variants.flatMap((variant) => {
+    const variants: CatalogVariantRecord[] = product.variants.flatMap((variant) => {
       const variantTranslation = variant.translations[0];
       return variantTranslation === undefined
         ? []

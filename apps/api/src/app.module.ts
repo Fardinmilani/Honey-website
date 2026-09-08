@@ -6,6 +6,9 @@ import {
   CatalogModule,
   MediaModule,
   PlatformModule,
+  InventoryModule,
+  SourcingModule,
+  ProcurementModule,
   type DatabaseHealthPort,
 } from '@honey/backend';
 import type { GracefulShutdown } from './bootstrap/graceful-shutdown.js';
@@ -17,6 +20,9 @@ import {
   AdminCatalogController,
   PublicCatalogController,
 } from './modules/catalog/catalog.controller.js';
+import { AdminSourcingController } from './modules/sourcing/sourcing.controller.js';
+import { AdminProcurementController } from './modules/procurement/procurement.controller.js';
+import { AdminInventoryController } from './modules/inventory/inventory.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
@@ -38,6 +44,9 @@ export class AppModule {
           MediaController,
           PublicCatalogController,
           AdminCatalogController,
+          AdminSourcingController,
+          AdminProcurementController,
+          AdminInventoryController,
           ValidationProbeController,
         ]
       : [
@@ -46,10 +55,16 @@ export class AppModule {
           MediaController,
           PublicCatalogController,
           AdminCatalogController,
+          AdminSourcingController,
+          AdminProcurementController,
+          AdminInventoryController,
         ];
   }
 
   static register(options: AppModuleOptions): DynamicModule {
+    const inventoryModule = InventoryModule.register({
+      databaseUrl: options.config.databaseUrl,
+    });
     return {
       module: AppModule,
       imports: [
@@ -69,10 +84,20 @@ export class AppModule {
           breachedPasswordTimeoutMs: options.config.identity.breachedPasswordTimeoutMs,
           smtp: options.config.identity.smtp,
         }),
+        inventoryModule,
+        SourcingModule.register({
+          databaseUrl: options.config.databaseUrl,
+          inventoryModule,
+        }),
+        ProcurementModule.register({
+          databaseUrl: options.config.databaseUrl,
+          inventoryModule,
+        }),
         CatalogModule.register({
           config: options.config.catalog,
           databaseUrl: options.config.databaseUrl,
           redisUrl: options.config.redisUrl,
+          inventoryModule,
           mediaModule: MediaModule.register({
             config: options.config.media.config,
             storage: options.config.media.storage,

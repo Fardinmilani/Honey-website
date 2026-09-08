@@ -13,4 +13,7 @@ export const product = {
   packaging: 'Packaging',
   galleryLabel: 'Product images',
   mainImage: 'Main product image',
+  availabilityAvailable: 'Available',
+  availabilityLimited: 'Limited availability',
+  availabilityUnavailable: 'Currently unavailable',
 } as const satisfies ProductMessages;

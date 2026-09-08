@@ -62,6 +62,16 @@ export const seedIds = {
   suppliedPrice: '018f0000-0000-7000-8000-000000000061',
   taxRate: '018f0000-0000-7000-8000-000000000062',
   shippingZone: '018f0000-0000-7000-8000-000000000070',
+  purchaseOrder: '018f0000-0000-7000-8000-0000000000a0',
+  purchaseOrderLine: '018f0000-0000-7000-8000-0000000000a1',
+  outProduct: '018f0000-0000-7000-8000-0000000000b0',
+  outProductFa: '018f0000-0000-7000-8000-0000000000b1',
+  outProductEn: '018f0000-0000-7000-8000-0000000000b2',
+  outVariant: '018f0000-0000-7000-8000-0000000000b3',
+  outVariantFa: '018f0000-0000-7000-8000-0000000000b4',
+  outVariantEn: '018f0000-0000-7000-8000-0000000000b5',
+  outProductCategory: '018f0000-0000-7000-8000-0000000000b6',
+  studioLocation: '018f0000-0000-7000-8000-0000000000b7',
   shippingMethod: '018f0000-0000-7000-8000-000000000071',
   shippingMethodFa: '018f0000-0000-7000-8000-000000000072',
   shippingMethodEn: '018f0000-0000-7000-8000-000000000073',
@@ -431,6 +441,13 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       varietal: 'Thyme',
       season: 'summer',
     },
+    {
+      id: seedIds.outProduct,
+      source: 'OWN_PRODUCTION' as const,
+      apiaryId: seedIds.apiary,
+      varietal: 'Acacia',
+      season: 'spring',
+    },
   ];
   for (const product of products) {
     await client.product.upsert({
@@ -466,6 +483,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
   const variants = [
     { id: seedIds.ownVariant, productId: seedIds.ownProduct, sku: 'HNY-WILD-450' },
     { id: seedIds.suppliedVariant, productId: seedIds.suppliedProduct, sku: 'HNY-THYME-450' },
+    { id: seedIds.outVariant, productId: seedIds.outProduct, sku: 'HNY-ACACIA-450' },
   ];
   for (const variant of variants) {
     await client.productVariant.upsert({
@@ -501,6 +519,10 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
   await client.product.update({
     where: { id: seedIds.suppliedProduct },
     data: { defaultVariantId: seedIds.suppliedVariant, updatedAt: seedTime },
+  });
+  await client.product.update({
+    where: { id: seedIds.outProduct },
+    data: { defaultVariantId: seedIds.outVariant, updatedAt: seedTime },
   });
 
   const productTranslations = [
@@ -544,6 +566,26 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       description: 'A warm, herbal honey with a calm, even texture.',
       tastingNotes: 'Herbal and warm',
     },
+    {
+      id: seedIds.outProductFa,
+      productId: seedIds.outProduct,
+      locale: 'fa',
+      name: 'عسل اقاقیا',
+      slug: 'asal-aghaqia',
+      shortDescription: 'برداشت بهاری با رایحه اقاقیا',
+      description: 'عسلی روشن با رایحه ظریف شکوفه اقاقیا.',
+      tastingNotes: 'شکوفه‌ای و روشن',
+    },
+    {
+      id: seedIds.outProductEn,
+      productId: seedIds.outProduct,
+      locale: 'en',
+      name: 'Acacia Honey',
+      slug: 'acacia-honey',
+      shortDescription: 'A spring harvest with acacia blossom aroma',
+      description: 'A pale honey with a delicate acacia-blossom aroma.',
+      tastingNotes: 'Blossom and light',
+    },
   ];
   for (const translation of productTranslations) {
     await client.productTranslation.upsert({
@@ -579,6 +621,13 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       locale: 'en',
       name: '450 g jar',
     },
+    {
+      id: seedIds.outVariantFa,
+      variantId: seedIds.outVariant,
+      locale: 'fa',
+      name: 'شیشه ۴۵۰ گرمی',
+    },
+    { id: seedIds.outVariantEn, variantId: seedIds.outVariant, locale: 'en', name: '450 g jar' },
   ];
   for (const translation of variantTranslations) {
     await client.variantTranslation.upsert({
@@ -591,6 +640,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
   const productCategories = [
     { id: seedIds.ownProductCategory, productId: seedIds.ownProduct },
     { id: seedIds.suppliedProductCategory, productId: seedIds.suppliedProduct },
+    { id: seedIds.outProductCategory, productId: seedIds.outProduct },
   ];
   for (const item of productCategories) {
     await client.productCategory.upsert({
@@ -605,6 +655,10 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
   });
   await client.product.update({
     where: { id: seedIds.suppliedProduct },
+    data: { primaryCategoryId: seedIds.category, updatedAt: seedTime },
+  });
+  await client.product.update({
+    where: { id: seedIds.outProduct },
     data: { primaryCategoryId: seedIds.category, updatedAt: seedTime },
   });
   const productCollections = [
@@ -652,20 +706,45 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     },
     update: { name: 'Main stock', isSellable: true, isDefault: true, updatedAt: seedTime },
   });
+  await client.stockLocation.upsert({
+    where: { id: seedIds.studioLocation },
+    create: {
+      id: seedIds.studioLocation,
+      code: 'STUDIO',
+      name: 'Studio hold',
+      type: 'STUDIO',
+      isSellable: false,
+      isDefault: false,
+      ...commonAudit,
+    },
+    update: { name: 'Studio hold', isSellable: false, isDefault: false, updatedAt: seedTime },
+  });
 
   const inventory = [
-    { id: seedIds.ownInventory, variantId: seedIds.ownVariant, onHand: 100 },
-    { id: seedIds.suppliedInventory, variantId: seedIds.suppliedVariant, onHand: 100 },
+    { id: seedIds.ownInventory, variantId: seedIds.ownVariant, onHand: 100, reorderPoint: 10 },
+    {
+      id: seedIds.suppliedInventory,
+      variantId: seedIds.suppliedVariant,
+      onHand: 5,
+      reorderPoint: 10,
+      incoming: 12,
+    },
   ];
   for (const item of inventory) {
     await client.inventoryItem.upsert({
       where: { id: item.id },
-      create: { ...item, stockLocationId: seedIds.location, ...commonAudit },
+      create: {
+        ...item,
+        stockLocationId: seedIds.location,
+        incoming: item.incoming ?? 0,
+        ...commonAudit,
+      },
       update: {
         onHand: item.onHand,
         reserved: 0,
         allocated: 0,
-        incoming: 0,
+        incoming: item.incoming ?? 0,
+        reorderPoint: item.reorderPoint,
         version: 0,
         updatedAt: seedTime,
       },
@@ -690,7 +769,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
         data: {
           ...entry,
           stockLocationId: seedIds.location,
-          delta: 100,
+          delta: entry.variantId === seedIds.suppliedVariant ? 5 : 100,
           reason: 'RECEIPT',
           refType: 'harvest_batch',
           createdAt: seedTime,
@@ -698,6 +777,57 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       });
     }
   }
+
+  await client.purchaseOrder.upsert({
+    where: { id: seedIds.purchaseOrder },
+    create: {
+      id: seedIds.purchaseOrder,
+      number: 'PO-SEED-0001',
+      supplierId: seedIds.supplier,
+      status: 'CONFIRMED',
+      currency: 'IRR',
+      placedBy: seedIds.ownerUser,
+      placedAt: seedTime,
+      destinationStockLocationId: seedIds.location,
+      freightCostMinor: 120000n,
+      dutyCostMinor: 0n,
+      otherCostMinor: 0n,
+      notes: 'Synthetic confirmed purchase order for local development.',
+      ...commonAudit,
+    },
+    update: {
+      status: 'CONFIRMED',
+      destinationStockLocationId: seedIds.location,
+      freightCostMinor: 120000n,
+      dutyCostMinor: 0n,
+      otherCostMinor: 0n,
+      updatedAt: seedTime,
+    },
+  });
+  await client.purchaseOrderLine.upsert({
+    where: { id: seedIds.purchaseOrderLine },
+    create: {
+      id: seedIds.purchaseOrderLine,
+      purchaseOrderId: seedIds.purchaseOrder,
+      description: 'Thyme honey jars — synthetic fixture',
+      variantId: seedIds.suppliedVariant,
+      harvestBatchId: seedIds.suppliedBatch,
+      quantityOrdered: 12,
+      unitCostMinor: 20000000n,
+      taxMinor: 0n,
+      lineTotalMinor: 240000000n,
+      createdAt: seedTime,
+      updatedAt: seedTime,
+      createdBy: seedIds.ownerUser,
+    },
+    update: {
+      quantityOrdered: 12,
+      unitCostMinor: 20000000n,
+      taxMinor: 0n,
+      lineTotalMinor: 240000000n,
+      updatedAt: seedTime,
+    },
+  });
 
   const prices = [
     { id: seedIds.ownPrice, variantId: seedIds.ownVariant, amountMinor: 48500000n },
@@ -834,17 +964,22 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
 export async function readSeedFingerprint(
   client: PrismaClient,
 ): Promise<Readonly<Record<string, unknown>>> {
-  const [users, products, translations, batches, inventory, ledger, settings] = await Promise.all([
-    client.user.count(),
-    client.product.count(),
-    client.productTranslation.count(),
-    client.harvestBatch.count(),
-    client.inventoryItem.findMany({
-      orderBy: { id: 'asc' },
-      select: { id: true, onHand: true, reserved: true, allocated: true },
-    }),
-    client.stockLedgerEntry.count(),
-    client.setting.findMany({ orderBy: { key: 'asc' }, select: { key: true, valueJson: true } }),
-  ]);
-  return { users, products, translations, batches, inventory, ledger, settings };
+  const [users, products, translations, batches, inventory, ledger, purchaseOrders, settings] =
+    await Promise.all([
+      client.user.count(),
+      client.product.count(),
+      client.productTranslation.count(),
+      client.harvestBatch.count(),
+      client.inventoryItem.findMany({
+        orderBy: { id: 'asc' },
+        select: { id: true, onHand: true, reserved: true, allocated: true, incoming: true },
+      }),
+      client.stockLedgerEntry.count(),
+      client.purchaseOrder.findMany({
+        orderBy: { id: 'asc' },
+        select: { id: true, status: true, number: true },
+      }),
+      client.setting.findMany({ orderBy: { key: 'asc' }, select: { key: true, valueJson: true } }),
+    ]);
+  return { users, products, translations, batches, inventory, ledger, purchaseOrders, settings };
 }

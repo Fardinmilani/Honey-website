@@ -1,5 +1,5 @@
 # Backend modules
 
-Phase 5 intentionally contains no business module. Future phases add a module
-only when its documented scope begins; this directory is not a scaffold for
-unstarted work.
+Business modules live here as they enter scope. Phase 11 added `sourcing`,
+`procurement`, and `inventory`. Later phases add pricing, checkout, and the rest
+only when their documented scope begins.

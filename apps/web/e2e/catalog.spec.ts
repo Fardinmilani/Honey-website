@@ -66,7 +66,7 @@ test.describe('search and filters', () => {
     await page.goto(`${CATALOG_ROUTES.search.en}?q=${encodeURIComponent(query)}`);
     await expect(page.locator('h2.catalog-page__title')).toBeVisible();
     await expect(page.locator('.product-card')).not.toHaveCount(0);
-    await expect(page.locator('.product-card__title')).toContainText('Thyme');
+    await expect(page.locator('.product-card__title').filter({ hasText: 'Thyme' })).toBeVisible();
   });
 
   test('search no-results message', async ({ page }) => {
@@ -82,7 +82,7 @@ test.describe('search and filters', () => {
 
   test('sort query is supported', async ({ page }) => {
     await page.goto(`${CATALOG_ROUTES.products.en}?sort=name`);
-    await expect(page.locator('.product-card')).toHaveCount(2);
+    await expect(page.locator('.product-card')).toHaveCount(3);
   });
 
   test('cursor pagination link structure when present', async ({ page }) => {
@@ -263,6 +263,69 @@ test.describe('forbidden storefront commerce and supplier copy', () => {
     await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.thyme}`);
     await expect(page.locator('body')).not.toContainText(CATALOG_SEED.supplierLegalName);
     await expect(page.locator('body')).not.toContainText('SUPPLY-SELECTED-01');
+  });
+});
+
+test.describe('availability bands', () => {
+  test('English listing and PDPs show all three bands without counts', async ({ page }) => {
+    await page.goto(CATALOG_ROUTES.products.en);
+    await expect(
+      page.getByTestId('availability-band').filter({ hasText: 'Available' }),
+    ).not.toHaveCount(0);
+    await expect(
+      page.getByTestId('availability-band').filter({ hasText: 'Limited availability' }),
+    ).not.toHaveCount(0);
+    await expect(
+      page.getByTestId('availability-band').filter({ hasText: 'Currently unavailable' }),
+    ).not.toHaveCount(0);
+    await expect(page.locator('body')).not.toContainText(
+      /\b(onHand|reserved|allocated|incoming)\b/,
+    );
+    await expect(page.locator('body')).not.toContainText(/\b\d+\s+units?\b/i);
+
+    await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.wildflower}`);
+    await expect(page.locator('h1.product-detail__title')).toBeVisible();
+    await expect(page.getByTestId('availability-band')).toHaveAttribute('data-band', 'IN_STOCK');
+    await expect(page.locator('body')).not.toContainText('Add to Cart');
+
+    await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.thyme}`);
+    await expect(page.locator('h1.product-detail__title')).toBeVisible();
+    await expect(page.getByTestId('availability-band')).toHaveAttribute('data-band', 'LOW_STOCK');
+
+    await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.acacia}`);
+    await expect(page.locator('h1.product-detail__title')).toBeVisible();
+    await expect(page.getByTestId('availability-band')).toHaveAttribute(
+      'data-band',
+      'OUT_OF_STOCK',
+    );
+  });
+
+  test('Persian listing and PDPs show localized bands', async ({ page }) => {
+    await page.goto(CATALOG_ROUTES.products.fa);
+    await expect(
+      page.getByTestId('availability-band').filter({ hasText: 'موجود' }),
+    ).not.toHaveCount(0);
+    await expect(
+      page.getByTestId('availability-band').filter({ hasText: 'موجودی محدود' }),
+    ).not.toHaveCount(0);
+    await expect(
+      page.getByTestId('availability-band').filter({ hasText: 'فعلاً ناموجود' }),
+    ).not.toHaveCount(0);
+
+    await page.goto(`${CATALOG_ROUTES.products.fa}/${CATALOG_SEED.products.fa.wildflower}`);
+    await expect(page.locator('h1.product-detail__title')).toBeVisible();
+    await expect(page.getByTestId('availability-band')).toHaveAttribute('data-band', 'IN_STOCK');
+
+    await page.goto(`${CATALOG_ROUTES.products.fa}/${CATALOG_SEED.products.fa.thyme}`);
+    await expect(page.locator('h1.product-detail__title')).toBeVisible();
+    await expect(page.getByTestId('availability-band')).toHaveAttribute('data-band', 'LOW_STOCK');
+
+    await page.goto(`${CATALOG_ROUTES.products.fa}/${CATALOG_SEED.products.fa.acacia}`);
+    await expect(page.locator('h1.product-detail__title')).toBeVisible();
+    await expect(page.getByTestId('availability-band')).toHaveAttribute(
+      'data-band',
+      'OUT_OF_STOCK',
+    );
   });
 });
 

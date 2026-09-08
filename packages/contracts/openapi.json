@@ -392,6 +392,10 @@
       },
       "PublicVariantDto": {
         "properties": {
+          "availabilityBand": {
+            "enum": ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"],
+            "type": "string"
+          },
           "dimensionsMm": {
             "items": { "type": "number" },
             "maxItems": 3,
@@ -418,7 +422,8 @@
           "weightGramsShipping",
           "dimensionsMm",
           "position",
-          "isDefault"
+          "isDefault",
+          "availabilityBand"
         ],
         "type": "object"
       },
@@ -1267,6 +1272,143 @@
         "tags": ["Catalog Admin"]
       }
     },
+    "/v1/admin/inventory/adjustments": {
+      "post": {
+        "description": "Apply a privileged inventory adjustment.",
+        "operationId": "adminAdjustInventory",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Apply a privileged inventory adjustment",
+        "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/inventory/items": {
+      "get": {
+        "description": "List inventory items.",
+        "operationId": "adminListInventoryItems",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List inventory items",
+        "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/inventory/items/{variantId}/{stockLocationId}": {
+      "get": {
+        "description": "Read one inventory item.",
+        "operationId": "adminGetInventoryItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "stockLocationId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read one inventory item",
+        "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/inventory/items/{variantId}/{stockLocationId}/planning": {
+      "patch": {
+        "description": "Update inventory planning fields.",
+        "operationId": "adminUpdateInventoryPlanning",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "stockLocationId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update inventory planning fields",
+        "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/inventory/ledger/{variantId}": {
+      "get": {
+        "description": "List stock ledger entries for a variant.",
+        "operationId": "adminListStockLedger",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variantId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List stock ledger entries for a variant",
+        "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/inventory/locations": {
+      "get": {
+        "description": "List stock locations.",
+        "operationId": "adminListStockLocations",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List stock locations",
+        "tags": ["Inventory Admin"]
+      },
+      "post": {
+        "description": "Create a stock location.",
+        "operationId": "adminCreateStockLocation",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a stock location",
+        "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/inventory/locations/{id}": {
+      "patch": {
+        "description": "Update a stock location.",
+        "operationId": "adminUpdateStockLocation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update a stock location",
+        "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/inventory/reconciliation": {
+      "post": {
+        "description": "Detect and optionally repair inventory drift.",
+        "operationId": "adminReconcileInventory",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Detect and optionally repair inventory drift",
+        "tags": ["Inventory Admin"]
+      }
+    },
     "/v1/admin/media/{assetId}": {
       "delete": {
         "description": "Deletes only a media asset that is not protected by an attachment constraint.",
@@ -1537,6 +1679,347 @@
         "security": [{ "sessionCookie": [] }],
         "summary": "Verify and process a direct upload",
         "tags": ["Media"]
+      }
+    },
+    "/v1/admin/procurement/purchase-orders": {
+      "get": {
+        "description": "List purchase orders.",
+        "operationId": "adminListPurchaseOrders",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List purchase orders",
+        "tags": ["Procurement Admin"]
+      },
+      "post": {
+        "description": "Create a draft purchase order.",
+        "operationId": "adminCreatePurchaseOrder",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a draft purchase order",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/procurement/purchase-orders/{id}": {
+      "get": {
+        "description": "Read one purchase order.",
+        "operationId": "adminGetPurchaseOrder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read one purchase order",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/procurement/purchase-orders/{id}/landed-cost": {
+      "get": {
+        "description": "Read internal landed-cost allocation.",
+        "operationId": "adminGetLandedCost",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read internal landed-cost allocation",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/procurement/purchase-orders/{id}/lines": {
+      "post": {
+        "description": "Replace draft purchase-order lines.",
+        "operationId": "adminReplacePurchaseOrderLines",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Replace draft purchase-order lines",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/procurement/purchase-orders/{id}/receipts": {
+      "post": {
+        "description": "Receive goods against a purchase order.",
+        "operationId": "adminCreateGoodsReceipt",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Receive goods against a purchase order",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/procurement/purchase-orders/{id}/transition": {
+      "post": {
+        "description": "Apply an explicit purchase-order transition.",
+        "operationId": "adminTransitionPurchaseOrder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Apply an explicit purchase-order transition",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/procurement/suppliers": {
+      "get": {
+        "description": "List suppliers.",
+        "operationId": "adminListSuppliers",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List suppliers",
+        "tags": ["Procurement Admin"]
+      },
+      "post": {
+        "description": "Create a supplier.",
+        "operationId": "adminCreateSupplier",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a supplier",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/procurement/suppliers/{id}": {
+      "get": {
+        "description": "Read one supplier.",
+        "operationId": "adminGetSupplier",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read one supplier",
+        "tags": ["Procurement Admin"]
+      },
+      "patch": {
+        "description": "Update a supplier.",
+        "operationId": "adminUpdateSupplier",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update a supplier",
+        "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/sourcing/allocations": {
+      "post": {
+        "description": "Create a batch allocation.",
+        "operationId": "adminCreateBatchAllocation",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a batch allocation",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/apiaries": {
+      "get": {
+        "description": "List apiaries.",
+        "operationId": "adminListApiaries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List apiaries",
+        "tags": ["Sourcing Admin"]
+      },
+      "post": {
+        "description": "Create an apiary.",
+        "operationId": "adminCreateApiary",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create an apiary",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/apiaries/{id}": {
+      "get": {
+        "description": "Read one apiary.",
+        "operationId": "adminGetApiary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read one apiary",
+        "tags": ["Sourcing Admin"]
+      },
+      "patch": {
+        "description": "Update an apiary.",
+        "operationId": "adminUpdateApiary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update an apiary",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/apiaries/{id}/translations": {
+      "post": {
+        "description": "Upsert an apiary translation.",
+        "operationId": "adminUpsertApiaryTranslation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Upsert an apiary translation",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/harvest-batches": {
+      "get": {
+        "description": "List harvest batches.",
+        "operationId": "adminListHarvestBatches",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List harvest batches",
+        "tags": ["Sourcing Admin"]
+      },
+      "post": {
+        "description": "Create a harvest batch.",
+        "operationId": "adminCreateHarvestBatch",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a harvest batch",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/harvest-batches/{id}": {
+      "get": {
+        "description": "Read one harvest batch.",
+        "operationId": "adminGetHarvestBatch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read one harvest batch",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/harvest-batches/{id}/allocations": {
+      "get": {
+        "description": "List allocations for a harvest batch.",
+        "operationId": "adminListBatchAllocations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List allocations for a harvest batch",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/production-intake": {
+      "post": {
+        "description": "Record own-production inventory intake.",
+        "operationId": "adminProductionIntake",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Record own-production inventory intake",
+        "tags": ["Sourcing Admin"]
       }
     },
     "/v1/auth/email-verification/confirm": {
@@ -2108,6 +2591,18 @@
     {
       "description": "Permission-protected catalog authoring and publication workflows.",
       "name": "Catalog Admin"
+    },
+    {
+      "description": "Staff-only apiaries, harvest batches, and batch allocation.",
+      "name": "Sourcing Admin"
+    },
+    {
+      "description": "Staff-only suppliers, purchase orders, and goods receipts.",
+      "name": "Procurement Admin"
+    },
+    {
+      "description": "Staff-only stock locations, inventory items, adjustments, and ledger.",
+      "name": "Inventory Admin"
     }
   ]
 }

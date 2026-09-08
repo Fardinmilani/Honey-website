@@ -74,6 +74,7 @@ export type PublicVariant = Readonly<{
   dimensionsMm: readonly [number, number, number];
   position: number;
   isDefault: boolean;
+  availabilityBand: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
 }>;
 
 export type PublicProduct = Readonly<{
@@ -98,8 +99,11 @@ export type PublicProduct = Readonly<{
   media: readonly PublicMedia[];
 }>;
 
-export type CatalogProductRecord = Omit<PublicProduct, 'media'> &
+export type CatalogVariantRecord = Omit<PublicVariant, 'availabilityBand'>;
+
+export type CatalogProductRecord = Omit<PublicProduct, 'media' | 'variants'> &
   Readonly<{
+    variants: readonly CatalogVariantRecord[];
     media: readonly Readonly<{
       id: string;
       mediaAssetId: string;
@@ -248,6 +252,19 @@ export function normalizeSlug(value: string): string {
     throw new TypeError('Slug is invalid.');
   }
   return normalized;
+}
+
+/** Decode a once-percent-encoded route param, then apply `normalizeSlug`. */
+export function parseSlugParam(value: string): string {
+  let decoded = value;
+  if (value.includes('%')) {
+    try {
+      decoded = decodeURIComponent(value);
+    } catch {
+      decoded = value;
+    }
+  }
+  return normalizeSlug(decoded);
 }
 
 function escapeText(value: string): string {

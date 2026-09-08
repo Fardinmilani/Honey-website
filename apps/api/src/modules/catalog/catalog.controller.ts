@@ -91,6 +91,8 @@ class PublicVariantDto {
   @ApiProperty({ type: [Number], minItems: 3, maxItems: 3 }) dimensionsMm!: readonly number[];
   @ApiProperty({ type: Number }) position!: number;
   @ApiProperty({ type: Boolean }) isDefault!: boolean;
+  @ApiProperty({ type: String, enum: ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK'] })
+  availabilityBand!: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
 }
 
 class PublicCatalogMediaDto {

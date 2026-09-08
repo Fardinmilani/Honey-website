@@ -13,4 +13,7 @@ export const product = {
   packaging: 'بسته‌بندی',
   galleryLabel: 'تصاویر محصول',
   mainImage: 'تصویر اصلی محصول',
+  availabilityAvailable: 'موجود',
+  availabilityLimited: 'موجودی محدود',
+  availabilityUnavailable: 'فعلاً ناموجود',
 } as const satisfies ProductMessages;

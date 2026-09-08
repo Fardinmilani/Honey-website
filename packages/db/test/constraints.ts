@@ -203,6 +203,19 @@ export async function runConstraintTests(client: Client): Promise<number> {
         ]),
     ],
     [
+      'negative purchase-order acquisition cost',
+      ['23514'],
+      () =>
+        client.query(
+          `INSERT INTO "purchase_order" (
+             "id", "number", "supplier_id", "status", "currency", "freight_cost_minor"
+           ) VALUES (
+             '018f0000-0002-7000-8000-000000000021', 'PO-NEG-COST', $1, 'DRAFT', 'IRR', -1
+           )`,
+          [seedIds.supplier],
+        ),
+    ],
+    [
       'invalid sourcing shape',
       ['23514'],
       () =>

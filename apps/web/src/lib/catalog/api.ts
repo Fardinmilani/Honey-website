@@ -48,6 +48,16 @@ export type CatalogSearchQuery = {
 
 const DEFAULT_REVALIDATE_SECONDS = 60;
 
+function slugPathSegment(slug: string): string {
+  let decoded = slug;
+  try {
+    decoded = decodeURIComponent(slug);
+  } catch {
+    decoded = slug;
+  }
+  return encodeURIComponent(decoded);
+}
+
 function listSearchParams(
   query: CatalogListQuery,
 ): Record<string, string | number | boolean | undefined> {
@@ -118,7 +128,7 @@ export async function listCategoryProducts(
   query: CatalogListQuery,
 ): Promise<ProductListResponse> {
   return apiFetch<ProductListResponse>({
-    path: `/v1/catalog/categories/${encodeURIComponent(slug)}/products`,
+    path: `/v1/catalog/categories/${slugPathSegment(slug)}/products`,
     searchParams: listSearchParams(query),
     locale: query.locale,
     next: cacheNext([
@@ -135,7 +145,7 @@ export async function listCollectionProducts(
   query: CatalogListQuery,
 ): Promise<ProductListResponse> {
   return apiFetch<ProductListResponse>({
-    path: `/v1/catalog/collections/${encodeURIComponent(slug)}/products`,
+    path: `/v1/catalog/collections/${slugPathSegment(slug)}/products`,
     searchParams: listSearchParams(query),
     locale: query.locale,
     next: cacheNext([
@@ -199,7 +209,7 @@ export async function getProductBySlug(
   slug: string,
 ): Promise<EntityResult<PublicProduct>> {
   return fetchBySlug<PublicProduct>({
-    path: `/v1/catalog/products/${encodeURIComponent(slug)}`,
+    path: `/v1/catalog/products/${slugPathSegment(slug)}`,
     locale,
     tags: [
       catalogTags.catalog,
@@ -215,7 +225,7 @@ export async function getCategoryBySlug(
   slug: string,
 ): Promise<EntityResult<PublicCategory>> {
   return fetchBySlug<PublicCategory>({
-    path: `/v1/catalog/categories/${encodeURIComponent(slug)}`,
+    path: `/v1/catalog/categories/${slugPathSegment(slug)}`,
     locale,
     tags: [
       catalogTags.catalog,
@@ -231,7 +241,7 @@ export async function getCollectionBySlug(
   slug: string,
 ): Promise<EntityResult<PublicCollection>> {
   return fetchBySlug<PublicCollection>({
-    path: `/v1/catalog/collections/${encodeURIComponent(slug)}`,
+    path: `/v1/catalog/collections/${slugPathSegment(slug)}`,
     locale,
     tags: [
       catalogTags.catalog,

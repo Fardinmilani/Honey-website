@@ -9,4 +9,5 @@ export * from './domain/request-context.js';
 export * from './domain/tokens.js';
 export * from './domain/transaction.js';
 export * from './platform.module.js';
+export * from './infrastructure/prisma-platform.adapter.js';
 export * from './infrastructure/request-context.storage.js';

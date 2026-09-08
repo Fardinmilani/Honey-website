@@ -43,13 +43,14 @@
     "api:openapi:lint": "pnpm --filter @honey/contracts openapi:lint",
     "api:openapi:forbidden": "pnpm --filter @honey/contracts openapi:forbidden",
     "api:openapi:breaking": "pnpm --filter @honey/contracts openapi:breaking",
-    "api:docker:build": "docker build --file docker/api.Dockerfile --tag honey-api:phase8 .",
+    "api:docker:build": "docker build --file docker/api.Dockerfile --tag honey-api:phase8 --tag honey-api:phase11 .",
     "phase5:verify": "node scripts/verify-phase5.mjs",
     "phase6:verify": "node scripts/verify-phase6.mjs",
     "phase7:verify": "node scripts/verify-phase7.mjs",
     "phase8:verify": "node scripts/verify-phase8.mjs",
     "phase9:verify": "node scripts/verify-phase9.mjs",
     "phase10:verify": "node scripts/verify-phase10.mjs",
+    "phase11:verify": "node scripts/verify-phase11.mjs",
     "i18n:validate": "pnpm --filter @honey/i18n validate:messages",
     "stylelint": "pnpm --filter @honey/web stylelint",
     "test:e2e": "pnpm --filter @honey/web test:e2e",
@@ -57,7 +58,7 @@
     "web:dev": "pnpm --filter @honey/web dev",
     "web:build": "pnpm --filter @honey/web build",
     "web:start": "pnpm --filter @honey/web start",
-    "web:docker:build": "docker build --file docker/web.Dockerfile --tag honey-web:phase10 ."
+    "web:docker:build": "docker build --file docker/web.Dockerfile --tag honey-web:phase10 --tag honey-web:phase11 ."
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

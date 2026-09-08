@@ -132,6 +132,9 @@ settings:read  settings:write
 role:grant  audit:read
 ```
 
+Sourcing admin APIs reuse `inventory:read` / `inventory:adjust`. No extra
+permission codes were added for Phase 11.
+
 Enforcement rules:
 
 - Every endpoint declares its required permission explicitly. A route with no

@@ -48,6 +48,10 @@ that costs, and what was rejected.
 | [0026](0026-ui-tokens-semantic-classes.md) | Token CSS + semantic `.ui-*` classes for `@honey/ui` (no Tailwind) | Accepted |
 | [0027](0027-web-bff-and-i18n-runtime.md) | Custom `@honey/i18n` runtime, server-only API client, explicit BFF; no GSAP in Phase 9 | Accepted |
 | [0028](0028-cursor-pagination-seo.md) | Cursor-only catalog pagination; indexable URLs are facetless/cursorless; no `?page=n` | Accepted |
+| [0029](0029-own-production-inventory-inbound.md) | Own-production inbound is production intake, not a fake purchase order | Accepted |
+| [0030](0030-landed-cost-allocation.md) | Landed extras allocate by line total; remainder on last `id` | Accepted |
+| [0031](0031-incoming-stock-destination.md) | Confirmed PO incoming uses an explicit destination location | Accepted |
+| [0032](0032-availability-band-threshold.md) | Public LOW_STOCK uses max sellable reorder point | Accepted |
 
 ### Supersession chain
 

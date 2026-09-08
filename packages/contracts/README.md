@@ -20,8 +20,9 @@ short-lived private URLs. They expose no provider configuration, arbitrary
 bucket/key request, Prisma type, or uploaded byte proxy.
 
 The Phase 8 recursive public-contract test follows every schema reachable from
-successful `/v1/catalog/*` responses and rejects internal sourcing, lifecycle,
-audit, and storage fields even when they are nested behind `$ref` entries.
+successful `/v1/catalog/*` responses. Phase 11 extends the OpenAPI forbidden
+scan to every non-admin 2xx schema so admin Supplier fields cannot leak into
+public graphs. Public catalog may include `availabilityBand` only.
 
 ```sh
 pnpm api:openapi:generate

@@ -118,8 +118,8 @@ JSON-LD only, injected server-side, generated from typed builders in
 | Page | Types |
 |---|---|
 | All | `Organization`, `WebSite` (with `SearchAction`) |
-| Product (Phase 10) | `Product` + `BreadcrumbList` — **no `Offer`** |
-| Product (Phase 12 + 11) | `Product` + `Offer` + `BreadcrumbList` when pricing and availability exist |
+| Product (Phase 10–11) | `Product` + `BreadcrumbList` — **no `Offer`** |
+| Product (Phase 12) | `Product` + `Offer` + `BreadcrumbList` when pricing exists |
 | Category / collection | `CollectionPage` + `BreadcrumbList` + `ItemList` |
 | Article | `Article` + `BreadcrumbList` |
 | FAQ page | `FAQPage` |
@@ -136,8 +136,7 @@ JSON-LD only, injected server-side, generated from typed builders in
   "category": "Honey",
   "inLanguage": "fa-IR",
   "url": "https://example.com/fa/mahsoulat/asal-konar"
-  // Phase 10: no "offers" block. Offer is added in Phase 12 when price exists
-  // and Phase 11 when availability bands exist.
+  // Phase 11: UI availability bands exist; Offer waits for Phase 12 pricing.
 }
 ```
 

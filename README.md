@@ -6,16 +6,16 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 9 delivers the Next.js App Router foundation: bilingual locale routing,
-RTL/LTR shell, `@honey/i18n` and `@honey/ui`, Hero integration with protected
-assets, a server-only API client with an explicit BFF probe, Playwright/axe,
-and a standalone web Docker image. Catalog listing/PDP pages, cart, checkout,
-and admin screens are **not** implemented (Phase 10+). Phase 8 catalog APIs
-remain the source of product data when the storefront catalog phase begins.
+Phase 11 delivers sourcing, procurement, and inventory in `@honey/backend`,
+admin APIs, and storefront **availability bands** (no exact stock, no price, no
+Add to Cart). Product JSON-LD still has no `Offer` (Phase 12). Admin procurement
+and inventory screens are Phase 17. Cart and pricing are Phase 12.
+
 The existing Hero media under `apps/web/public/media/hero/` remains protected,
 byte-identical, and outside object storage.
 
-See [`docs/web-development.md`](docs/web-development.md).
+See [`docs/inventory-development.md`](docs/inventory-development.md) and
+[`docs/web-development.md`](docs/web-development.md).
 
 ## Requirements
 

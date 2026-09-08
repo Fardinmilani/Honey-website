@@ -47,15 +47,24 @@ describe.runIf(enabled)('MinIO signed URL expiry', () => {
         cacheControl: 'private, no-store',
         contentDisposition: 'inline',
       });
-      const signed = await adapter.createSignedDownloadUrl('private', key, 1);
-      expect((await fetch(signed.url)).status).toBe(200);
-      await new Promise((resolve) => setTimeout(resolve, 2_100));
-      expect((await fetch(signed.url)).status).toBe(403);
+      // SigV4 `X-Amz-Date` has second granularity. `expiresIn=1` is therefore
+      // valid only until the next UTC second. `createSignedDownloadUrl` also
+      // `HeadObject`s first, so the remaining window is often shorter than the
+      // host→Docker round trip and the first GET returns 403 "Request has expired"
+      // even when host and MinIO clocks agree. Production private TTLs are 120s.
+      const signed = await adapter.createSignedDownloadUrl('private', key, 5);
+      const first = await fetch(signed.url);
+      expect(first.status).toBe(200);
+      const waitMs = signed.expiresAt.getTime() - Date.now() + 1_250;
+      await new Promise((resolve) => setTimeout(resolve, Math.max(waitMs, 1_250)));
+      const expired = await fetch(signed.url);
+      expect(expired.status).toBe(403);
+      expect(await expired.text()).toContain('Request has expired');
     } finally {
       await adapter.deleteObject('private', key);
       await adapter.close();
     }
-  });
+  }, 15_000);
 
   it('serves public objects anonymously and contains no Hero object in either bucket', async () => {
     const adapter = storage();

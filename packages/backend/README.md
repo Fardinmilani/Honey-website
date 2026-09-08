@@ -1,9 +1,8 @@
 # `@honey/backend`
 
 Transport-independent backend shared by the API and, in a later phase, the
-worker. Phase 6 adds the three-layer identity module, Phase 7 adds media, and
-Phase 8 adds localized catalog and content modeling while keeping all HTTP
-mapping in `apps/api`.
+worker. Phase 6 adds identity, Phase 7 media, Phase 8 catalog, and Phase 11
+sourcing, procurement, and inventory. HTTP mapping stays in `apps/api`.
 
 ## Public foundation
 

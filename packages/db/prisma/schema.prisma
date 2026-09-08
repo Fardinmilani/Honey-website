@@ -909,24 +909,31 @@ model BatchAllocation {
 }
 
 model PurchaseOrder {
-  id         String              @id @db.Uuid
-  number     String              @unique
-  supplierId String              @map("supplier_id") @db.Uuid
-  status     PurchaseOrderStatus @default(DRAFT)
-  currency   String              @db.Char(3)
-  expectedAt DateTime?           @map("expected_at") @db.Timestamptz(3)
-  placedBy   String?             @map("placed_by") @db.Uuid
-  placedAt   DateTime?           @map("placed_at") @db.Timestamptz(3)
-  notes      String?
-  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  createdBy  String?             @map("created_by") @db.Uuid
-  updatedBy  String?             @map("updated_by") @db.Uuid
-  supplier   Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  lines      PurchaseOrderLine[]
-  receipts   GoodsReceipt[]
+  id                          String              @id @db.Uuid
+  number                      String              @unique
+  supplierId                  String              @map("supplier_id") @db.Uuid
+  status                      PurchaseOrderStatus @default(DRAFT)
+  currency                    String              @db.Char(3)
+  expectedAt                  DateTime?           @map("expected_at") @db.Timestamptz(3)
+  placedBy                    String?             @map("placed_by") @db.Uuid
+  placedAt                    DateTime?           @map("placed_at") @db.Timestamptz(3)
+  notes                       String?
+  destinationStockLocationId  String?             @map("destination_stock_location_id") @db.Uuid
+  freightCostMinor            BigInt              @default(0) @map("freight_cost_minor")
+  dutyCostMinor               BigInt              @default(0) @map("duty_cost_minor")
+  otherCostMinor              BigInt              @default(0) @map("other_cost_minor")
+  createdAt                   DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdBy                   String?             @map("created_by") @db.Uuid
+  updatedBy                   String?             @map("updated_by") @db.Uuid
+  supplier                    Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  destinationStockLocation    StockLocation?      @relation("PurchaseOrderDestination", fields: [destinationStockLocationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines                       PurchaseOrderLine[]
+  receipts                    GoodsReceipt[]
 
   @@index([supplierId])
+  @@index([status])
+  @@index([destinationStockLocationId])
   @@map("purchase_order")
 }
 
@@ -1010,11 +1017,12 @@ model StockLocation {
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   createdBy      String?            @map("created_by") @db.Uuid
-  updatedBy      String?            @map("updated_by") @db.Uuid
-  inventoryItems InventoryItem[]
-  ledgerEntries  StockLedgerEntry[]
-  reservations   StockReservation[]
-  goodsReceipts  GoodsReceipt[]
+  updatedBy                   String?            @map("updated_by") @db.Uuid
+  inventoryItems              InventoryItem[]
+  ledgerEntries               StockLedgerEntry[]
+  reservations                StockReservation[]
+  goodsReceipts               GoodsReceipt[]
+  destinationPurchaseOrders   PurchaseOrder[]    @relation("PurchaseOrderDestination")
 
   @@map("stock_location")
 }
@@ -1027,9 +1035,10 @@ model InventoryItem {
   reserved        Int            @default(0)
   allocated       Int            @default(0)
   incoming        Int            @default(0)
-  reorderPoint    Int            @default(0) @map("reorder_point")
-  safetyStock     Int            @default(0) @map("safety_stock")
-  version         Int            @default(0)
+  reorderPoint          Int      @default(0) @map("reorder_point")
+  safetyStock           Int      @default(0) @map("safety_stock")
+  lowStockAlertActive   Boolean  @default(false) @map("low_stock_alert_active")
+  version               Int      @default(0)
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   createdBy       String?        @map("created_by") @db.Uuid

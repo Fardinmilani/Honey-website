@@ -15,8 +15,9 @@ validation and canonical public URLs come from the Phase 7 `MediaService` throug
 `Product` is the localized editorial item. `ProductVariant` is its sellable SKU
 identity and carries weight, jar/packaging keys, dimensions, deterministic
 position, and default state. Phase 8 intentionally has no price, currency, stock,
-discount, or purchasability field. Pricing becomes enforceable in Phase 12 and
-inventory in Phase 11.
+discount, or purchasability field. Pricing becomes enforceable in Phase 12.
+Phase 11 overlays a public `availabilityBand` from inventory without exposing
+exact stock. See [`docs/inventory-development.md`](inventory-development.md).
 
 The established `BatchAllocation` model remains the only variant-to-harvest
 relationship. Phase 8 does not add a product-level harvest shortcut. Admin

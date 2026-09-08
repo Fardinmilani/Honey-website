@@ -9,10 +9,17 @@ import type { DatabaseHealthPort } from '../domain/database-health.port.js';
 import type { GracefulResource } from '../domain/graceful-resource.js';
 import { TransactionContext, type TransactionRunner } from '../domain/transaction.js';
 
-class PrismaTransactionContext extends TransactionContext {
+export class PrismaTransactionContext extends TransactionContext {
   constructor(readonly client: TransactionClient) {
     super();
   }
+}
+
+export function asPrismaTransaction(transaction: TransactionContext): TransactionClient {
+  if (!(transaction instanceof PrismaTransactionContext)) {
+    throw new TypeError('Transaction context is not a Prisma transaction.');
+  }
+  return transaction.client;
 }
 
 export class PrismaPlatformAdapter

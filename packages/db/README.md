@@ -44,6 +44,11 @@ text and variant dimensions, materialized category paths, one published default
 variant, ordered collection membership and media roles, and normalized
 PostgreSQL search indexes without changing earlier migrations.
 
+Phase 11 adds the forward-only
+`20260810120000_phase11_sourcing_procurement_inventory` migration: purchase-order
+destination location, non-negative acquisition-cost columns, a status index, and
+`inventory_item.low_stock_alert_active`. Historical migrations remain immutable.
+
 The seed refuses `NODE_ENV=production` and non-local hosts. Its identifiers and
 timestamps are fixed, its writes are idempotent, and optional development staff
 credentials are read only from environment variables.

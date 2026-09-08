@@ -134,7 +134,10 @@ Private responses contain no public URL. `POST /v1/admin/media/{assetId}/private
 first authorizes `content:write`, loads the private asset by ID, derives its
 persisted server key, and returns a signed URL valid for 120 seconds. There is no
 route or DTO for arbitrary keys or buckets. Signed URLs and credentials are not
-written to audit events or application logs.
+written to audit events or application logs. AWS SigV4 timestamps are second-
+granularity (`X-Amz-Date`); a one-second `X-Amz-Expires` is not a reliable
+contract against Docker round-trip latency. Expiry tests wait past the signed
+`expiresAt` rather than using a one-second TTL.
 
 ## API routes
 

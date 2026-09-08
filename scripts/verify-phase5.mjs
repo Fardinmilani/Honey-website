@@ -103,7 +103,10 @@ const apiModuleDirectories = (
 )
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name);
-assert.deepEqual(apiModuleDirectories.sort(), ['catalog', 'identity', 'media', 'platform']);
+const requiredApiModules = ['catalog', 'identity', 'media', 'platform'];
+for (const name of requiredApiModules) {
+  assert.ok(apiModuleDirectories.includes(name), `Phase 5 API module missing: ${name}`);
+}
 
 const createApplication = await readFile(
   resolve(root, 'apps/api/src/bootstrap/create-application.ts'),

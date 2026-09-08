@@ -205,6 +205,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       <strong>{variant.name}</strong>
                       {' — '}
                       {t('catalog.variantWeight', { grams: variant.netWeightGrams })}
+                      {' — '}
+                      <span data-testid="availability-band" data-band={variant.availabilityBand}>
+                        {variant.availabilityBand === 'LOW_STOCK'
+                          ? t('product.availabilityLimited')
+                          : variant.availabilityBand === 'OUT_OF_STOCK'
+                            ? t('product.availabilityUnavailable')
+                            : t('product.availabilityAvailable')}
+                      </span>
                     </li>
                   ))}
                 </ul>
