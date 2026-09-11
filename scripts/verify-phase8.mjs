@@ -157,9 +157,7 @@ assert.doesNotMatch(
 
 const worker = await readFile(resolve(root, 'apps/worker/src/index.ts'), 'utf8');
 assert.match(worker, /Phase 2 workspace marker/u);
-for (const path of ['packages/backend/src/modules/pricing']) {
-  await assert.rejects(access(resolve(root, path)));
-}
+// Pricing is intentionally introduced by the completed Phase 12 cart work.
 
 for (const [path, expected] of [
   [

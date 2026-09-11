@@ -100,7 +100,7 @@ No new runtime dependency was added. The existing stack remains
 - `packages/backend/src/modules/pricing/infrastructure/prisma-pricing.repository.ts` — pricing persistence adapter.
 - `packages/backend/src/modules/pricing/module.meta.ts` — pricing module metadata.
 - `packages/backend/src/modules/pricing/pricing.module.ts` — pricing module composition.
-- `packages/backend/test/phase12.integration.test.ts` — real PostgreSQL cart/pricing integration tests.
+- `packages/backend/test/phase12.integration.test.ts` — real PostgreSQL cart/pricing integration tests, including coupon replacement and no-redemption proof.
 - `packages/db/prisma/migrations/20260910090000_phase12_cart_pricing_integrity/migration.sql` — forward cart/pricing schema migration.
 - `scripts/verify-phase12.mjs` — Phase 12 structural verifier.
 
@@ -163,6 +163,8 @@ No new runtime dependency was added. The existing stack remains
 - `packages/i18n/test/pathnames.test.mjs` — cart route tests.
 - `scripts/verify-phase10.mjs` — legitimate Phase 12 catalog/Offer allowance.
 - `scripts/verify-phase11.mjs` — durable public-contract structural assertion.
+- `scripts/verify-phase8.mjs` — removes the superseded pricing-module absence assertion.
+- `scripts/verify-phase9.mjs` — permits the required cart route while retaining checkout/admin absence checks.
 - `turbo.json` — Phase 12 task dependencies and cache inputs.
 - `PLANS.md` — completed/current phase ledger.
 - `README.md` — current implementation boundary.
@@ -235,20 +237,27 @@ No new runtime dependency was added. The existing stack remains
 
 - `pnpm format:check` — pass.
 - `pnpm lint` — pass (10 workspace lint tasks).
-- `pnpm typecheck` — pass (17 workspace tasks).
-- `pnpm test` — pass (17 workspace tasks; backend **116 passed / 5 skipped**,
-  API **45 passed / 1 skipped**; skipped MinIO/optional integration coverage is
-  not treated as a pass).
-- `pnpm build` — Turbo reported **10 successful** workspace tasks. In this
-  Windows shell the Turbo wrapper remained open after that completion summary;
-  direct affected-package builds (`@honey/web`, `@honey/backend`, `@honey/api`,
-  `@honey/i18n`, and `@honey/contracts`) each exited 0.
+- `pnpm boundaries` and `pnpm typecheck` — pass (17 workspace typecheck tasks).
+- `pnpm test` with CI-equivalent PostgreSQL and MinIO flags — pass (17 workspace
+  tasks; backend **123 passed / 0 skipped**, API **46 passed / 0 skipped**).
+  The four MinIO-gated and two optional PostgreSQL integration tests all ran.
+- Focused Phase 12 pricing/cart/PostgreSQL/API tests — **43 passed**, 0 skipped;
+  the PostgreSQL test explicitly proves coupon replacement creates no
+  `CouponRedemption`.
+- `pnpm build` — **10 successful** workspace tasks and exit code 0. No
+  project-scoped Node, pnpm, or Turbo process remained afterwards; the previous
+  apparent non-exit was Windows tool/shell timing, not a leaked build process.
 - `pnpm stylelint` and `pnpm i18n:validate` — pass.
 - `pnpm test:e2e` — **87 passed**, 0 failed, 0 skipped; six inspected desktop
   snapshots were deliberately updated for the new current-price/cart indicator UI.
+- Complete Phase 12 Playwright suite (`cart`, `cart-a11y`, and
+  `cart-rtl-indicator`) — **9 passed**, 0 failed, 0 skipped.
 - `pnpm api:openapi:generate`, `pnpm api:openapi:check`,
-  `pnpm api:openapi:lint`, and `pnpm api:openapi:forbidden` — pass.
-- `pnpm phase10:verify`, `pnpm phase11:verify`, and `pnpm phase12:verify` — pass.
+  `pnpm api:openapi:lint`, and `pnpm api:openapi:forbidden` — pass;
+  `pnpm api:openapi:breaking` exited 0 with no pull-request base supplied.
+- `pnpm phase4:verify` through `pnpm phase12:verify` — pass. Phase 8/9
+  verifiers were narrowed only to remove assertions superseded by their required
+  Phase 12 pricing module and cart route; checkout/admin prohibitions remain.
 - `pnpm db:validate`, `pnpm db:generate`, `pnpm db:test`, and repeated
   `pnpm db:seed` — pass; the Phase 12 migration was applied to `honey_local`.
 - `pnpm docker:verify` — pass.

@@ -143,7 +143,6 @@ for (const path of cssFiles) {
 }
 
 for (const absent of [
-  'apps/web/src/app/[locale]/(storefront)/cart',
   'apps/web/src/app/[locale]/(storefront)/checkout',
   'apps/web/src/app/[locale]/(admin)/admin/page.tsx',
 ]) {

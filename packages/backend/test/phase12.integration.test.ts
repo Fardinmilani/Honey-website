@@ -232,6 +232,22 @@ describe('Phase 12 cart and pricing on PostgreSQL', () => {
         status: 'ACTIVE',
       },
     });
+    await prisma.coupon.create({
+      data: {
+        id: randomUUID(),
+        code: 'FiXeD15',
+        type: 'FIXED',
+        value: 15n,
+        currency: 'IRR',
+        minSubtotalMinor: null,
+        maxDiscountMinor: null,
+        startsAt: new Date(now - 60 * 60 * 1000),
+        endsAt: null,
+        appliesTo: 'ALL',
+        targetIds: [],
+        status: 'ACTIVE',
+      },
+    });
   }, 120_000);
 
   afterAll(async () => {
@@ -255,7 +271,7 @@ describe('Phase 12 cart and pricing on PostgreSQL', () => {
     expect(view.subtotal).toEqual({ amountMinor: '250', currency: 'IRR' });
   });
 
-  it('supports anonymous cart operations and finds a mixed-case coupon case-insensitively', async () => {
+  it('supports anonymous cart operations, replaces the cart coupon, and does not redeem it', async () => {
     const anonymousId = randomUUID();
     const added = await cart.addLine(context(anonymousId), { variantId, quantity: 2 });
     const line = added.lines[0];
@@ -268,6 +284,16 @@ describe('Phase 12 cart and pricing on PostgreSQL', () => {
     expect(discounted.subtotal.amountMinor).toBe('375');
     expect(discounted.discountTotal.amountMinor).toBe('38');
     expect(discounted.merchandiseTotal.amountMinor).toBe('337');
+
+    const redemptionsBefore = await prisma.couponRedemption.count();
+    const replacement = await cart.applyCoupon(context(anonymousId), 'fixed15');
+    expect(replacement.coupon).toMatchObject({ code: 'FIXED15', state: 'APPLIED' });
+    expect(replacement.discountTotal.amountMinor).toBe('15');
+    expect(replacement.merchandiseTotal.amountMinor).toBe('360');
+    expect(await prisma.couponRedemption.count()).toBe(redemptionsBefore);
+    expect((await prisma.cart.findUnique({ where: { id: replacement.id } }))?.couponCode).toBe(
+      'FIXED15',
+    );
   });
 
   it('expires an active anonymous cart and starts a fresh cart instead of reviving it', async () => {
