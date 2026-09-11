@@ -1,14 +1,22 @@
-import { createTranslator, getLocaleConfig, isLocale, localizedHref } from '@honey/i18n';
+import {
+  createTranslator,
+  formatMinorMoney,
+  getLocaleConfig,
+  isLocale,
+  localizedHref,
+} from '@honey/i18n';
 import { Container, Stack } from '@honey/ui';
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 
 import { Breadcrumbs } from '@/components/catalog/breadcrumbs';
+import { AddToCart } from '@/components/catalog/add-to-cart';
 import { JsonLdScript } from '@/components/catalog/json-ld-script';
 import { ProductGallery } from '@/components/catalog/product-gallery';
 import { SetEntityLocaleHrefs } from '@/components/shell/set-entity-locale-hrefs';
 import { buildEntityAlternatePaths, resolveProductLocaleSlugs } from '@/lib/catalog/alternates';
 import { getProductBySlug } from '@/lib/catalog/api';
+import { getWebEnv } from '@/lib/env';
 import { pickGalleryImages, publicImageSrc } from '@/lib/catalog/media';
 import {
   absoluteUrl,
@@ -68,6 +76,17 @@ function productDescription(product: {
   return '';
 }
 
+function hasCompletePublicPrice(
+  price: { readonly amountMinor?: string; readonly currency?: string } | null | undefined,
+): price is { readonly amountMinor: string; readonly currency: string } {
+  return (
+    price !== null &&
+    price !== undefined &&
+    typeof price.amountMinor === 'string' &&
+    typeof price.currency === 'string'
+  );
+}
+
 export default async function ProductPage({ params }: ProductPageProps) {
   const { locale: raw, slug } = await params;
   if (!isLocale(raw)) {
@@ -96,10 +115,26 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const localeHrefs = buildEntityAlternatePaths('/products/[slug]', slugsByLocale);
   const productPath = localizedHref('/products/[slug]', locale, { slug: product.slug });
   const config = getLocaleConfig(locale);
+  const webEnv = getWebEnv();
   const description = productDescription(product);
   const images = pickGalleryImages(product.media).map((item) =>
     absoluteUrl(publicImageSrc(item.url)),
   );
+  const canonicalProductUrl = absoluteUrl(productPath);
+  const defaultVariantWithPrice = product.variants.find(
+    (variant) => variant.isDefault && hasCompletePublicPrice(variant.price),
+  );
+  const variantWithPrice =
+    defaultVariantWithPrice ??
+    product.variants.find((variant) => hasCompletePublicPrice(variant.price));
+  const offer =
+    variantWithPrice !== undefined && hasCompletePublicPrice(variantWithPrice.price)
+      ? {
+          amountMinor: variantWithPrice.price.amountMinor,
+          currency: variantWithPrice.price.currency,
+          availability: variantWithPrice.availabilityBand,
+        }
+      : undefined;
 
   const breadcrumbItems = [
     { label: t('navigation.home'), href: localizedHref('/', locale) },
@@ -119,10 +154,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     images,
     brandName: t('common.brandName'),
     inLanguage: config.bcp47,
-    url: absoluteUrl(productPath),
+    url: canonicalProductUrl,
     ...(product.honeyVarietal !== null && product.honeyVarietal !== ''
       ? { category: product.honeyVarietal }
       : {}),
+    ...(offer !== undefined ? { offer } : {}),
   });
 
   return (
@@ -213,6 +249,25 @@ export default async function ProductPage({ params }: ProductPageProps) {
                             ? t('product.availabilityUnavailable')
                             : t('product.availabilityAvailable')}
                       </span>
+                      {' — '}
+                      {!hasCompletePublicPrice(variant.price) ? (
+                        <span className="product-price product-price--unavailable">
+                          {t('product.priceUnavailable')}
+                        </span>
+                      ) : (
+                        <span className="product-price">
+                          {formatMinorMoney(locale, variant.price)}
+                        </span>
+                      )}
+                      {hasCompletePublicPrice(variant.price) &&
+                      variant.availabilityBand !== 'OUT_OF_STOCK' ? (
+                        <AddToCart
+                          variantId={variant.id}
+                          locale={locale}
+                          csrfCookieName={webEnv.csrfCookieName}
+                          csrfHeaderName={webEnv.csrfHeaderName}
+                        />
+                      ) : null}
                     </li>
                   ))}
                 </ul>

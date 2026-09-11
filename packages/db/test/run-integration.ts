@@ -47,7 +47,7 @@ try {
       ],
     );
     const permissions = await prisma.permission.findMany({ select: { code: true } });
-    assert.equal(permissions.length, 21);
+    assert.equal(permissions.length, 23);
     const forbiddenMarketplaceRole = ['SELL', 'ER'].join('');
     assert.equal(
       roles.some((role) => role.code === forbiddenMarketplaceRole),
@@ -56,7 +56,7 @@ try {
     const ownerPermissionCount = await prisma.rolePermission.count({
       where: { role: { code: 'OWNER' } },
     });
-    assert.equal(ownerPermissionCount, 21);
+    assert.equal(ownerPermissionCount, 23);
   } finally {
     await prisma.$disconnect();
   }

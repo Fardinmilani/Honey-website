@@ -6,6 +6,8 @@ export const navigation = {
   categories: 'Categories',
   collections: 'Collections',
   search: 'Search',
+  cart: 'Cart',
+  cartItemCount: 'Cart, {count} items',
   primaryNavLabel: 'Primary',
   footerNavLabel: 'Footer',
 } as const satisfies NavigationMessages;

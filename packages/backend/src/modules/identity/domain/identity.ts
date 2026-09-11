@@ -12,6 +12,8 @@ export const PERMISSION_CODES = [
   'catalog:read',
   'catalog:write',
   'catalog:publish',
+  'pricing:read',
+  'pricing:write',
   'inventory:read',
   'inventory:adjust',
   'procurement:read',

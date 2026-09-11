@@ -112,17 +112,12 @@ assert.doesNotMatch(api, /allocateLandedCost|availableToSell\(/u);
 assert.match(worker, /Phase 2 workspace marker/u);
 assert.doesNotMatch(worker, /inventory processor|Worker\(/u);
 assert.doesNotMatch(inventory, /acquireReservation|reservation sweeper|StockReservationService/u);
-assert.doesNotMatch(web, /AddToCart|add to cart/iu);
 assert.doesNotMatch(
   (await files('apps/web/src/app')).join('\n'),
   /admin\/suppliers|admin\/procurement|admin\/inventory/u,
 );
 
-for (const path of [
-  'packages/backend/src/modules/pricing',
-  'apps/web/src/app/[locale]/(storefront)/cart',
-  'apps/web/src/app/[locale]/(admin)/admin/suppliers',
-]) {
+for (const path of ['apps/web/src/app/[locale]/(admin)/admin/suppliers']) {
   await assert.rejects(access(resolve(root, path)));
 }
 
@@ -191,7 +186,9 @@ const contract = await readFile(
   'utf8',
 );
 assert.match(contract, /path.startsWith\('\/v1\/admin\/'\)/u);
-assert.match(contract, /availabilityBand|publicForbidden/u);
+assert.match(contract, /privateForbidden/u);
+assert.match(contract, /catalogCommerceForbidden/u);
+assert.match(contract, /path.startsWith\('\/v1\/catalog\/'\)/u);
 
 process.stdout.write(
   'Phase 11 sourcing, procurement, and inventory structural verification passed.\n',

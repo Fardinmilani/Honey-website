@@ -8,7 +8,7 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const document = JSON.parse(await readFile(resolve(directory, '../openapi.json'), 'utf8'));
 
 const forbiddenProperty =
-  /^(?:supplier(?:id|name|code)?|sourcingtype|apiaryid|harvestbatchid|landedcost|internalnotes|price|currency|total|discount|stock|inventory(?:count)?|cost|storagekey|bucket|signedprivateurl|moisture|hmf|diastase|purity|medical|therapeutic)$/iu;
+  /^(?:supplier(?:id|name|code)?|sourcingtype|apiaryid|harvestbatchid|landedcost|internalnotes|total|discount|stock|inventory(?:count)?|cost|storagekey|bucket|signedprivateurl|moisture|hmf|diastase|purity|medical|therapeutic)$/iu;
 
 function componentFromRef(ref) {
   const prefix = '#/components/schemas/';
@@ -42,7 +42,7 @@ function visit(schema, seen, path) {
   }
 }
 
-test('public catalog response schemas contain no private, sourcing, pricing, or stock fields', () => {
+test('public catalog response schemas contain no private, sourcing, or stock fields', () => {
   const catalogPaths = Object.entries(document.paths).filter(([path]) =>
     path.startsWith('/v1/catalog/'),
   );

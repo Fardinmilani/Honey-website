@@ -11,9 +11,10 @@ import {
   toFilesystemLocalePath,
 } from '../dist/index.js';
 
-test('pathname map covers Phase 10 catalog routes', () => {
+test('pathname map covers catalog and cart routes', () => {
   assert.deepEqual(Object.keys(pathnames).sort(), [
     '/',
+    '/cart',
     '/categories',
     '/categories/[slug]',
     '/collections',
@@ -27,12 +28,14 @@ test('pathname map covers Phase 10 catalog routes', () => {
   assert.equal(pathnames['/categories'].fa, '/dasteha');
   assert.equal(pathnames['/collections'].fa, '/majmooeha');
   assert.equal(pathnames['/search'].fa, '/jostoju');
+  assert.equal(pathnames['/cart'].fa, '/sabad-kharid');
 });
 
 test('localizedHref fills dynamic slugs', () => {
   assert.equal(localizedHref('/', 'fa'), '/fa');
   assert.equal(localizedHref('/products', 'fa'), '/fa/mahsoulat');
   assert.equal(localizedHref('/products', 'en'), '/en/products');
+  assert.equal(localizedHref('/cart', 'fa'), '/fa/sabad-kharid');
   assert.equal(
     localizedHref('/products/[slug]', 'fa', { slug: 'asal-konar' }),
     '/fa/mahsoulat/asal-konar',

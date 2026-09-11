@@ -21,6 +21,17 @@ const testIds = {
   mediaAsset: '018f0000-0001-7000-8000-00000000000e',
 } as const;
 
+const phase12CartIds = {
+  noOwner: '018f0000-0002-7000-8000-000000000012',
+  bothOwners: '018f0000-0002-7000-8000-000000000013',
+  duplicateUserFirst: '018f0000-0002-7000-8000-000000000014',
+  duplicateUserSecond: '018f0000-0002-7000-8000-000000000015',
+  duplicateAnonymousFirst: '018f0000-0002-7000-8000-000000000016',
+  duplicateAnonymousSecond: '018f0000-0002-7000-8000-000000000017',
+  inactiveOwnerFirst: '018f0000-0002-7000-8000-000000000018',
+  inactiveOwnerSecond: '018f0000-0002-7000-8000-000000000019',
+} as const;
+
 function databaseErrorCode(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
   const code = error.code;
@@ -125,6 +136,84 @@ async function createValidTestRecords(client: Client): Promise<void> {
     `INSERT INTO "product" ("id", "status", "sourcing_type") VALUES ($1, 'DRAFT', 'OWN_PRODUCTION')`,
     [testIds.product],
   );
+}
+
+async function assertPhase12Schema(client: Client): Promise<void> {
+  const constraint = await client.query<{ definition: string }>(
+    `SELECT pg_get_constraintdef(oid) AS definition
+     FROM pg_constraint
+     WHERE conrelid = 'cart'::regclass AND conname = 'cart_owner_exclusive'`,
+  );
+  const constraintDefinition = constraint.rows[0]?.definition;
+  if (constraintDefinition === undefined) throw new Error('cart owner constraint is missing');
+  assert.match(
+    constraintDefinition,
+    /num_nonnulls\(user_id, anonymous_id\) = 1/u,
+    'cart owner constraint must require exactly one owner',
+  );
+
+  const indexes = await client.query<{
+    name: string;
+    definition: string;
+    predicate: string | null;
+  }>(
+    `SELECT c.relname AS name,
+            pg_get_indexdef(i.indexrelid) AS definition,
+            pg_get_expr(i.indpred, i.indrelid) AS predicate
+     FROM pg_index i
+     JOIN pg_class c ON c.oid = i.indexrelid
+     WHERE c.relname = ANY($1::text[])`,
+    [
+      [
+        'cart_active_user_unique',
+        'cart_active_anonymous_unique',
+        'cart_active_expiry_idx',
+        'variant_price_current_lookup_idx',
+      ],
+    ],
+  );
+  const byName = new Map(indexes.rows.map((index) => [index.name, index]));
+
+  const activeUserIndex = byName.get('cart_active_user_unique');
+  if (activeUserIndex === undefined) throw new Error('active user cart unique index is missing');
+  assert.match(activeUserIndex.definition, /UNIQUE/u);
+  assert.match(activeUserIndex.predicate ?? '', /status = 'ACTIVE'/u);
+  assert.match(activeUserIndex.predicate ?? '', /user_id IS NOT NULL/u);
+
+  const activeAnonymousIndex = byName.get('cart_active_anonymous_unique');
+  if (activeAnonymousIndex === undefined) {
+    throw new Error('active anonymous cart unique index is missing');
+  }
+  assert.match(activeAnonymousIndex.definition, /UNIQUE/u);
+  assert.match(activeAnonymousIndex.predicate ?? '', /status = 'ACTIVE'/u);
+  assert.match(activeAnonymousIndex.predicate ?? '', /anonymous_id IS NOT NULL/u);
+
+  const activeExpiryIndex = byName.get('cart_active_expiry_idx');
+  if (activeExpiryIndex === undefined) throw new Error('active cart expiry index is missing');
+  assert.match(activeExpiryIndex.definition, /\(expires_at\)/u);
+  assert.match(activeExpiryIndex.predicate ?? '', /status = 'ACTIVE'/u);
+
+  const currentPriceIndex = byName.get('variant_price_current_lookup_idx');
+  if (currentPriceIndex === undefined) throw new Error('current price lookup index is missing');
+  assert.match(currentPriceIndex.definition, /\(variant_id, currency, valid_from DESC\)/u);
+}
+
+async function assertInactiveCartHistoryIsAllowed(client: Client): Promise<void> {
+  await client.query('BEGIN');
+  try {
+    await client.query(
+      `INSERT INTO "cart" ("id", "user_id", "currency", "locale", "status", "expires_at")
+       VALUES ($1, $2, 'IRR', 'en', 'MERGED', now() + interval '1 hour')`,
+      [phase12CartIds.inactiveOwnerFirst, seedIds.ownerUser],
+    );
+    await client.query(
+      `INSERT INTO "cart" ("id", "user_id", "currency", "locale", "status", "expires_at")
+       VALUES ($1, $2, 'IRR', 'en', 'ABANDONED', now() + interval '1 hour')`,
+      [phase12CartIds.inactiveOwnerSecond, seedIds.ownerUser],
+    );
+  } finally {
+    await client.query('ROLLBACK');
+  }
 }
 
 export async function runConstraintTests(client: Client): Promise<number> {
@@ -235,6 +324,58 @@ export async function runConstraintTests(client: Client): Promise<number> {
          VALUES ('018f0000-0002-7000-8000-000000000002', $1, $2, 0)`,
           [testIds.cart, seedIds.ownVariant],
         ),
+    ],
+    [
+      'cart without an owner',
+      ['23514'],
+      () =>
+        client.query(
+          `INSERT INTO "cart" ("id", "currency", "locale", "expires_at")
+           VALUES ($1, 'IRR', 'en', now() + interval '1 hour')`,
+          [phase12CartIds.noOwner],
+        ),
+    ],
+    [
+      'cart with both user and anonymous owners',
+      ['23514'],
+      () =>
+        client.query(
+          `INSERT INTO "cart" ("id", "user_id", "anonymous_id", "currency", "locale", "expires_at")
+           VALUES ($1, $2, 'phase12-browser', 'IRR', 'en', now() + interval '1 hour')`,
+          [phase12CartIds.bothOwners, seedIds.ownerUser],
+        ),
+    ],
+    [
+      'duplicate active cart for one user',
+      ['23505'],
+      async () => {
+        await client.query(
+          `INSERT INTO "cart" ("id", "user_id", "currency", "locale", "expires_at")
+           VALUES ($1, $2, 'IRR', 'en', now() + interval '1 hour')`,
+          [phase12CartIds.duplicateUserFirst, seedIds.ownerUser],
+        );
+        await client.query(
+          `INSERT INTO "cart" ("id", "user_id", "currency", "locale", "expires_at")
+           VALUES ($1, $2, 'IRR', 'en', now() + interval '1 hour')`,
+          [phase12CartIds.duplicateUserSecond, seedIds.ownerUser],
+        );
+      },
+    ],
+    [
+      'duplicate active cart for one anonymous owner',
+      ['23505'],
+      async () => {
+        await client.query(
+          `INSERT INTO "cart" ("id", "anonymous_id", "currency", "locale", "expires_at")
+           VALUES ($1, 'phase12-duplicate-browser', 'IRR', 'en', now() + interval '1 hour')`,
+          [phase12CartIds.duplicateAnonymousFirst],
+        );
+        await client.query(
+          `INSERT INTO "cart" ("id", "anonymous_id", "currency", "locale", "expires_at")
+           VALUES ($1, 'phase12-duplicate-browser', 'IRR', 'en', now() + interval '1 hour')`,
+          [phase12CartIds.duplicateAnonymousSecond],
+        );
+      },
     ],
     [
       'negative price',
@@ -437,5 +578,7 @@ export async function runConstraintTests(client: Client): Promise<number> {
   for (const [name, expectedCodes, operation] of cases) {
     await expectDatabaseRejection(client, name, expectedCodes, operation);
   }
+  await assertInactiveCartHistoryIsAllowed(client);
+  await assertPhase12Schema(client);
   return cases.length;
 }

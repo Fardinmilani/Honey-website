@@ -23,6 +23,7 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         '/*/admin',
         '/*/cart',
+        '/*/sabad-kharid',
         '/*/checkout',
         '/*/account',
         '/api/',

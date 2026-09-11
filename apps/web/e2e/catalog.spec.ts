@@ -213,13 +213,24 @@ test.describe('slug history', () => {
 });
 
 test.describe('structured data', () => {
-  test('product page JSON-LD types and forbidden fields', async ({ page }) => {
+  test('product page JSON-LD emits a public Offer only from the authoritative catalog data', async ({
+    page,
+  }) => {
     await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.thyme}`);
     const jsonLd = await parseJsonLd(page);
     const types = collectJsonLdTypes(jsonLd);
     expect(types).toContain('Product');
+    expect(types).toContain('Offer');
     expect(types).toContain('BreadcrumbList');
     assertNoForbiddenJsonLdKeys(jsonLd);
+
+    const serialized = JSON.stringify(jsonLd);
+    expect(serialized).toMatch(/"price":"[0-9]+"/u);
+    expect(serialized).toContain('"priceCurrency":"IRR"');
+    expect(serialized).toContain('"availability":"https://schema.org/LimitedAvailability"');
+    expect(serialized).toContain(
+      `"url":"${siteOrigin()}${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.thyme}"`,
+    );
   });
 
   test('collection page JSON-LD types', async ({ page }) => {
@@ -233,28 +244,32 @@ test.describe('structured data', () => {
   });
 });
 
-test.describe('forbidden storefront commerce and supplier copy', () => {
-  const forbiddenPatterns = [
-    /\badd to cart\b/iu,
-    /\bprice\b/iu,
-    /\bin stock\b/iu,
-    /\bout of stock\b/iu,
-    /\$\d/iu,
-    /€\d/iu,
+test.describe('public storefront pricing and privacy boundaries', () => {
+  const internalCommercePatterns = [
+    /\b(?:on hand|reserved|allocated|incoming|reorder point|warehouse|stock location)\b/iu,
+    /\b(?:supplier|landed cost|unit cost|margin)\b/iu,
+    /\b\d+\s+(?:units?|jars?)\b/iu,
   ];
 
-  test('product page has no price, stock, or cart copy', async ({ page }) => {
+  test('product page shows a public current price and no internal commerce details', async ({
+    page,
+  }) => {
     await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.thyme}`);
+    await expect(page.locator('.product-price')).toContainText('IRR');
+    await expect(page.getByRole('button', { name: 'Add to cart' })).toBeVisible();
     const text = await page.locator('body').innerText();
-    for (const pattern of forbiddenPatterns) {
+    for (const pattern of internalCommercePatterns) {
       expect(text).not.toMatch(pattern);
     }
   });
 
-  test('listing page has no price, stock, or cart copy', async ({ page }) => {
+  test('listing shows public prices without internal inventory details', async ({ page }) => {
     await page.goto(CATALOG_ROUTES.products.en);
+    await expect(
+      page.locator('.product-card .product-price').filter({ hasText: 'IRR' }),
+    ).not.toHaveCount(0);
     const text = await page.locator('body').innerText();
-    for (const pattern of forbiddenPatterns) {
+    for (const pattern of internalCommercePatterns) {
       expect(text).not.toMatch(pattern);
     }
   });
@@ -286,7 +301,7 @@ test.describe('availability bands', () => {
     await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.wildflower}`);
     await expect(page.locator('h1.product-detail__title')).toBeVisible();
     await expect(page.getByTestId('availability-band')).toHaveAttribute('data-band', 'IN_STOCK');
-    await expect(page.locator('body')).not.toContainText('Add to Cart');
+    await expect(page.getByRole('button', { name: 'Add to cart' })).toBeVisible();
 
     await page.goto(`${CATALOG_ROUTES.products.en}/${CATALOG_SEED.products.en.thyme}`);
     await expect(page.locator('h1.product-detail__title')).toBeVisible();
@@ -298,6 +313,7 @@ test.describe('availability bands', () => {
       'data-band',
       'OUT_OF_STOCK',
     );
+    await expect(page.getByRole('button', { name: 'Add to cart' })).toHaveCount(0);
   });
 
   test('Persian listing and PDPs show localized bands', async ({ page }) => {

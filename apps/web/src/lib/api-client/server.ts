@@ -33,6 +33,8 @@ export type ApiRequestOptions = {
   readonly searchParams?: Record<string, string | number | boolean | undefined>;
   readonly body?: unknown;
   readonly locale?: string;
+  /** Enabled ISO-4217 code for public catalog reads. */
+  readonly currency?: string;
   readonly requestId?: string;
   /** Forward session cookie for authenticated calls (server-only). */
   readonly withSession?: boolean;
@@ -113,6 +115,9 @@ export async function apiFetch<T>(options: ApiRequestOptions): Promise<T> {
 
   if (options.locale) {
     headers.set('accept-language', options.locale);
+  }
+  if (options.currency) {
+    headers.set('x-currency', options.currency);
   }
 
   if (options.withSession) {

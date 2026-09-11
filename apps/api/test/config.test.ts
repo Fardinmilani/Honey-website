@@ -89,6 +89,14 @@ describe('API configuration', () => {
       CATALOG_CACHE_NAMESPACE: 'honey:catalog:v1',
       CATALOG_SEARCH_QUERY_MAX_LENGTH: '160',
       CATALOG_MAX_CATEGORY_DEPTH: '6',
+      CART_COOKIE_NAME: '__Host-cart',
+      CART_COOKIE_SECURE: 'true',
+      CART_ACTIVE_TTL_SECONDS: '2592000',
+      CART_LINE_MAX_QUANTITY: '1000',
+      CART_DEFAULT_CURRENCY: 'IRR',
+      CART_ENABLED_CURRENCIES: 'IRR',
+      CART_WRITE_RATE_LIMIT_MAX: '120',
+      CART_COUPON_RATE_LIMIT_MAX: '20',
     };
     expect(() =>
       loadApiConfig({

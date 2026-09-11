@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 12 — Cart & Pricing (**CURRENT but NOT STARTED**)
-**Completed phase:** Phase 11 — Sourcing, Procurement & Inventory (**complete 2026-08-10**)
+**Current phase:** Phase 13 — Checkout & Orders (**CURRENT but NOT STARTED**)
+**Completed phase:** Phase 12 — Cart & Pricing (**complete 2026-09-12**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -73,8 +73,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 9 | Web Foundation | **Complete 2026-08-08** — App Router shell, `@honey/i18n` + `@honey/ui`, Hero, Playwright/axe, web image |
 | 10 | Storefront Catalog | **Complete 2026-08-09** — listing, filtering, PDP, SEO, structured data, sitemaps |
 | 11 | Sourcing, Procurement & Inventory | **Complete 2026-08-10** — suppliers, purchase orders, batches, stock ledger, public bands |
-| 12 | Cart & Pricing | **CURRENT but NOT STARTED** — server-authoritative cart and price engine |
-| 13 | Checkout & Orders | Reservations, checkout transaction, immutable order snapshots |
+| 12 | Cart & Pricing | **Complete 2026-09-12** — server-authoritative pricing and private repriced carts |
+| 13 | Checkout & Orders | **CURRENT but NOT STARTED** — reservations, checkout transaction, immutable order snapshots |
 | 14 | Payments | Provider abstraction, first provider, server-verified outcomes, reconciliation |
 | 15 | Shipping & Fulfilment | Provider abstraction, rates, shipments, tracking |
 | 16 | Background Jobs | Worker composition root, queues, scheduling, retries, dead letters |

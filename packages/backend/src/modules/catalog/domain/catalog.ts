@@ -63,6 +63,12 @@ export type PublicMedia = Readonly<{
   altText: string;
 }>;
 
+/** A JSON-safe amount in the currency selected for the public catalog read. */
+export type PublicVariantPrice = Readonly<{
+  amountMinor: string;
+  currency: string;
+}>;
+
 export type PublicVariant = Readonly<{
   id: string;
   sku: string;
@@ -75,6 +81,8 @@ export type PublicVariant = Readonly<{
   position: number;
   isDefault: boolean;
   availabilityBand: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+  /** Null means no price is currently effective for the requested currency. */
+  price: PublicVariantPrice | null;
 }>;
 
 export type PublicProduct = Readonly<{
@@ -99,7 +107,7 @@ export type PublicProduct = Readonly<{
   media: readonly PublicMedia[];
 }>;
 
-export type CatalogVariantRecord = Omit<PublicVariant, 'availabilityBand'>;
+export type CatalogVariantRecord = Omit<PublicVariant, 'availabilityBand' | 'price'>;
 
 export type CatalogProductRecord = Omit<PublicProduct, 'media' | 'variants'> &
   Readonly<{

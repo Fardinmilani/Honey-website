@@ -4,6 +4,7 @@ import {
   compareStrings,
   formatDate,
   formatList,
+  formatMinorMoney,
   formatNumber,
   formatRelativeTime,
   normalizeDigits,
@@ -22,6 +23,17 @@ test('normalizeDigits maps Persian and Arabic-Indic to Latin', () => {
   assert.equal(normalizeDigits('۰۱۲۳۴۵۶۷۸۹'), '0123456789');
   assert.equal(normalizeDigits('٠١٢٣٤٥٦٧٨٩'), '0123456789');
   assert.equal(normalizeDigits('A12۳B'), 'A123B');
+});
+
+test('formatMinorMoney preserves large minor-unit amounts exactly', () => {
+  const usd = formatMinorMoney('en', {
+    amountMinor: '9007199254740993123',
+    currency: 'USD',
+  });
+  assert.match(usd.replace(/[^0-9.]/g, ''), /^90071992547409931\.23$/);
+
+  const irr = formatMinorMoney('fa', { amountMinor: '48500000', currency: 'IRR' });
+  assert.equal(normalizeDigits(irr).replace(/[^0-9]/g, ''), '48500000');
 });
 
 test('formatDate, relativeTime, list, and collation are locale-aware', () => {

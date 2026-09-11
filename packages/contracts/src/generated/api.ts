@@ -835,6 +835,78 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/pricing/coupons': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List internal coupon records
+     * @description List internal coupon records.
+     */
+    get: operations['adminListCoupons'];
+    put?: never;
+    /**
+     * Create a validated coupon record
+     * @description Create a validated coupon record.
+     */
+    post: operations['adminCreateCoupon'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/pricing/tax-rates': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List internal tax-rate records
+     * @description List internal tax-rate records.
+     */
+    get: operations['adminListTaxRates'];
+    put?: never;
+    /**
+     * Create a validated tax-rate record
+     * @description Create a validated tax-rate record.
+     */
+    post: operations['adminCreateTaxRate'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/pricing/variant-prices': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List internal variant price records
+     * @description List internal variant price records.
+     */
+    get: operations['adminListVariantPrices'];
+    put?: never;
+    /**
+     * Create a validated variant price record
+     * @description Create a validated variant price record.
+     */
+    post: operations['adminCreateVariantPrice'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/procurement/purchase-orders': {
     parameters: {
       query?: never;
@@ -1359,6 +1431,94 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/cart': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read the current server-priced cart
+     * @description Read the current server-priced cart.
+     */
+    get: operations['getCart'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/cart/coupon': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Apply one coupon to the current cart
+     * @description Apply one coupon to the current cart.
+     */
+    post: operations['applyCartCoupon'];
+    /**
+     * Remove the coupon from the current cart
+     * @description Remove the coupon from the current cart.
+     */
+    delete: operations['removeCartCoupon'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/cart/lines': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Add a variant to the current cart
+     * @description Add a variant to the current cart.
+     */
+    post: operations['addCartLine'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/cart/lines/{lineId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Remove one current-cart line
+     * @description Remove one current-cart line.
+     */
+    delete: operations['removeCartLine'];
+    options?: never;
+    head?: never;
+    /**
+     * Set one current-cart line quantity
+     * @description Set one current-cart line quantity.
+     */
+    patch: operations['updateCartLine'];
+    trace?: never;
+  };
   '/v1/catalog/categories': {
     parameters: {
       query?: never;
@@ -1644,6 +1804,67 @@ export interface components {
       next: 'AUTHENTICATED';
       user: components['schemas']['SafeUserDto'];
     };
+    CartAdjustmentDto: {
+      /** @enum {string} */
+      code: 'QUANTITY_CLAMPED';
+      /** Format: uuid */
+      lineId: string;
+    };
+    CartCouponDto: {
+      code: string;
+      reason: string | null;
+      /** @enum {string} */
+      state: 'APPLIED' | 'INELIGIBLE' | 'DEFERRED';
+    };
+    CartLineDto: {
+      /** @enum {string} */
+      availabilityBand: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+      discount: components['schemas']['MoneyDto'];
+      /** Format: uuid */
+      id: string;
+      lineSubtotal: components['schemas']['MoneyDto'];
+      lineTotal: components['schemas']['MoneyDto'];
+      product: components['schemas']['CartProductDto'];
+      quantity: number;
+      /** @enum {string} */
+      state: 'PURCHASABLE' | 'OUT_OF_STOCK' | 'UNPUBLISHED' | 'PRICE_UNAVAILABLE';
+      unitPrice: components['schemas']['MoneyDto'] | null;
+      variant: components['schemas']['CartVariantDto'];
+      /** Format: uuid */
+      variantId: string;
+    };
+    CartProductDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: uri */
+      imageUrl: string | null;
+      name: string;
+      slug: string;
+    };
+    CartResponseDto: {
+      adjustments: components['schemas']['CartAdjustmentDto'][];
+      coupon: components['schemas']['CartCouponDto'] | null;
+      currency: string;
+      discountTotal: components['schemas']['MoneyDto'];
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: uuid */
+      id: string;
+      lines: components['schemas']['CartLineDto'][];
+      locale: string;
+      merchandiseTotal: components['schemas']['MoneyDto'];
+      subtotal: components['schemas']['MoneyDto'];
+      tax: components['schemas']['CartTaxDto'];
+    };
+    CartTaxDto: {
+      amount: components['schemas']['MoneyDto'] | null;
+      /** @enum {string} */
+      state: 'UNRESOLVED' | 'RESOLVED';
+    };
+    CartVariantDto: {
+      name: string;
+      netWeightGrams: number;
+    };
     CategoryListResponseDto: {
       data: components['schemas']['PublicCategoryDto'][];
       meta: components['schemas']['MetaDto'];
@@ -1659,6 +1880,28 @@ export interface components {
     CollectionResponseDto: {
       data: components['schemas']['PublicCollectionDto'];
       meta: components['schemas']['MetaDto'];
+    };
+    CouponResponseDto: {
+      /** @enum {string} */
+      appliesTo: 'ALL' | 'CATEGORY' | 'COLLECTION' | 'VARIANT';
+      code: string;
+      currency: string | null;
+      /** Format: date-time */
+      endsAt: string | null;
+      /** Format: uuid */
+      id: string;
+      maxDiscountMinor: string | null;
+      minSubtotalMinor: string | null;
+      /** Format: date-time */
+      startsAt: string;
+      /** @enum {string} */
+      status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'EXPIRED';
+      targetIds: string[];
+      /** @enum {string} */
+      type: 'PERCENT' | 'FIXED' | 'FREE_SHIPPING';
+      usageLimitPerUser: number | null;
+      usageLimitTotal: number | null;
+      value: string;
     };
     DirectUploadDto: {
       /** Format: date-time */
@@ -1744,6 +1987,12 @@ export interface components {
     MetaDto: {
       locale: string;
       requestId: string;
+    };
+    MoneyDto: {
+      /** @example 125000 */
+      amountMinor: string;
+      /** @example IRR */
+      currency: string;
     };
     PageDto: {
       hasMore: boolean;
@@ -1856,6 +2105,12 @@ export interface components {
       netWeightGrams: number;
       packagingTypeKey: string;
       position: number;
+      price?: {
+        /** @example 125000 */
+        amountMinor: string;
+        /** @example IRR */
+        currency: string;
+      } | null;
       sku: string;
       weightGramsShipping: number;
     };
@@ -1885,6 +2140,8 @@ export interface components {
         | 'catalog:read'
         | 'catalog:write'
         | 'catalog:publish'
+        | 'pricing:read'
+        | 'pricing:write'
         | 'inventory:read'
         | 'inventory:adjust'
         | 'procurement:read'
@@ -1936,11 +2193,36 @@ export interface components {
     SessionsResponseDto: {
       sessions: components['schemas']['SessionDto'][];
     };
+    TaxRateResponseDto: {
+      code: string;
+      country: string;
+      /** Format: uuid */
+      id: string;
+      isActive: boolean;
+      isInclusive: boolean;
+      rateBps: number;
+      region: string | null;
+    };
     ValidationIssueDto: {
       /** @example INVALID_VALUE */
       code: string;
       /** @example field */
       path: string;
+    };
+    VariantPriceResponseDto: {
+      /** @example 125000 */
+      amountMinor: string;
+      /** @example 150000 */
+      compareAtMinor: string | null;
+      currency: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      validFrom: string;
+      /** Format: date-time */
+      validTo: string | null;
+      /** Format: uuid */
+      variantId: string;
     };
   };
   responses: never;
@@ -3052,6 +3334,120 @@ export interface operations {
       };
     };
   };
+  adminListCoupons: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CouponResponseDto'][];
+        };
+      };
+    };
+  };
+  adminCreateCoupon: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CouponResponseDto'];
+        };
+      };
+    };
+  };
+  adminListTaxRates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TaxRateResponseDto'][];
+        };
+      };
+    };
+  };
+  adminCreateTaxRate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TaxRateResponseDto'];
+        };
+      };
+    };
+  };
+  adminListVariantPrices: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['VariantPriceResponseDto'][];
+        };
+      };
+    };
+  };
+  adminCreateVariantPrice: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['VariantPriceResponseDto'];
+        };
+      };
+    };
+  };
   adminListPurchaseOrders: {
     parameters: {
       query?: never;
@@ -3762,6 +4158,134 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  getCart: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CartResponseDto'];
+        };
+      };
+    };
+  };
+  applyCartCoupon: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CartResponseDto'];
+        };
+      };
+    };
+  };
+  removeCartCoupon: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CartResponseDto'];
+        };
+      };
+    };
+  };
+  addCartLine: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CartResponseDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  removeCartLine: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lineId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CartResponseDto'];
+        };
+      };
+    };
+  };
+  updateCartLine: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lineId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CartResponseDto'];
         };
       };
     };

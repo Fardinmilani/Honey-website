@@ -56,6 +56,76 @@ export function formatCurrency(
   }).format(amount);
 }
 
+export type MinorMoney = Readonly<{
+  amountMinor: string;
+  currency: string;
+}>;
+
+/**
+ * Formats a JSON-safe minor-unit amount without converting it to a JavaScript
+ * number. This preserves exact display for values larger than Number.MAX_SAFE_INTEGER.
+ */
+export function formatMinorMoney(locale: Locale, money: MinorMoney): string {
+  if (!/^(?:0|[1-9][0-9]*)$/u.test(money.amountMinor) || !/^[A-Z]{3}$/u.test(money.currency)) {
+    return `${money.amountMinor} ${money.currency}`;
+  }
+  try {
+    const raw = BigInt(money.amountMinor);
+    const fractionDigits = currencyFractionDigits(money.currency);
+    const divisor = 10n ** BigInt(fractionDigits);
+    const whole = raw / divisor;
+    const fraction = raw % divisor;
+    const language = numberLocale(locale);
+    const wholeText = new Intl.NumberFormat(language, { maximumFractionDigits: 0 }).format(whole);
+    const numberText =
+      fractionDigits === 0
+        ? wholeText
+        : `${wholeText}${decimalSeparator(language)}${localizedFraction(
+            fraction,
+            fractionDigits,
+            language,
+          )}`;
+    const parts = new Intl.NumberFormat(language, {
+      style: 'currency',
+      currency: money.currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).formatToParts(0);
+    let replaced = false;
+    return parts
+      .map((part) => {
+        if (part.type === 'integer' && !replaced) {
+          replaced = true;
+          return numberText;
+        }
+        return part.value;
+      })
+      .join('');
+  } catch {
+    return `${money.amountMinor} ${money.currency}`;
+  }
+}
+
+function localizedFraction(value: bigint, digits: number, language: string): string {
+  const source = value.toString().padStart(digits, '0');
+  const formatter = new Intl.NumberFormat(language, {
+    useGrouping: false,
+    maximumFractionDigits: 0,
+  });
+  return source
+    .split('')
+    .map((digit) => formatter.format(BigInt(digit)))
+    .join('');
+}
+
+function decimalSeparator(language: string): string {
+  return (
+    new Intl.NumberFormat(language, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+      .formatToParts(0.1)
+      .find((part) => part.type === 'decimal')?.value ?? '.'
+  );
+}
+
 /**
  * Formats a date/time. Uses `localeConfig.dateFormat` (Persian calendar for `fa`).
  */

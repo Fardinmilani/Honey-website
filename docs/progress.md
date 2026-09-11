@@ -21,8 +21,8 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 9 | Web Foundation | ✅ Complete | 2026-08-08 |
 | 10 | Storefront Catalog & SEO | ✅ Complete | 2026-08-09 |
 | 11 | Sourcing, Procurement & Inventory | ✅ Complete | 2026-08-10 |
-| 12 | Cart & Pricing | ❌ Not started (CURRENT) | — |
-| 13 | Checkout, Reservations & Orders | â¬œ Not started | â€” |
+| 12 | Cart & Pricing | Complete | 2026-09-12 |
+| 13 | Checkout, Reservations & Orders | CURRENT but NOT STARTED | — |
 | 14 | Payments | â¬œ Not started | â€” |
 | 15 | Shipping & Fulfilment | â¬œ Not started | â€” |
 | 16 | Background Jobs | â¬œ Not started | â€” |
@@ -31,8 +31,228 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 12 — Cart & Pricing (**CURRENT but NOT STARTED**).
-**Previous phase:** Phase 11 — Sourcing, Procurement & Inventory (**complete 2026-08-10**).
+**Current phase:** Phase 13 — Checkout, Reservations & Orders (**CURRENT but NOT STARTED**).
+**Previous phase:** Phase 12 — Cart & Pricing (**complete 2026-09-12**).
+
+---
+
+## Phase 12 — Cart & Pricing
+
+**Completed:** 2026-09-12 · **Status:** Complete
+
+Phase 12 adds the pricing and cart modules to `@honey/backend`, their HTTP
+composition, and a localized storefront cart. Every projection reprices against
+current authoritative data; cart lines persist identity and quantity only.
+Anonymous and authenticated carts are server-owned, merge safely, expire
+lazily, and never reserve stock. Public catalog price reads and cart responses
+are deliberately private/no-store where customer or current monetary state is
+involved. Checkout, reservations, orders, payment, shipping, worker consumers,
+and pricing administration UI remain absent.
+
+### Dependencies (exact versions)
+
+No new runtime dependency was added. The existing stack remains
+`@prisma/client@7.9.0`, `next@16.3.0`, `vitest@4.1.10`, and
+`@playwright/test@1.62.1`.
+
+### Files created
+
+- `apps/api/src/modules/cart/cart.controller.ts` — cart HTTP controller and DTO boundary.
+- `apps/api/src/modules/pricing/pricing.controller.ts` — staff-authorized pricing HTTP controller.
+- `apps/api/test/phase12.test.ts` — cart HTTP, security, authorization, and cache tests.
+- `apps/web/e2e/cart-a11y.spec.ts` — localized cart axe coverage.
+- `apps/web/e2e/cart-rtl-indicator.spec.ts` — Persian cart and header-indicator coverage.
+- `apps/web/e2e/cart.spec.ts` — localized cart interaction coverage.
+- `apps/web/src/app/[locale]/(storefront)/cart/page.tsx` — private localized cart page.
+- `apps/web/src/app/api/bff/cart/_proxy.ts` — server-only cart BFF helper.
+- `apps/web/src/app/api/bff/cart/coupon/route.ts` — coupon BFF routes.
+- `apps/web/src/app/api/bff/cart/lines/[lineId]/route.ts` — cart-line update/delete BFF route.
+- `apps/web/src/app/api/bff/cart/lines/route.ts` — cart-line add BFF route.
+- `apps/web/src/app/api/bff/cart/route.ts` — cart read BFF route.
+- `apps/web/src/components/cart/cart-contents.tsx` — functional cart controls and feedback.
+- `apps/web/src/components/cart/cart-indicator.tsx` — authoritative header cart count.
+- `apps/web/src/components/cart/cart.module.css` — cart logical-layout styles.
+- `apps/web/src/components/cart/messages.ts` — cart response parsing helpers.
+- `apps/web/src/components/catalog/add-to-cart.tsx` — PDP add-to-cart control.
+- `docs/adr/0033-cart-discount-allocation.md` — deterministic allocation decision.
+- `docs/adr/0034-cart-active-ttl.md` — active-cart lifetime decision.
+- `docs/adr/0035-cart-mutation-idempotency-and-owner-locking.md` — owner locking and idempotency decision.
+- `docs/cart-pricing-development.md` — Phase 12 operating contract.
+- `packages/backend/src/modules/cart/application/cart.service.test.ts` — cart unit coverage.
+- `packages/backend/src/modules/cart/application/cart.service.ts` — cart application service.
+- `packages/backend/src/modules/cart/cart.module.ts` — cart module composition.
+- `packages/backend/src/modules/cart/domain/cart-media.port.ts` — cart media port.
+- `packages/backend/src/modules/cart/domain/cart.ts` — cart domain contracts.
+- `packages/backend/src/modules/cart/index.ts` — cart public exports.
+- `packages/backend/src/modules/cart/infrastructure/inventory-cart-availability.adapter.ts` — availability adapter.
+- `packages/backend/src/modules/cart/infrastructure/media-cart.adapter.ts` — media adapter.
+- `packages/backend/src/modules/cart/infrastructure/pricing-cart.adapter.ts` — pricing adapter.
+- `packages/backend/src/modules/cart/infrastructure/prisma-cart.repository.ts` — cart persistence and owner locks.
+- `packages/backend/src/modules/cart/module.meta.ts` — cart module metadata.
+- `packages/backend/src/modules/catalog/domain/catalog-pricing.port.ts` — catalog-to-pricing port.
+- `packages/backend/src/modules/catalog/infrastructure/pricing-catalog.adapter.ts` — catalog pricing adapter.
+- `packages/backend/src/modules/pricing/application/pricing.service.ts` — pricing application service.
+- `packages/backend/src/modules/pricing/domain/money.ts` — integer minor-unit money contract.
+- `packages/backend/src/modules/pricing/domain/pricing-repository.port.ts` — pricing persistence port.
+- `packages/backend/src/modules/pricing/domain/pricing.test.ts` — price, coupon, tax, and allocation tests.
+- `packages/backend/src/modules/pricing/domain/pricing.ts` — pricing domain rules.
+- `packages/backend/src/modules/pricing/index.ts` — pricing public exports.
+- `packages/backend/src/modules/pricing/infrastructure/prisma-pricing.repository.ts` — pricing persistence adapter.
+- `packages/backend/src/modules/pricing/module.meta.ts` — pricing module metadata.
+- `packages/backend/src/modules/pricing/pricing.module.ts` — pricing module composition.
+- `packages/backend/test/phase12.integration.test.ts` — real PostgreSQL cart/pricing integration tests.
+- `packages/db/prisma/migrations/20260910090000_phase12_cart_pricing_integrity/migration.sql` — forward cart/pricing schema migration.
+- `scripts/verify-phase12.mjs` — Phase 12 structural verifier.
+
+### Files modified
+
+- `.env.example` — safe cart and currency configuration placeholders.
+- `.github/workflows/ci.yml` — Phase 12 quality gates.
+- `apps/api/src/app.module.ts` — cart/pricing composition.
+- `apps/api/src/bootstrap/create-application.ts` — cart security-hook composition.
+- `apps/api/src/config/api-config.ts` — validated cart configuration.
+- `apps/api/src/http/security/security-hooks.ts` — cart-specific rate limits and tampering audit/rejection.
+- `apps/api/src/modules/catalog/catalog.controller.ts` — public current-price catalog response mapping.
+- `apps/api/src/openapi/document.ts` — cart, pricing, and public-price API schema.
+- `apps/api/test/catalog.test.ts` — public price API assertions.
+- `apps/api/test/config.test.ts` — production cart configuration fixture.
+- `apps/web/e2e/catalog.spec.ts` — public price, Offer, and privacy assertions.
+- `apps/web/e2e/helpers/seo.ts` — product Offer test helpers.
+- `apps/web/e2e/catalog-visual.spec.ts-snapshots/catalog-category-en-desktop.png` — intentional cart-indicator visual baseline.
+- `apps/web/e2e/catalog-visual.spec.ts-snapshots/catalog-en-listing-desktop.png` — intentional price/cart visual baseline.
+- `apps/web/e2e/catalog-visual.spec.ts-snapshots/catalog-en-pdp-desktop.png` — intentional price/cart visual baseline.
+- `apps/web/e2e/catalog-visual.spec.ts-snapshots/catalog-fa-listing-desktop.png` — intentional price/cart visual baseline.
+- `apps/web/e2e/catalog-visual.spec.ts-snapshots/catalog-search-no-results.png` — intentional cart-indicator visual baseline.
+- `apps/web/e2e/visual.spec.ts-snapshots/home-en-desktop.png` — intentional cart-indicator visual baseline.
+- `apps/web/playwright.config.ts` — aligned API/web cart and CSRF cookies for browser tests.
+- `apps/web/src/app/[locale]/(storefront)/products/[slug]/page.tsx` — current price, Offer, and add-to-cart PDP wiring.
+- `apps/web/src/app/robots.ts` — cart exclusion from indexing.
+- `apps/web/src/components/catalog/product-card.tsx` — public current price rendering.
+- `apps/web/src/components/shell/site-header.tsx` — cart indicator.
+- `apps/web/src/lib/api-client/server.ts` — private/no-store catalog/cart fetch policy.
+- `apps/web/src/lib/cache/tags.ts` — price-aware catalog cache tags.
+- `apps/web/src/lib/catalog/api.ts` — public price response parsing.
+- `apps/web/src/lib/seo/builders.test.ts` — Offer metadata tests.
+- `apps/web/src/lib/seo/builders/index.ts` — Offer metadata exports.
+- `apps/web/src/lib/seo/builders/product.ts` — authoritative Offer JSON-LD builder.
+- `apps/web/src/styles/catalog.css` — price and availability presentation.
+- `docs/adr/README.md` — ADR index entries.
+- `package.json` — Phase 12 verification scripts.
+- `packages/backend/src/index.ts` — cart/pricing exports.
+- `packages/backend/src/modules/catalog/application/catalog.service.ts` — current-price catalog projection.
+- `packages/backend/src/modules/catalog/catalog.module.ts` — pricing adapter composition.
+- `packages/backend/src/modules/catalog/domain/catalog.ts` — public price catalog types.
+- `packages/backend/src/modules/catalog/index.ts` — catalog pricing exports.
+- `packages/backend/src/modules/identity/domain/identity.ts` — cart merge identity event contract.
+- `packages/contracts/openapi.json` — generated Phase 12 API contract.
+- `packages/contracts/scripts/check-forbidden.mjs` — public catalog cart/price privacy boundary.
+- `packages/contracts/src/generated/api.ts` — generated TypeScript API contract.
+- `packages/contracts/test/catalog-public-fields.test.mjs` — public catalog-field restrictions.
+- `packages/db/seed/data.ts` — current price, coupon, tax, and inventory fixtures with stable permission IDs.
+- `packages/db/test/constraints.ts` — cart/pricing database constraint proofs.
+- `packages/db/test/run-integration.ts` — Phase 12 migration integration coverage.
+- `packages/i18n/src/format.ts` — locale-aware integer money formatting.
+- `packages/i18n/src/index.ts` — cart/price localization exports.
+- `packages/i18n/src/messages/en/navigation.ts` — English cart navigation copy.
+- `packages/i18n/src/messages/en/product.ts` — English product/cart-price copy.
+- `packages/i18n/src/messages/fa/navigation.ts` — Persian cart navigation copy.
+- `packages/i18n/src/messages/fa/product.ts` — Persian product/cart-price copy.
+- `packages/i18n/src/messages/types.ts` — cart/price message typing.
+- `packages/i18n/src/pathnames.ts` — localized cart pathname.
+- `packages/i18n/test/format.test.mjs` — money-format tests.
+- `packages/i18n/test/pathnames.test.mjs` — cart route tests.
+- `scripts/verify-phase10.mjs` — legitimate Phase 12 catalog/Offer allowance.
+- `scripts/verify-phase11.mjs` — durable public-contract structural assertion.
+- `turbo.json` — Phase 12 task dependencies and cache inputs.
+- `PLANS.md` — completed/current phase ledger.
+- `README.md` — current implementation boundary.
+- `docs/progress.md` — Phase 12 completion record.
+
+### Decisions made
+
+- Cart and price arithmetic use `bigint` minor units; cart lines never persist
+  money snapshots. Current price resolution is valid-window, currency-specific,
+  and happens on every projection.
+- Exact proportional discount allocation uses stable line-ID remainder ordering
+  ([ADR-0033](adr/0033-cart-discount-allocation.md)).
+- Active carts expire lazily by a configured TTL and retain the existing
+  abandoned-cart retention behavior ([ADR-0034](adr/0034-cart-active-ttl.md)).
+- Owner-scoped PostgreSQL advisory locks serialize active-cart lookup/create and
+  merge. Incrementing adds use owner-scoped, durable 24-hour idempotency keys;
+  a matching retry returns a fresh repriced projection
+  ([ADR-0035](adr/0035-cart-mutation-idempotency-and-owner-locking.md)).
+- A tax amount is `UNRESOLVED` without authoritative jurisdiction/rules; the
+  cart does not invent a zero final tax. Public price-bearing catalog reads are
+  no-store so price activation and expiry cannot be served stale.
+
+### Unresolved decisions
+
+- Currency presentation: whether Persian storefront prices display IRR or Toman,
+  and whether English needs a second currency. The implementation keeps explicit
+  IRR fixture values and performs no conversion.
+- Production VAT applicability, rate, and inclusive/exclusive policy. The tax
+  engine is ready for authoritative rules but must not infer them.
+- Production active-cart TTL; the 30-day default is a local/test default.
+- Production HTTPS origin/apex versus `www` and licensed Persian/Latin brand
+  fonts remain inherited launch decisions.
+
+### Risks
+
+- Price-bearing catalog reads are no-store in this phase; their production load
+  needs measurement and caching design in Phase 19.
+- Concurrent real-PostgreSQL tests emit a `pg` deprecation warning about issuing
+  `client.query()` while a client is executing a query. Tests pass, but this must
+  be resolved before upgrading to pg 9.
+- Playwright's web server intermittently logs `destination stream closed early`
+  while all 87 browser tests pass. Treat it as an observability finding rather
+  than a successful request outcome until its source is understood.
+
+### Acceptance checklist
+
+- [x] Pricing module provides valid-window current prices, coupons, tax rules,
+  fixed computation order, integer rounding, and exact deterministic allocation.
+- [x] Cart module provides anonymous/user ownership, expiry, safe merge,
+  add/update/remove, server-side availability clamping, and fresh repricing.
+- [x] `CartLine` stores no money; every read recomputes current prices,
+  eligibility, discounts, availability, and tax state.
+- [x] Client-supplied authoritative money, stock, inventory, availability, or
+  payment fields receive `422` and record `security.tampering_attempt` without
+  recording submitted values.
+- [x] Exact-allocation property tests prove sum-of-line amounts equals cart
+  totals across rounding edge cases.
+- [x] Persian RTL and English LTR storefronts render current price, Offer,
+  functional add-to-cart/cart controls, coupon feedback, and accessibility.
+- [x] Customer cart responses are private/no-store; cart writes have CSRF and
+  scoped rate limits; staff pricing endpoints use explicit permissions.
+- [x] No checkout, reservation, order, payment, shipping, worker, or admin UI
+  implementation was added.
+- [x] Historical migrations remained immutable; one forward Phase 12 migration
+  adds cart/pricing integrity.
+- [x] Hero assets remained unchanged and no secrets, marketplace concepts, or
+  laboratory/moisture/medical claims were introduced.
+
+### Verification (executed)
+
+- `pnpm format:check` — pass.
+- `pnpm lint` — pass (10 workspace lint tasks).
+- `pnpm typecheck` — pass (17 workspace tasks).
+- `pnpm test` — pass (17 workspace tasks; backend **116 passed / 5 skipped**,
+  API **45 passed / 1 skipped**; skipped MinIO/optional integration coverage is
+  not treated as a pass).
+- `pnpm build` — Turbo reported **10 successful** workspace tasks. In this
+  Windows shell the Turbo wrapper remained open after that completion summary;
+  direct affected-package builds (`@honey/web`, `@honey/backend`, `@honey/api`,
+  `@honey/i18n`, and `@honey/contracts`) each exited 0.
+- `pnpm stylelint` and `pnpm i18n:validate` — pass.
+- `pnpm test:e2e` — **87 passed**, 0 failed, 0 skipped; six inspected desktop
+  snapshots were deliberately updated for the new current-price/cart indicator UI.
+- `pnpm api:openapi:generate`, `pnpm api:openapi:check`,
+  `pnpm api:openapi:lint`, and `pnpm api:openapi:forbidden` — pass.
+- `pnpm phase10:verify`, `pnpm phase11:verify`, and `pnpm phase12:verify` — pass.
+- `pnpm db:validate`, `pnpm db:generate`, `pnpm db:test`, and repeated
+  `pnpm db:seed` — pass; the Phase 12 migration was applied to `honey_local`.
+- `pnpm docker:verify` — pass.
+- Hero git status/diff — empty; `.env` is untracked; staging is empty.
 
 ---
 

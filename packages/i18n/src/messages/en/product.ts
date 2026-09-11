@@ -16,4 +16,11 @@ export const product = {
   availabilityAvailable: 'Available',
   availabilityLimited: 'Limited availability',
   availabilityUnavailable: 'Currently unavailable',
+  price: 'Price',
+  priceUnavailable: 'Price currently unavailable',
+  addToCart: 'Add to cart',
+  addingToCart: 'Adding to cart…',
+  addedToCart: 'Added to cart',
+  addToCartQuantityAdjusted: 'Added to cart. Quantity was adjusted to what is currently available.',
+  addToCartFailed: 'Could not add this item to your cart',
 } as const satisfies ProductMessages;

@@ -16,6 +16,8 @@ export type NavigationMessages = {
   readonly categories: string;
   readonly collections: string;
   readonly search: string;
+  readonly cart: string;
+  readonly cartItemCount: string;
   readonly primaryNavLabel: string;
   readonly footerNavLabel: string;
 };
@@ -103,6 +105,13 @@ export type ProductMessages = {
   readonly availabilityAvailable: string;
   readonly availabilityLimited: string;
   readonly availabilityUnavailable: string;
+  readonly price: string;
+  readonly priceUnavailable: string;
+  readonly addToCart: string;
+  readonly addingToCart: string;
+  readonly addedToCart: string;
+  readonly addToCartQuantityAdjusted: string;
+  readonly addToCartFailed: string;
 };
 
 export type SearchMessages = {

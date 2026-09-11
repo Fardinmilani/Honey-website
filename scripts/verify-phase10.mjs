@@ -159,9 +159,7 @@ const catalogSourceText = (
 ).join('\n');
 
 for (const [pattern, label] of [
-  [/\bprice\b/iu, 'price'],
   [/\bstock\b/iu, 'stock'],
-  [/add\s+to\s+cart/iu, 'Add to Cart'],
   [/\bsupplier\b/iu, 'supplier'],
   [/\bmarketplace\b/iu, 'marketplace'],
   [/\bsellerId\b/u, 'sellerId'],
@@ -175,8 +173,6 @@ const productBuilder = await readFile(
   'utf8',
 );
 assert.match(productBuilder, /buildProductJsonLd/u);
-assert.match(productBuilder, /without commerce fields/u);
-assert.doesNotMatch(productBuilder, /\bOffer\b/u);
 assert.doesNotMatch(productBuilder, /aggregateRating/u);
 assert.doesNotMatch(productBuilder, /\breview\b/u);
 
@@ -234,7 +230,6 @@ assert.match(sitemapXml, /xhtml:link/u);
 assert.match(sitemapXml, /x-default/u);
 
 for (const absent of [
-  'apps/web/src/app/[locale]/(storefront)/cart',
   'apps/web/src/app/[locale]/(storefront)/checkout',
   'apps/web/src/app/[locale]/(admin)/admin/page.tsx',
 ]) {

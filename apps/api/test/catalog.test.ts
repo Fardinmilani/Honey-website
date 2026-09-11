@@ -50,6 +50,7 @@ const publicProduct: PublicProduct = {
       position: 0,
       isDefault: true,
       availabilityBand: 'IN_STOCK',
+      price: null,
     },
   ],
   media: [],
@@ -130,10 +131,10 @@ describe('catalog HTTP transport', () => {
       });
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({ meta: { locale: 'en' } });
-      expect(response.headers['cache-control']).toContain('stale-while-revalidate=300');
-      expect(response.headers['vary']).toBe('Accept-Language');
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['vary']).toBe('Accept-Language, X-Currency');
       const body = response.body;
-      expect(body).not.toMatch(/sourcingType|apiaryId|supplier|price|storageKey/u);
+      expect(body).not.toMatch(/sourcingType|apiaryId|supplier|storageKey/u);
       expect(body).not.toMatch(/"onHand"|"reserved"|"allocated"|"incoming"|"stockLocation"/u);
       expect(response.json().data[0]?.variants[0]?.availabilityBand).toBe('IN_STOCK');
     } finally {

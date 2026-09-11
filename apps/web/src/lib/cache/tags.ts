@@ -8,6 +8,7 @@ export const catalogTags = {
   categories: 'catalog:categories',
   collections: 'catalog:collections',
   locale: (locale: string) => `locale:${locale}`,
+  currency: (currency: string) => `currency:${currency}`,
   product: (id: string) => `product:${id}`,
   productSlug: (slug: string) => `product-slug:${slug}`,
   category: (id: string) => `category:${id}`,

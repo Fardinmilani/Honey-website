@@ -1,11 +1,16 @@
 import { expect, type Page } from '@playwright/test';
 
 export const FORBIDDEN_JSON_LD_KEYS = [
-  'price',
-  'offers',
   'aggregaterating',
   'moisture',
   'supplier',
+  'landedcost',
+  'unitcost',
+  'margin',
+  'stocklocation',
+  'onhand',
+  'reserved',
+  'allocated',
 ] as const;
 
 export function siteOrigin(): string {

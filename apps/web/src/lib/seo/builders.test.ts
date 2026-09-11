@@ -60,7 +60,7 @@ afterEach(() => {
 });
 
 describe('JSON-LD builders', () => {
-  it('product JSON-LD excludes commerce and review fields', () => {
+  it('does not invent commerce fields when no authoritative offer is provided', () => {
     const jsonLd = buildProductJsonLd({
       name: 'Sidr Honey',
       description: 'Harvested from mountain apiaries with floral aroma and smooth texture.',
@@ -84,6 +84,58 @@ describe('JSON-LD builders', () => {
     expect(serialized).not.toContain('"review"');
     expect(serialized).not.toContain('"aggregateRating"');
     assertNoForbiddenVocabulary(serialized);
+  });
+
+  it('emits an exact Offer only from the supplied current public price and availability', () => {
+    const canonicalUrl = 'https://example.com/en/products/sidr-honey';
+    const jsonLd = buildProductJsonLd({
+      name: 'Sidr Honey',
+      description: 'Harvested from mountain apiaries with floral aroma and smooth texture.',
+      images: ['https://example.com/media/sidr.webp'],
+      brandName: 'Honey',
+      inLanguage: 'en-US',
+      url: canonicalUrl,
+      offer: {
+        amountMinor: '9007199254740993123',
+        currency: 'USD',
+        availability: 'LOW_STOCK',
+      },
+    });
+
+    expect(jsonLd.offers).toEqual({
+      '@type': 'Offer',
+      price: '90071992547409931.23',
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/LimitedAvailability',
+      url: canonicalUrl,
+    });
+    expect(jsonLd).not.toHaveProperty('review');
+    expect(jsonLd).not.toHaveProperty('aggregateRating');
+    expect(safeJsonLdStringify(jsonLd)).not.toContain('exactStock');
+  });
+
+  it('omits an Offer if the source price, currency, or availability is not valid', () => {
+    const base = {
+      name: 'Sidr Honey',
+      description: 'Harvested from mountain apiaries with floral aroma and smooth texture.',
+      images: ['https://example.com/media/sidr.webp'],
+      brandName: 'Honey',
+      inLanguage: 'en-US',
+      url: 'https://example.com/en/products/sidr-honey',
+    };
+
+    expect(
+      buildProductJsonLd({
+        ...base,
+        offer: { amountMinor: '125000', currency: 'irr', availability: 'IN_STOCK' },
+      }),
+    ).not.toHaveProperty('offers');
+    expect(
+      buildProductJsonLd({
+        ...base,
+        offer: { amountMinor: '125000', currency: 'IRR', availability: 'UNKNOWN' },
+      }),
+    ).not.toHaveProperty('offers');
   });
 
   it('emits organization, website, breadcrumb, and collection builders without forbidden vocabulary', () => {

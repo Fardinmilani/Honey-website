@@ -16,5 +16,11 @@ export {
   type OrganizationJsonLd,
   type OrganizationJsonLdInput,
 } from './organization';
-export { buildProductJsonLd, type ProductJsonLd, type ProductJsonLdInput } from './product';
+export {
+  buildProductJsonLd,
+  type ProductJsonLd,
+  type ProductJsonLdInput,
+  type ProductOfferInput,
+  type ProductOfferJsonLd,
+} from './product';
 export { buildWebSiteJsonLd, type WebSiteJsonLd, type WebSiteJsonLdInput } from './website';

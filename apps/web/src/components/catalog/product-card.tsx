@@ -1,4 +1,4 @@
-import { createTranslator, localizedHref, type Locale } from '@honey/i18n';
+import { createTranslator, formatMinorMoney, localizedHref, type Locale } from '@honey/i18n';
 import { Stack } from '@honey/ui';
 import Image from 'next/image';
 import NextLink from 'next/link';
@@ -67,6 +67,13 @@ export function ProductCard({ locale, product, priority = false }: ProductCardPr
               {availabilityCopy(t, variant.availabilityBand)}
             </p>
           ) : null}
+          {variant?.price !== null && variant?.price !== undefined ? (
+            <p className="product-price">{formatMinorMoney(locale, variant.price)}</p>
+          ) : (
+            <p className="product-price product-price--unavailable">
+              {t('product.priceUnavailable')}
+            </p>
+          )}
           <span className="product-card__cta">{t('catalog.viewProduct')}</span>
         </Stack>
       </NextLink>

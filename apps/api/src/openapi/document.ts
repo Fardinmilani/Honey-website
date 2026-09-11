@@ -29,6 +29,8 @@ export async function createOpenApiDocument(app: NestFastifyApplication): Promis
     .addTag('Media', 'Staff-only direct uploads, trusted media metadata, and private retrieval.')
     .addTag('Catalog', 'Public localized products, categories, collections, and search.')
     .addTag('Catalog Admin', 'Permission-protected catalog authoring and publication workflows.')
+    .addTag('Cart', 'Private server-priced customer cart operations.')
+    .addTag('Pricing Admin', 'Permission-protected price, coupon, and tax-rule management APIs.')
     .addTag('Sourcing Admin', 'Staff-only apiaries, harvest batches, and batch allocation.')
     .addTag('Procurement Admin', 'Staff-only suppliers, purchase orders, and goods receipts.')
     .addTag(

@@ -2,7 +2,13 @@ import 'reflect-metadata';
 
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
-import { REQUEST_CONTEXT, type DatabaseHealthPort, type RequestContextPort } from '@honey/backend';
+import {
+  CartService,
+  IdentityService,
+  REQUEST_CONTEXT,
+  type DatabaseHealthPort,
+  type RequestContextPort,
+} from '@honey/backend';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { Logger } from 'pino';
@@ -89,7 +95,16 @@ export async function createApiApplication(
     return payload;
   });
   const requestContext = app.get<RequestContextPort>(REQUEST_CONTEXT);
-  registerSecurityHooks(fastify, options.config, requestContext, options.rateLimitStore);
+  const cartTamperingRecorder = app.get(CartService);
+  const cartTamperingPrincipalResolver = app.get(IdentityService);
+  registerSecurityHooks(
+    fastify,
+    options.config,
+    requestContext,
+    options.rateLimitStore,
+    cartTamperingRecorder,
+    cartTamperingPrincipalResolver,
+  );
   registerRequestLogging(fastify, logger);
   return app;
 }

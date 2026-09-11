@@ -34,6 +34,14 @@ const sharedWebEnv = {
   PUBLIC_SITE_URL: `http://127.0.0.1:${port}`,
   INTERNAL_API_URL: internalApiUrl,
   WEB_INDEXING_ENABLED: 'false',
+  // The standalone web process needs production mode, while the local API
+  // process deliberately uses development mode. Keep their cookie contract
+  // explicit and identical so cart writes exercise the real double-submit
+  // CSRF boundary rather than two unrelated environment defaults.
+  SESSION_COOKIE_NAME: 'honey_session',
+  CSRF_COOKIE_NAME: 'csrf_token',
+  CSRF_HEADER_NAME: 'x-csrf-token',
+  CART_COOKIE_NAME: 'honey_cart',
 };
 
 /**
@@ -80,6 +88,10 @@ export default defineConfig({
             INTERNAL_API_URL: internalApiUrl,
             PUBLIC_SITE_URL: sharedWebEnv.PUBLIC_SITE_URL,
             NEXT_PUBLIC_SITE_URL: sharedWebEnv.NEXT_PUBLIC_SITE_URL,
+            SESSION_COOKIE_NAME: sharedWebEnv.SESSION_COOKIE_NAME,
+            CSRF_COOKIE_NAME: sharedWebEnv.CSRF_COOKIE_NAME,
+            CSRF_HEADER_NAME: sharedWebEnv.CSRF_HEADER_NAME,
+            CART_COOKIE_NAME: sharedWebEnv.CART_COOKIE_NAME,
             // Catalog e2e (especially Phase 11 availability + crawlability) exceeds
             // the production anonymous cap of 300/min when two workers SSR in parallel.
             API_RATE_LIMIT_MAX: process.env['E2E_API_RATE_LIMIT_MAX'] ?? '10000',

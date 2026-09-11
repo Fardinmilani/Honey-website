@@ -14,6 +14,7 @@ import type {
 import type { CatalogAvailabilityPort } from '../domain/catalog-availability.port.js';
 import type { CatalogCache } from '../domain/catalog-cache.port.js';
 import type { CatalogMediaPort } from '../domain/catalog-media.port.js';
+import type { CatalogPricingPort } from '../domain/catalog-pricing.port.js';
 import {
   canonicalLocale,
   cursorFingerprint,
@@ -61,6 +62,8 @@ export type LocaleResolutionInput = Readonly<{
 
 export type PublicListInput = Readonly<{
   locale: string;
+  /** The API validates enabled currencies before invoking this public read. */
+  currency?: string;
   cursor?: string;
   limit?: number;
   sort?: ProductSort;
@@ -69,6 +72,8 @@ export type PublicListInput = Readonly<{
 
 export type PublicSearchInput = Readonly<{
   locale: string;
+  /** The API validates enabled currencies before invoking this public read. */
+  currency?: string;
   query: string;
   cursor?: string;
   limit?: number;
@@ -166,6 +171,7 @@ export class CatalogService {
     private readonly cache: CatalogCache,
     private readonly media: CatalogMediaPort,
     private readonly availability: CatalogAvailabilityPort | undefined = undefined,
+    private readonly pricing: CatalogPricingPort | undefined = undefined,
   ) {
     this.#config = validateCatalogConfig(config);
   }
@@ -198,21 +204,23 @@ export class CatalogService {
 
   async listProducts(input: PublicListInput): Promise<PublicPage<PublicProduct>> {
     const locale = this.#requiredLocale(input.locale);
+    const currency = this.#currency(input.currency);
     const limit = this.#limit(input.limit);
     const sort = input.sort ?? 'newest';
     const filters = input.filters ?? {};
-    const fingerprint = cursorFingerprint({ locale, sort, ...filters });
+    const fingerprint = cursorFingerprint({ locale, currency, sort, ...filters });
     const cursor =
       input.cursor === undefined ? null : this.#decodeCursor(input.cursor, fingerprint);
     const key = this.#key('products', {
       locale,
+      currency,
       sort,
       limit,
       cursor: input.cursor ?? '',
       ...filters,
     });
     const cached = await this.cache.get(key);
-    if (isPublicProductPage(cached)) return this.#overlayAvailability(cached);
+    if (isPublicProductPage(cached)) return this.#overlayPage(cached, currency);
     const rows = await this.repository.listProducts({ locale, sort, filters, limit, cursor });
     const data = await this.#enrichProducts(rows.items, locale);
     const result: PublicPage<PublicProduct> = {
@@ -232,11 +240,12 @@ export class CatalogService {
       },
     };
     await this.cache.set(key, result, this.#config.cacheTtlSeconds, ['catalog:products']);
-    return this.#overlayAvailability(result);
+    return this.#overlayPage(result, currency);
   }
 
   async searchProducts(input: PublicSearchInput): Promise<PublicPage<PublicProduct>> {
     const locale = this.#requiredLocale(input.locale);
+    const currency = this.#currency(input.currency);
     if (
       Array.from(input.query).length > this.#config.searchQueryMaxLength ||
       /;|--|\/\*|\*\//u.test(input.query)
@@ -252,18 +261,19 @@ export class CatalogService {
     if (normalizedQuery.length === 0) throw validation('q', 'SEARCH_QUERY_INVALID');
     const limit = this.#limit(input.limit);
     const sort = input.sort ?? 'relevance';
-    const fingerprint = cursorFingerprint({ locale, sort, normalizedQuery });
+    const fingerprint = cursorFingerprint({ locale, currency, sort, normalizedQuery });
     const cursor =
       input.cursor === undefined ? null : this.#decodeCursor(input.cursor, fingerprint);
     const key = this.#key('search', {
       locale,
+      currency,
       sort,
       limit,
       normalizedQuery,
       cursor: input.cursor ?? '',
     });
     const cached = await this.cache.get(key);
-    if (isPublicProductPage(cached)) return this.#overlayAvailability(cached);
+    if (isPublicProductPage(cached)) return this.#overlayPage(cached, currency);
     const rows = await this.repository.searchProducts({
       locale,
       normalizedQuery,
@@ -292,19 +302,21 @@ export class CatalogService {
       'catalog:products',
       'catalog:search',
     ]);
-    return this.#overlayAvailability(result);
+    return this.#overlayPage(result, currency);
   }
 
   async resolveProduct(
     localeInput: string,
     slugInput: string,
+    currencyInput?: string,
   ): Promise<SlugResolution<PublicProduct>> {
     const locale = this.#requiredLocale(localeInput);
+    const currency = this.#currency(currencyInput);
     const slug = this.#slug(slugInput);
-    const key = this.#key('product', { locale, slug });
+    const key = this.#key('product', { locale, currency, slug });
     const cached = await this.cache.get(key);
     if (isPublicProduct(cached)) {
-      const [entity] = await this.#overlayProducts([cached]);
+      const [entity] = await this.#overlayProducts([cached], currency);
       if (entity === undefined) return { kind: 'NOT_FOUND' };
       return { kind: 'FOUND', entity };
     }
@@ -317,7 +329,7 @@ export class CatalogService {
       `product:${entity.id}`,
       `slug:${locale}:${slug}`,
     ]);
-    const [withBand] = await this.#overlayProducts([entity]);
+    const [withBand] = await this.#overlayProducts([entity], currency);
     if (withBand === undefined) return { kind: 'NOT_FOUND' };
     return { kind: 'FOUND', entity: withBand };
   }
@@ -996,6 +1008,7 @@ export class CatalogService {
       variants: product.variants.map((variant) => ({
         ...variant,
         availabilityBand: 'OUT_OF_STOCK' as const,
+        price: null,
       })),
       media: product.media.flatMap((attachment) => {
         const asset = byId.get(attachment.mediaAssetId);
@@ -1016,11 +1029,17 @@ export class CatalogService {
     }));
   }
 
-  async #overlayAvailability(page: PublicPage<PublicProduct>): Promise<PublicPage<PublicProduct>> {
-    return { ...page, data: await this.#overlayProducts(page.data) };
+  async #overlayPage(
+    page: PublicPage<PublicProduct>,
+    currency: string | undefined,
+  ): Promise<PublicPage<PublicProduct>> {
+    return { ...page, data: await this.#overlayProducts(page.data, currency) };
   }
 
-  async #overlayProducts(products: readonly PublicProduct[]): Promise<readonly PublicProduct[]> {
+  async #overlayProducts(
+    products: readonly PublicProduct[],
+    currency: string | undefined,
+  ): Promise<readonly PublicProduct[]> {
     const ids = [
       ...new Set(products.flatMap((product) => product.variants.map((variant) => variant.id))),
     ];
@@ -1028,13 +1047,25 @@ export class CatalogService {
       this.availability === undefined
         ? new Map<string, 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>()
         : await this.availability.bandsForVariants(ids);
+    const prices =
+      currency === undefined || this.pricing === undefined
+        ? new Map<string, { amountMinor: string; currency: string }>()
+        : await this.pricing.resolveCurrentPrices(ids, currency, new Date());
     return products.map((product) => ({
       ...product,
       variants: product.variants.map((variant) => ({
         ...variant,
         availabilityBand: bands.get(variant.id) ?? 'OUT_OF_STOCK',
+        price: prices.get(variant.id) ?? null,
       })),
     }));
+  }
+
+  #currency(value: string | undefined): string | undefined {
+    if (value === undefined) return undefined;
+    const normalized = value.normalize('NFKC').trim();
+    if (!/^[A-Za-z]{3}$/u.test(normalized)) throw validation('currency', 'CURRENCY_INVALID');
+    return normalized.toUpperCase();
   }
 
   #key(scope: string, values: Readonly<Record<string, string | number | undefined>>): string {

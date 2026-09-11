@@ -92,6 +92,14 @@ const schema = z
     CATALOG_CACHE_NAMESPACE: z.string().regex(/^[a-z0-9][a-z0-9:_-]{1,63}$/u),
     CATALOG_SEARCH_QUERY_MAX_LENGTH: positiveInteger.min(20).max(500),
     CATALOG_MAX_CATEGORY_DEPTH: positiveInteger.min(1).max(12),
+    CART_COOKIE_NAME: z.string().regex(/^(__Host-)?[A-Za-z0-9_-]{1,64}$/u),
+    CART_COOKIE_SECURE: booleanString,
+    CART_ACTIVE_TTL_SECONDS: positiveInteger.max(7_776_000),
+    CART_LINE_MAX_QUANTITY: positiveInteger.max(10_000),
+    CART_DEFAULT_CURRENCY: z.string().regex(/^[A-Z]{3}$/u),
+    CART_ENABLED_CURRENCIES: z.string().min(3).max(256),
+    CART_WRITE_RATE_LIMIT_MAX: positiveInteger.max(10_000),
+    CART_COUPON_RATE_LIMIT_MAX: positiveInteger.max(10_000),
   })
   .passthrough();
 
@@ -129,6 +137,15 @@ export type ApiConfig = Readonly<{
     uploadAllowedOrigins: readonly string[];
   }>;
   catalog: CatalogConfig;
+  cart: Readonly<{
+    cookie: Readonly<{ name: string; secure: boolean }>;
+    activeTtlMs: number;
+    maximumLineQuantity: number;
+    defaultCurrency: string;
+    enabledCurrencies: readonly string[];
+    writeRateLimitMax: number;
+    couponRateLimitMax: number;
+  }>;
 }>;
 
 function defaultsFor(environment: string | undefined): Readonly<Record<string, string>> {
@@ -205,6 +222,14 @@ function defaultsFor(environment: string | undefined): Readonly<Record<string, s
     CATALOG_CACHE_NAMESPACE: 'honey:catalog:v1',
     CATALOG_SEARCH_QUERY_MAX_LENGTH: '160',
     CATALOG_MAX_CATEGORY_DEPTH: '6',
+    CART_COOKIE_NAME: 'honey_cart',
+    CART_COOKIE_SECURE: 'false',
+    CART_ACTIVE_TTL_SECONDS: '2592000',
+    CART_LINE_MAX_QUANTITY: '1000',
+    CART_DEFAULT_CURRENCY: 'IRR',
+    CART_ENABLED_CURRENCIES: 'IRR',
+    CART_WRITE_RATE_LIMIT_MAX: '120',
+    CART_COUPON_RATE_LIMIT_MAX: '20',
   };
 }
 
@@ -257,6 +282,17 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
   ) {
     throw new Error('Catalog locale configuration is invalid.');
   }
+  const enabledCurrencies = parsed.data.CART_ENABLED_CURRENCIES.split(',')
+    .map((currency) => currency.trim().toUpperCase())
+    .filter(Boolean);
+  if (
+    enabledCurrencies.length === 0 ||
+    new Set(enabledCurrencies).size !== enabledCurrencies.length ||
+    !enabledCurrencies.every((currency) => /^[A-Z]{3}$/u.test(currency)) ||
+    !enabledCurrencies.includes(parsed.data.CART_DEFAULT_CURRENCY)
+  ) {
+    throw new Error('Cart currency configuration is invalid.');
+  }
   if (parsed.data.NODE_ENV === 'production') {
     if (
       allowedOrigins.length === 0 ||
@@ -272,6 +308,9 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
       parsed.data.SESSION_COOKIE_NAME !== '__Host-session'
     ) {
       throw new Error('Production session cookie configuration must be secure and host-bound.');
+    }
+    if (!parsed.data.CART_COOKIE_SECURE || !parsed.data.CART_COOKIE_NAME.startsWith('__Host-')) {
+      throw new Error('Production cart cookie configuration must be secure and host-bound.');
     }
     if (
       uploadAllowedOrigins.length === 0 ||
@@ -407,6 +446,18 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
       cacheNamespace: parsed.data.CATALOG_CACHE_NAMESPACE,
       searchQueryMaxLength: parsed.data.CATALOG_SEARCH_QUERY_MAX_LENGTH,
       maximumCategoryDepth: parsed.data.CATALOG_MAX_CATEGORY_DEPTH,
+    },
+    cart: {
+      cookie: {
+        name: parsed.data.CART_COOKIE_NAME,
+        secure: parsed.data.CART_COOKIE_SECURE,
+      },
+      activeTtlMs: parsed.data.CART_ACTIVE_TTL_SECONDS * 1_000,
+      maximumLineQuantity: parsed.data.CART_LINE_MAX_QUANTITY,
+      defaultCurrency: parsed.data.CART_DEFAULT_CURRENCY,
+      enabledCurrencies,
+      writeRateLimitMax: parsed.data.CART_WRITE_RATE_LIMIT_MAX,
+      couponRateLimitMax: parsed.data.CART_COUPON_RATE_LIMIT_MAX,
     },
   };
 }

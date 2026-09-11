@@ -4,11 +4,13 @@ import { APP_GUARD } from '@nestjs/core';
 import {
   IdentityModule,
   CatalogModule,
+  CartModule,
   MediaModule,
   PlatformModule,
   InventoryModule,
   SourcingModule,
   ProcurementModule,
+  PricingModule,
   type DatabaseHealthPort,
 } from '@honey/backend';
 import type { GracefulShutdown } from './bootstrap/graceful-shutdown.js';
@@ -23,6 +25,8 @@ import {
 import { AdminSourcingController } from './modules/sourcing/sourcing.controller.js';
 import { AdminProcurementController } from './modules/procurement/procurement.controller.js';
 import { AdminInventoryController } from './modules/inventory/inventory.controller.js';
+import { CartController } from './modules/cart/cart.controller.js';
+import { AdminPricingController } from './modules/pricing/pricing.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
@@ -47,6 +51,8 @@ export class AppModule {
           AdminSourcingController,
           AdminProcurementController,
           AdminInventoryController,
+          CartController,
+          AdminPricingController,
           ValidationProbeController,
         ]
       : [
@@ -58,12 +64,24 @@ export class AppModule {
           AdminSourcingController,
           AdminProcurementController,
           AdminInventoryController,
+          CartController,
+          AdminPricingController,
         ];
   }
 
   static register(options: AppModuleOptions): DynamicModule {
     const inventoryModule = InventoryModule.register({
       databaseUrl: options.config.databaseUrl,
+    });
+    const pricingModule = PricingModule.register({
+      databaseUrl: options.config.databaseUrl,
+      config: { enabledCurrencies: options.config.cart.enabledCurrencies },
+    });
+    const mediaModule = MediaModule.register({
+      config: options.config.media.config,
+      storage: options.config.media.storage,
+      databaseUrl: options.config.databaseUrl,
+      redisUrl: options.config.redisUrl,
     });
     return {
       module: AppModule,
@@ -85,6 +103,7 @@ export class AppModule {
           smtp: options.config.identity.smtp,
         }),
         inventoryModule,
+        pricingModule,
         SourcingModule.register({
           databaseUrl: options.config.databaseUrl,
           inventoryModule,
@@ -98,12 +117,20 @@ export class AppModule {
           databaseUrl: options.config.databaseUrl,
           redisUrl: options.config.redisUrl,
           inventoryModule,
-          mediaModule: MediaModule.register({
-            config: options.config.media.config,
-            storage: options.config.media.storage,
-            databaseUrl: options.config.databaseUrl,
-            redisUrl: options.config.redisUrl,
-          }),
+          pricingModule,
+          mediaModule,
+        }),
+        CartModule.register({
+          databaseUrl: options.config.databaseUrl,
+          config: {
+            activeTtlMs: options.config.cart.activeTtlMs,
+            maximumLineQuantity: options.config.cart.maximumLineQuantity,
+            defaultCurrency: options.config.cart.defaultCurrency,
+            enabledCurrencies: options.config.cart.enabledCurrencies,
+          },
+          inventoryModule,
+          pricingModule,
+          mediaModule,
         }),
       ],
       controllers: [...AppModule.controllers(options.enableTestRoutes === true)],

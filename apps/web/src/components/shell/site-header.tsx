@@ -2,6 +2,7 @@ import { createTranslator, localizedHref, type Locale } from '@honey/i18n';
 import { Container, Inline } from '@honey/ui';
 import NextLink from 'next/link';
 
+import { CartIndicator } from '../cart/cart-indicator';
 import { LanguageSwitcher } from '../language-switcher/language-switcher';
 
 type SiteHeaderProps = {
@@ -55,6 +56,9 @@ export function SiteHeader({ locale, currentPath }: SiteHeaderProps) {
                     </NextLink>
                   </li>
                 ))}
+                <li>
+                  <CartIndicator locale={locale} />
+                </li>
               </ul>
             </nav>
             <LanguageSwitcher locale={locale} />

@@ -61,6 +61,9 @@ export const seedIds = {
   ownPrice: '018f0000-0000-7000-8000-000000000060',
   suppliedPrice: '018f0000-0000-7000-8000-000000000061',
   taxRate: '018f0000-0000-7000-8000-000000000062',
+  percentCoupon: '018f0000-0000-7000-8000-000000000063',
+  fixedCoupon: '018f0000-0000-7000-8000-000000000064',
+  expiredCoupon: '018f0000-0000-7000-8000-000000000065',
   shippingZone: '018f0000-0000-7000-8000-000000000070',
   purchaseOrder: '018f0000-0000-7000-8000-0000000000a0',
   purchaseOrderLine: '018f0000-0000-7000-8000-0000000000a1',
@@ -133,6 +136,8 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     { id: seedIds.inventoryReadPermission, code: 'inventory:read' },
     { id: seedIds.inventoryAdjustPermission, code: 'inventory:adjust' },
     { id: identitySeedId(0x1101), code: 'catalog:publish' },
+    { id: identitySeedId(0x1112), code: 'pricing:read' },
+    { id: identitySeedId(0x1113), code: 'pricing:write' },
     { id: identitySeedId(0x1102), code: 'procurement:read' },
     { id: identitySeedId(0x1103), code: 'procurement:write' },
     { id: identitySeedId(0x1104), code: 'order:read' },
@@ -192,24 +197,34 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
   const permissionsByCode = new Map<string, (typeof permissions)[number]>(
     permissions.map((permission) => [permission.code, permission]),
   );
+  // Existing local databases use the sequential legacy IDs below. Pricing
+  // permissions arrived later, so their grants must not shift or collide with
+  // those already-persisted role-permission IDs during an upgrade seed.
+  const pricingGrantIds = new Map<string, string>([
+    ['OWNER:pricing:read', identitySeedId(0x2100)],
+    ['OWNER:pricing:write', identitySeedId(0x2101)],
+    ['ADMIN:pricing:read', identitySeedId(0x2102)],
+    ['ADMIN:pricing:write', identitySeedId(0x2103)],
+  ]);
   let assignmentNumber = 0x2000;
   for (const role of roles) {
     for (const permissionCode of bundles.get(role.code) ?? []) {
       const permission = permissionsByCode.get(permissionCode);
       if (permission === undefined) throw new Error(`Unknown seeded permission ${permissionCode}.`);
+      const pricingGrantId = pricingGrantIds.get(`${role.code}:${permission.code}`);
       const existing = await client.rolePermission.findUnique({
         where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
       });
       if (existing === null) {
         await client.rolePermission.create({
           data: {
-            id: identitySeedId(assignmentNumber),
+            id: pricingGrantId ?? identitySeedId(assignmentNumber),
             roleId: role.id,
             permissionId: permission.id,
           },
         });
       }
-      assignmentNumber += 1;
+      if (pricingGrantId === undefined) assignmentNumber += 1;
     }
   }
 
@@ -858,6 +873,63 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     },
     update: { name: 'Default', rateBps: 0, country: 'IR', updatedAt: seedTime },
   });
+
+  const coupons = [
+    {
+      id: seedIds.percentCoupon,
+      code: 'WELCOME10',
+      type: 'PERCENT' as const,
+      value: 1000n,
+      currency: null,
+      minSubtotalMinor: null,
+      maxDiscountMinor: null,
+      startsAt: seedTime,
+      endsAt: null,
+      status: 'ACTIVE' as const,
+    },
+    {
+      id: seedIds.fixedCoupon,
+      code: 'HONEY500',
+      type: 'FIXED' as const,
+      value: 5000000n,
+      currency: 'IRR',
+      minSubtotalMinor: null,
+      maxDiscountMinor: null,
+      startsAt: seedTime,
+      endsAt: null,
+      status: 'ACTIVE' as const,
+    },
+    {
+      id: seedIds.expiredCoupon,
+      code: 'PASTOFFER',
+      type: 'PERCENT' as const,
+      value: 500n,
+      currency: null,
+      minSubtotalMinor: null,
+      maxDiscountMinor: null,
+      startsAt: seedTime,
+      endsAt: new Date('2026-01-02T00:00:00.000Z'),
+      status: 'EXPIRED' as const,
+    },
+  ];
+  for (const coupon of coupons) {
+    await client.coupon.upsert({
+      where: { id: coupon.id },
+      create: { ...coupon, appliesTo: 'ALL', targetIds: [], ...commonAudit },
+      update: {
+        code: coupon.code,
+        type: coupon.type,
+        value: coupon.value,
+        currency: coupon.currency,
+        minSubtotalMinor: coupon.minSubtotalMinor,
+        maxDiscountMinor: coupon.maxDiscountMinor,
+        startsAt: coupon.startsAt,
+        endsAt: coupon.endsAt,
+        status: coupon.status,
+        updatedAt: seedTime,
+      },
+    });
+  }
 
   await client.shippingZone.upsert({
     where: { id: seedIds.shippingZone },

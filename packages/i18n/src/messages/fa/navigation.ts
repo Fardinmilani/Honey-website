@@ -6,6 +6,8 @@ export const navigation = {
   categories: 'دسته‌ها',
   collections: 'مجموعه‌ها',
   search: 'جستجو',
+  cart: 'سبد خرید',
+  cartItemCount: 'سبد خرید، {count} کالا',
   primaryNavLabel: 'ناوبری اصلی',
   footerNavLabel: 'ناوبری پاورقی',
 } as const satisfies NavigationMessages;

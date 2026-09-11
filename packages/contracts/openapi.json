@@ -63,6 +63,128 @@
         "required": ["next", "user", "expiresAt", "csrfToken"],
         "type": "object"
       },
+      "CartAdjustmentDto": {
+        "properties": {
+          "code": { "enum": ["QUANTITY_CLAMPED"], "type": "string" },
+          "lineId": { "format": "uuid", "type": "string" }
+        },
+        "required": ["code", "lineId"],
+        "type": "object"
+      },
+      "CartCouponDto": {
+        "properties": {
+          "code": { "type": "string" },
+          "reason": { "nullable": true, "type": "string" },
+          "state": { "enum": ["APPLIED", "INELIGIBLE", "DEFERRED"], "type": "string" }
+        },
+        "required": ["code", "state", "reason"],
+        "type": "object"
+      },
+      "CartLineDto": {
+        "properties": {
+          "availabilityBand": {
+            "enum": ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"],
+            "type": "string"
+          },
+          "discount": { "$ref": "#/components/schemas/MoneyDto" },
+          "id": { "format": "uuid", "type": "string" },
+          "lineSubtotal": { "$ref": "#/components/schemas/MoneyDto" },
+          "lineTotal": { "$ref": "#/components/schemas/MoneyDto" },
+          "product": { "$ref": "#/components/schemas/CartProductDto" },
+          "quantity": { "minimum": 1, "type": "number" },
+          "state": {
+            "enum": ["PURCHASABLE", "OUT_OF_STOCK", "UNPUBLISHED", "PRICE_UNAVAILABLE"],
+            "type": "string"
+          },
+          "unitPrice": {
+            "allOf": [{ "$ref": "#/components/schemas/MoneyDto" }],
+            "nullable": true,
+            "type": "object"
+          },
+          "variant": { "$ref": "#/components/schemas/CartVariantDto" },
+          "variantId": { "format": "uuid", "type": "string" }
+        },
+        "required": [
+          "id",
+          "variantId",
+          "product",
+          "variant",
+          "quantity",
+          "availabilityBand",
+          "state",
+          "unitPrice",
+          "lineSubtotal",
+          "discount",
+          "lineTotal"
+        ],
+        "type": "object"
+      },
+      "CartProductDto": {
+        "properties": {
+          "id": { "format": "uuid", "type": "string" },
+          "imageUrl": { "format": "uri", "nullable": true, "type": "string" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" }
+        },
+        "required": ["id", "name", "slug", "imageUrl"],
+        "type": "object"
+      },
+      "CartResponseDto": {
+        "properties": {
+          "adjustments": {
+            "items": { "$ref": "#/components/schemas/CartAdjustmentDto" },
+            "type": "array"
+          },
+          "coupon": {
+            "allOf": [{ "$ref": "#/components/schemas/CartCouponDto" }],
+            "nullable": true,
+            "type": "object"
+          },
+          "currency": { "type": "string" },
+          "discountTotal": { "$ref": "#/components/schemas/MoneyDto" },
+          "expiresAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "lines": { "items": { "$ref": "#/components/schemas/CartLineDto" }, "type": "array" },
+          "locale": { "type": "string" },
+          "merchandiseTotal": { "$ref": "#/components/schemas/MoneyDto" },
+          "subtotal": { "$ref": "#/components/schemas/MoneyDto" },
+          "tax": { "$ref": "#/components/schemas/CartTaxDto" }
+        },
+        "required": [
+          "id",
+          "locale",
+          "currency",
+          "expiresAt",
+          "lines",
+          "coupon",
+          "subtotal",
+          "discountTotal",
+          "tax",
+          "merchandiseTotal",
+          "adjustments"
+        ],
+        "type": "object"
+      },
+      "CartTaxDto": {
+        "properties": {
+          "amount": {
+            "allOf": [{ "$ref": "#/components/schemas/MoneyDto" }],
+            "nullable": true,
+            "type": "object"
+          },
+          "state": { "enum": ["UNRESOLVED", "RESOLVED"], "type": "string" }
+        },
+        "required": ["state", "amount"],
+        "type": "object"
+      },
+      "CartVariantDto": {
+        "properties": {
+          "name": { "type": "string" },
+          "netWeightGrams": { "minimum": 0, "type": "number" }
+        },
+        "required": ["name", "netWeightGrams"],
+        "type": "object"
+      },
       "CategoryListResponseDto": {
         "properties": {
           "data": {
@@ -99,6 +221,41 @@
           "meta": { "$ref": "#/components/schemas/MetaDto" }
         },
         "required": ["data", "meta"],
+        "type": "object"
+      },
+      "CouponResponseDto": {
+        "properties": {
+          "appliesTo": { "enum": ["ALL", "CATEGORY", "COLLECTION", "VARIANT"], "type": "string" },
+          "code": { "type": "string" },
+          "currency": { "nullable": true, "type": "string" },
+          "endsAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "maxDiscountMinor": { "nullable": true, "type": "string" },
+          "minSubtotalMinor": { "nullable": true, "type": "string" },
+          "startsAt": { "format": "date-time", "type": "string" },
+          "status": { "enum": ["DRAFT", "ACTIVE", "PAUSED", "EXPIRED"], "type": "string" },
+          "targetIds": { "items": { "format": "uuid", "type": "string" }, "type": "array" },
+          "type": { "enum": ["PERCENT", "FIXED", "FREE_SHIPPING"], "type": "string" },
+          "usageLimitPerUser": { "nullable": true, "type": "number" },
+          "usageLimitTotal": { "nullable": true, "type": "number" },
+          "value": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "value",
+          "currency",
+          "minSubtotalMinor",
+          "maxDiscountMinor",
+          "startsAt",
+          "endsAt",
+          "usageLimitTotal",
+          "usageLimitPerUser",
+          "appliesTo",
+          "targetIds",
+          "status"
+        ],
         "type": "object"
       },
       "DirectUploadDto": {
@@ -221,6 +378,14 @@
       "MetaDto": {
         "properties": { "locale": { "type": "string" }, "requestId": { "type": "string" } },
         "required": ["locale", "requestId"],
+        "type": "object"
+      },
+      "MoneyDto": {
+        "properties": {
+          "amountMinor": { "example": "125000", "type": "string" },
+          "currency": { "example": "IRR", "type": "string" }
+        },
+        "required": ["amountMinor", "currency"],
         "type": "object"
       },
       "PageDto": {
@@ -409,6 +574,15 @@
           "netWeightGrams": { "type": "number" },
           "packagingTypeKey": { "type": "string" },
           "position": { "type": "number" },
+          "price": {
+            "nullable": true,
+            "properties": {
+              "amountMinor": { "example": "125000", "type": "string" },
+              "currency": { "example": "IRR", "type": "string" }
+            },
+            "required": ["amountMinor", "currency"],
+            "type": "object"
+          },
           "sku": { "type": "string" },
           "weightGramsShipping": { "type": "number" }
         },
@@ -455,6 +629,8 @@
                 "catalog:read",
                 "catalog:write",
                 "catalog:publish",
+                "pricing:read",
+                "pricing:write",
                 "inventory:read",
                 "inventory:adjust",
                 "procurement:read",
@@ -539,12 +715,46 @@
         "required": ["sessions"],
         "type": "object"
       },
+      "TaxRateResponseDto": {
+        "properties": {
+          "code": { "type": "string" },
+          "country": { "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "isActive": { "type": "boolean" },
+          "isInclusive": { "type": "boolean" },
+          "rateBps": { "type": "number" },
+          "region": { "nullable": true, "type": "string" }
+        },
+        "required": ["id", "code", "rateBps", "country", "region", "isInclusive", "isActive"],
+        "type": "object"
+      },
       "ValidationIssueDto": {
         "properties": {
           "code": { "example": "INVALID_VALUE", "type": "string" },
           "path": { "example": "field", "type": "string" }
         },
         "required": ["path", "code"],
+        "type": "object"
+      },
+      "VariantPriceResponseDto": {
+        "properties": {
+          "amountMinor": { "example": "125000", "type": "string" },
+          "compareAtMinor": { "example": "150000", "nullable": true, "type": "string" },
+          "currency": { "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "validFrom": { "format": "date-time", "type": "string" },
+          "validTo": { "format": "date-time", "nullable": true, "type": "string" },
+          "variantId": { "format": "uuid", "type": "string" }
+        },
+        "required": [
+          "id",
+          "variantId",
+          "currency",
+          "amountMinor",
+          "compareAtMinor",
+          "validFrom",
+          "validTo"
+        ],
         "type": "object"
       }
     },
@@ -1681,6 +1891,127 @@
         "tags": ["Media"]
       }
     },
+    "/v1/admin/pricing/coupons": {
+      "get": {
+        "description": "List internal coupon records.",
+        "operationId": "adminListCoupons",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/CouponResponseDto" },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List internal coupon records",
+        "tags": ["Pricing Admin"]
+      },
+      "post": {
+        "description": "Create a validated coupon record.",
+        "operationId": "adminCreateCoupon",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CouponResponseDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a validated coupon record",
+        "tags": ["Pricing Admin"]
+      }
+    },
+    "/v1/admin/pricing/tax-rates": {
+      "get": {
+        "description": "List internal tax-rate records.",
+        "operationId": "adminListTaxRates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/TaxRateResponseDto" },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List internal tax-rate records",
+        "tags": ["Pricing Admin"]
+      },
+      "post": {
+        "description": "Create a validated tax-rate record.",
+        "operationId": "adminCreateTaxRate",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TaxRateResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a validated tax-rate record",
+        "tags": ["Pricing Admin"]
+      }
+    },
+    "/v1/admin/pricing/variant-prices": {
+      "get": {
+        "description": "List internal variant price records.",
+        "operationId": "adminListVariantPrices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/VariantPriceResponseDto" },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "List internal variant price records",
+        "tags": ["Pricing Admin"]
+      },
+      "post": {
+        "description": "Create a validated variant price record.",
+        "operationId": "adminCreateVariantPrice",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VariantPriceResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create a validated variant price record",
+        "tags": ["Pricing Admin"]
+      }
+    },
     "/v1/admin/procurement/purchase-orders": {
       "get": {
         "description": "List purchase orders.",
@@ -2273,6 +2604,131 @@
         "tags": ["Identity"]
       }
     },
+    "/v1/cart": {
+      "get": {
+        "description": "Read the current server-priced cart.",
+        "operationId": "getCart",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CartResponseDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Read the current server-priced cart",
+        "tags": ["Cart"]
+      }
+    },
+    "/v1/cart/coupon": {
+      "delete": {
+        "description": "Remove the coupon from the current cart.",
+        "operationId": "removeCartCoupon",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CartResponseDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Remove the coupon from the current cart",
+        "tags": ["Cart"]
+      },
+      "post": {
+        "description": "Apply one coupon to the current cart.",
+        "operationId": "applyCartCoupon",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CartResponseDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Apply one coupon to the current cart",
+        "tags": ["Cart"]
+      }
+    },
+    "/v1/cart/lines": {
+      "post": {
+        "description": "Add a variant to the current cart.",
+        "operationId": "addCartLine",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CartResponseDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Add a variant to the current cart",
+        "tags": ["Cart"]
+      }
+    },
+    "/v1/cart/lines/{lineId}": {
+      "delete": {
+        "description": "Remove one current-cart line.",
+        "operationId": "removeCartLine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lineId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CartResponseDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Remove one current-cart line",
+        "tags": ["Cart"]
+      },
+      "patch": {
+        "description": "Set one current-cart line quantity.",
+        "operationId": "updateCartLine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lineId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CartResponseDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Set one current-cart line quantity",
+        "tags": ["Cart"]
+      }
+    },
     "/v1/catalog/categories": {
       "get": {
         "description": "List localized catalog categories.",
@@ -2591,6 +3047,11 @@
     {
       "description": "Permission-protected catalog authoring and publication workflows.",
       "name": "Catalog Admin"
+    },
+    { "description": "Private server-priced customer cart operations.", "name": "Cart" },
+    {
+      "description": "Permission-protected price, coupon, and tax-rule management APIs.",
+      "name": "Pricing Admin"
     },
     {
       "description": "Staff-only apiaries, harvest batches, and batch allocation.",

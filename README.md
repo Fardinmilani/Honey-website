@@ -6,15 +6,22 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 11 delivers sourcing, procurement, and inventory in `@honey/backend`,
-admin APIs, and storefront **availability bands** (no exact stock, no price, no
-Add to Cart). Product JSON-LD still has no `Offer` (Phase 12). Admin procurement
-and inventory screens are Phase 17. Cart and pricing are Phase 12.
+Phase 12 delivers server-authoritative pricing and a private, repriced cart:
+current price windows, coupons, deterministic discount allocation, tax-rule
+resolution, anonymous/user cart ownership, availability clamping, and durable
+idempotent line additions. Storefront cards and product pages show only current
+public prices; valid products expose a structured-data `Offer`; Add to Cart and
+the localized cart work in Persian and English. Prices, totals, discounts, tax,
+and stock are never trusted from the browser or persisted on cart lines.
+
+Checkout, reservations, orders, payments, shipping, and a customer checkout
+entry point remain out of scope until Phase 13 and later.
 
 The existing Hero media under `apps/web/public/media/hero/` remains protected,
 byte-identical, and outside object storage.
 
-See [`docs/inventory-development.md`](docs/inventory-development.md) and
+See [`docs/cart-pricing-development.md`](docs/cart-pricing-development.md),
+[`docs/inventory-development.md`](docs/inventory-development.md), and
 [`docs/web-development.md`](docs/web-development.md).
 
 ## Requirements

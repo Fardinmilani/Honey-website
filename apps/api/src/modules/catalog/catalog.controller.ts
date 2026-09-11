@@ -52,6 +52,7 @@ import {
   NotFoundAppError,
   PRODUCT_SORTS,
   SEARCH_SORTS,
+  ValidationAppError,
   type AdminProduct,
   type ProductSort,
   type SearchSort,
@@ -93,6 +94,16 @@ class PublicVariantDto {
   @ApiProperty({ type: Boolean }) isDefault!: boolean;
   @ApiProperty({ type: String, enum: ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK'] })
   availabilityBand!: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+  @ApiProperty({
+    type: 'object',
+    nullable: true,
+    properties: {
+      amountMinor: { type: 'string', example: '125000' },
+      currency: { type: 'string', example: 'IRR' },
+    },
+    required: ['amountMinor', 'currency'],
+  })
+  price!: Readonly<{ amountMinor: string; currency: string }> | null;
 }
 
 class PublicCatalogMediaDto {
@@ -515,8 +526,10 @@ export class PublicCatalogController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<ProductListResponseDto> {
     const locale = await this.#locale(query.locale, request);
+    const currency = this.#currency(request);
     const result = await this.catalog.listProducts({
       locale,
+      currency,
       ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
       ...(query.limit === undefined ? {} : { limit: Number(query.limit) }),
       ...(query.sort === undefined ? {} : { sort: query.sort }),
@@ -534,7 +547,7 @@ export class PublicCatalogController {
           : { maximumNetWeightGrams: Number(query.maximumNetWeightGrams) }),
       },
     });
-    this.#publicListHeaders(reply);
+    this.#publicListHeaders(reply, true);
     return { data: result.data, meta: meta(request, locale), page: result.page };
   }
 
@@ -549,14 +562,16 @@ export class PublicCatalogController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<ProductListResponseDto> {
     const locale = await this.#locale(query.locale, request);
+    const currency = this.#currency(request);
     const result = await this.catalog.searchProducts({
       locale,
+      currency,
       query: query.q,
       ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
       ...(query.limit === undefined ? {} : { limit: Number(query.limit) }),
       ...(query.sort === undefined ? {} : { sort: query.sort }),
     });
-    this.#publicListHeaders(reply);
+    this.#publicListHeaders(reply, true);
     return { data: result.data, meta: meta(request, locale), page: result.page };
   }
 
@@ -573,14 +588,14 @@ export class PublicCatalogController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<ProductResponseDto | void> {
     const locale = await this.#locale(query.locale, request);
-    const result = await this.catalog.resolveProduct(locale, params.slug);
+    const result = await this.catalog.resolveProduct(locale, params.slug, this.#currency(request));
     if (result.kind === 'NOT_FOUND') throw new NotFoundAppError();
     if (result.kind === 'REDIRECT')
       return this.#redirect(
         reply,
         `/v1/catalog/products/${encodeURIComponent(result.currentSlug)}?locale=${encodeURIComponent(locale)}`,
       );
-    return this.#single(reply, request, locale, result.entity);
+    return this.#single(reply, request, locale, result.entity, true);
   }
 
   @Get('categories')
@@ -610,6 +625,7 @@ export class PublicCatalogController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<ProductListResponseDto | void> {
     const locale = await this.#locale(query.locale, request);
+    const currency = this.#currency(request);
     const category = await this.catalog.resolveCategory(locale, params.slug);
     if (category.kind === 'NOT_FOUND') throw new NotFoundAppError();
     if (category.kind === 'REDIRECT')
@@ -619,12 +635,13 @@ export class PublicCatalogController {
       );
     const result = await this.catalog.listProducts({
       locale,
+      currency,
       ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
       ...(query.limit === undefined ? {} : { limit: Number(query.limit) }),
       ...(query.sort === undefined ? {} : { sort: query.sort }),
       filters: { categoryId: category.entity.id },
     });
-    this.#publicListHeaders(reply);
+    this.#publicListHeaders(reply, true);
     return { data: result.data, meta: meta(request, locale), page: result.page };
   }
 
@@ -677,6 +694,7 @@ export class PublicCatalogController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<ProductListResponseDto | void> {
     const locale = await this.#locale(query.locale, request);
+    const currency = this.#currency(request);
     const collection = await this.catalog.resolveCollection(locale, params.slug);
     if (collection.kind === 'NOT_FOUND') throw new NotFoundAppError();
     if (collection.kind === 'REDIRECT')
@@ -686,12 +704,13 @@ export class PublicCatalogController {
       );
     const result = await this.catalog.listProducts({
       locale,
+      currency,
       ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
       ...(query.limit === undefined ? {} : { limit: Number(query.limit) }),
       ...(query.sort === undefined ? {} : { sort: query.sort }),
       filters: { collectionId: collection.entity.id },
     });
-    this.#publicListHeaders(reply);
+    this.#publicListHeaders(reply, true);
     return { data: result.data, meta: meta(request, locale), page: result.page };
   }
 
@@ -737,9 +756,12 @@ export class PublicCatalogController {
     });
   }
 
-  #publicListHeaders(reply: FastifyReply): void {
-    reply.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
-    reply.header('Vary', 'Accept-Language');
+  #publicListHeaders(reply: FastifyReply, includesCurrentPrice = false): void {
+    reply.header(
+      'Cache-Control',
+      includesCurrentPrice ? 'no-store' : 'public, max-age=60, stale-while-revalidate=300',
+    );
+    reply.header('Vary', 'Accept-Language, X-Currency');
   }
 
   #single<T>(
@@ -747,10 +769,16 @@ export class PublicCatalogController {
     request: FastifyRequest,
     locale: string,
     data: T,
+    includesCurrentPrice = false,
   ): Readonly<{ data: T; meta: MetaDto }> | void {
+    if (includesCurrentPrice) {
+      reply.header('Cache-Control', 'no-store');
+      reply.header('Vary', 'Accept-Language, X-Currency');
+      return { data, meta: meta(request, locale) };
+    }
     const tag = etag(data);
     reply.header('Cache-Control', 'public, max-age=60, s-maxage=300');
-    reply.header('Vary', 'Accept-Language');
+    reply.header('Vary', 'Accept-Language, X-Currency');
     reply.header('ETag', tag);
     if (request.headers['if-none-match'] === tag) {
       reply.status(304).send();
@@ -761,8 +789,20 @@ export class PublicCatalogController {
 
   #redirect(reply: FastifyReply, location: string): void {
     reply.header('Cache-Control', 'public, max-age=60, s-maxage=300');
-    reply.header('Vary', 'Accept-Language');
+    reply.header('Vary', 'Accept-Language, X-Currency');
     reply.status(301).header('Location', location).send();
+  }
+
+  #currency(request: FastifyRequest): string {
+    const header = request.headers['x-currency'];
+    const value =
+      typeof header === 'string'
+        ? header.normalize('NFKC').trim().toUpperCase()
+        : this.config.cart.defaultCurrency;
+    if (!this.config.cart.enabledCurrencies.includes(value)) {
+      throw new ValidationAppError([{ path: 'x-currency', code: 'CURRENCY_UNSUPPORTED' }]);
+    }
+    return value;
   }
 }
 

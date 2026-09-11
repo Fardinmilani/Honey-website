@@ -16,4 +16,11 @@ export const product = {
   availabilityAvailable: 'موجود',
   availabilityLimited: 'موجودی محدود',
   availabilityUnavailable: 'فعلاً ناموجود',
+  price: 'قیمت',
+  priceUnavailable: 'قیمت فعلاً در دسترس نیست',
+  addToCart: 'افزودن به سبد',
+  addingToCart: 'در حال افزودن…',
+  addedToCart: 'به سبد افزوده شد',
+  addToCartQuantityAdjusted: 'به سبد افزوده شد. تعداد بر اساس موجودی فعلی تنظیم شد.',
+  addToCartFailed: 'افزودن این کالا به سبد انجام نشد',
 } as const satisfies ProductMessages;

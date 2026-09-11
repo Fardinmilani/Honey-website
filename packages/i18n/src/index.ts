@@ -21,6 +21,7 @@ export {
 
 export {
   formatCurrency,
+  formatMinorMoney,
   formatDate,
   formatList,
   formatNumber,
@@ -28,6 +29,7 @@ export {
   compareStrings,
   createCollator,
   normalizeDigits,
+  type MinorMoney,
 } from './format.js';
 
 export {

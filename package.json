@@ -51,6 +51,7 @@
     "phase9:verify": "node scripts/verify-phase9.mjs",
     "phase10:verify": "node scripts/verify-phase10.mjs",
     "phase11:verify": "node scripts/verify-phase11.mjs",
+    "phase12:verify": "node scripts/verify-phase12.mjs",
     "i18n:validate": "pnpm --filter @honey/i18n validate:messages",
     "stylelint": "pnpm --filter @honey/web stylelint",
     "test:e2e": "pnpm --filter @honey/web test:e2e",

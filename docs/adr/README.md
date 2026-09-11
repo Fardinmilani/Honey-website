@@ -52,6 +52,9 @@ that costs, and what was rejected.
 | [0030](0030-landed-cost-allocation.md) | Landed extras allocate by line total; remainder on last `id` | Accepted |
 | [0031](0031-incoming-stock-destination.md) | Confirmed PO incoming uses an explicit destination location | Accepted |
 | [0032](0032-availability-band-threshold.md) | Public LOW_STOCK uses max sellable reorder point | Accepted |
+| [0033](0033-cart-discount-allocation.md) | Cart discount remainders use stable line-ID order | Accepted |
+| [0034](0034-cart-active-ttl.md) | Active carts expire lazily with a configured TTL | Accepted |
+| [0035](0035-cart-mutation-idempotency-and-owner-locking.md) | Cart mutations serialize by owner and use durable add idempotency | Accepted |
 
 ### Supersession chain
 

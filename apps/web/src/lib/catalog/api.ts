@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { components } from '@honey/contracts';
-import type { Locale } from '@honey/i18n';
+import { getLocaleConfig, type Locale } from '@honey/i18n';
 
 import { ApiClientError, apiFetch } from '../api-client/server';
 import { catalogTags } from '../cache/tags';
@@ -80,12 +80,18 @@ function cacheNext(tags: string[]) {
   return { revalidate: DEFAULT_REVALIDATE_SECONDS, tags };
 }
 
+/** Price-bearing projections are live reads; catalog content remains tag-cached separately. */
+function currentPriceRead() {
+  return { cache: 'no-store' as const };
+}
+
 export async function listProducts(query: CatalogListQuery): Promise<ProductListResponse> {
   return apiFetch<ProductListResponse>({
     path: '/v1/catalog/products',
     searchParams: listSearchParams(query),
     locale: query.locale,
-    next: cacheNext([catalogTags.catalog, catalogTags.locale(query.locale), catalogTags.products]),
+    currency: getLocaleConfig(query.locale).currency,
+    ...currentPriceRead(),
   });
 }
 
@@ -100,6 +106,7 @@ export async function searchProducts(query: CatalogSearchQuery): Promise<Product
       sort: query.sort,
     },
     locale: query.locale,
+    currency: getLocaleConfig(query.locale).currency,
     // Search results are not shared under attacker-controlled query keys.
     cache: 'no-store',
   });
@@ -131,12 +138,8 @@ export async function listCategoryProducts(
     path: `/v1/catalog/categories/${slugPathSegment(slug)}/products`,
     searchParams: listSearchParams(query),
     locale: query.locale,
-    next: cacheNext([
-      catalogTags.catalog,
-      catalogTags.locale(query.locale),
-      catalogTags.categorySlug(slug),
-      catalogTags.products,
-    ]),
+    currency: getLocaleConfig(query.locale).currency,
+    ...currentPriceRead(),
   });
 }
 
@@ -148,12 +151,8 @@ export async function listCollectionProducts(
     path: `/v1/catalog/collections/${slugPathSegment(slug)}/products`,
     searchParams: listSearchParams(query),
     locale: query.locale,
-    next: cacheNext([
-      catalogTags.catalog,
-      catalogTags.locale(query.locale),
-      catalogTags.collectionSlug(slug),
-      catalogTags.products,
-    ]),
+    currency: getLocaleConfig(query.locale).currency,
+    ...currentPriceRead(),
   });
 }
 
@@ -171,13 +170,17 @@ async function fetchBySlug<T>(options: {
   readonly path: string;
   readonly locale: Locale;
   readonly tags: string[];
+  readonly cache?: RequestCache;
 }): Promise<EntityResult<T>> {
   try {
     const payload = await apiFetchRaw({
       path: options.path,
       searchParams: { locale: options.locale },
       locale: options.locale,
-      next: cacheNext(options.tags),
+      currency: getLocaleConfig(options.locale).currency,
+      ...(options.cache === undefined
+        ? { next: cacheNext(options.tags) }
+        : { cache: options.cache }),
     });
 
     if (payload.redirectSlug !== undefined) {
@@ -214,9 +217,11 @@ export async function getProductBySlug(
     tags: [
       catalogTags.catalog,
       catalogTags.locale(locale),
+      catalogTags.currency(getLocaleConfig(locale).currency),
       catalogTags.productSlug(slug),
       catalogTags.products,
     ],
+    cache: 'no-store',
   });
 }
 
@@ -265,6 +270,8 @@ async function apiFetchRaw(options: {
   readonly path: string;
   readonly searchParams?: Record<string, string | number | boolean | undefined>;
   readonly locale?: string;
+  readonly currency?: string;
+  readonly cache?: RequestCache;
   readonly next?: { revalidate?: number | false; tags?: string[] };
 }): Promise<RawFetchResult> {
   const { getWebEnv } = await import('../env');
@@ -290,6 +297,9 @@ async function apiFetchRaw(options: {
   if (options.locale) {
     headers.set('accept-language', options.locale);
   }
+  if (options.currency) {
+    headers.set('x-currency', options.currency);
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), env.apiTimeoutMs);
@@ -302,6 +312,9 @@ async function apiFetchRaw(options: {
     };
     if (options.next !== undefined) {
       init.next = options.next;
+    }
+    if (options.cache !== undefined) {
+      init.cache = options.cache;
     }
 
     const response = await fetch(url, init);
