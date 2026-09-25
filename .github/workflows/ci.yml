@@ -252,6 +252,15 @@ jobs:
       - name: Verify Phase 12 cart and pricing
         run: pnpm phase12:verify
 
+      - name: Run Phase 13 checkout, reservation, and order backend integration
+        run: pnpm --filter @honey/backend test -- --run test/phase13.integration.test.ts
+
+      - name: Run Phase 13 checkout and orders HTTP security tests
+        run: pnpm --filter @honey/api test -- --run test/phase13.test.ts
+
+      - name: Verify Phase 13 checkout, reservations, and orders
+        run: pnpm phase13:verify
+
       - name: Prove Hero media never entered object storage
         run: |
           for bucket in honey-media-ci honey-private-ci; do

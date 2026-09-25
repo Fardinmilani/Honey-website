@@ -1,6 +1,6 @@
 'use client';
 
-import { formatMinorMoney, type Locale } from '@honey/i18n';
+import { createTranslator, formatMinorMoney, localizedHref, type Locale } from '@honey/i18n';
 import Image from 'next/image';
 import NextLink from 'next/link';
 import {
@@ -437,6 +437,8 @@ function couponStatusLabel(coupon: CartCoupon, locale: Locale): string {
 
 export function CartContents({ locale, csrfCookieName, csrfHeaderName }: CartContentsProps) {
   const copy = useMemo(() => cartMessages(locale), [locale]);
+  const t = useMemo(() => createTranslator(locale), [locale]);
+  const checkoutHref = useMemo(() => localizedHref('/checkout', locale), [locale]);
   const couponInputId = useId();
   const couponErrorId = useId();
   const [cart, setCart] = useState<CartSnapshot | null>(null);
@@ -574,6 +576,7 @@ export function CartContents({ locale, csrfCookieName, csrfHeaderName }: CartCon
   }
 
   const hasLines = cart.lines.length > 0;
+  const hasPurchasableLine = cart.lines.some((line) => line.state === 'PURCHASABLE');
   const hasQuantityAdjustment = cart.adjustments.some(
     (adjustment) => adjustment.code === 'QUANTITY_CLAMPED',
   );
@@ -757,6 +760,12 @@ export function CartContents({ locale, csrfCookieName, csrfHeaderName }: CartCon
                 {formatMinorMoney(locale, cart.merchandiseTotal)}
               </strong>
             </div>
+
+            {hasPurchasableLine ? (
+              <NextLink href={checkoutHref} className={styles['couponButton']}>
+                {t('checkout.checkoutTitle')}
+              </NextLink>
+            ) : null}
 
             <form className={styles['couponForm']} onSubmit={onCouponSubmit}>
               <div className={styles['couponField']}>

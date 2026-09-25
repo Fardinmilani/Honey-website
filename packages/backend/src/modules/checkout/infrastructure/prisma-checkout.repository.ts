@@ -2,11 +2,13 @@ import { randomUUID } from 'node:crypto';
 
 import { createPrismaClient, Prisma, type PrismaClient } from '@honey/db';
 
+import type { JsonValue } from '../../../errors/index.js';
 import type { TransactionContext } from '../../../platform/domain/transaction.js';
 import { asPrismaTransaction } from '../../../platform/infrastructure/prisma-platform.adapter.js';
 import type {
   CheckoutAddress,
   CheckoutIdempotencyClaim,
+  CheckoutJsonObject,
   CheckoutOwner,
   CheckoutRepository,
   CheckoutSessionRecord,
@@ -14,6 +16,25 @@ import type {
 } from '../domain/checkout.js';
 
 type Client = PrismaClient | ReturnType<typeof asPrismaTransaction>;
+
+/**
+ * Prisma's generated JSON types (mutable, optional-keyed) and the domain's
+ * `JsonValue` / `CheckoutJsonObject` (readonly, required-keyed) describe the
+ * same runtime shape — parsed JSON. This is the one place that boundary is
+ * crossed, per docs/module-boundaries.md §1 ("infrastructure implements
+ * domain ports"): domain never sees a Prisma type, infrastructure translates.
+ */
+function toDomainJson(value: Prisma.JsonValue): JsonValue {
+  return value as unknown as JsonValue;
+}
+
+function toDomainJsonNullable(value: Prisma.JsonValue | null): JsonValue | null {
+  return value === null ? null : toDomainJson(value);
+}
+
+function toPrismaJsonInput(value: CheckoutJsonObject): Prisma.InputJsonObject {
+  return value as unknown as Prisma.InputJsonObject;
+}
 
 type AddressRow = Readonly<{
   id: string;
@@ -123,7 +144,7 @@ function mapSession(row: SessionRow): CheckoutSessionRecord {
     shippingQuoteId: row.shippingQuoteId,
     status: status(row.status),
     reservationExpiresAt: row.reservationExpiresAt,
-    pricingSnapshot: row.pricingSnapshot,
+    pricingSnapshot: toDomainJsonNullable(row.pricingSnapshot),
     idempotencyKey: row.idempotencyKey,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -211,7 +232,7 @@ export class PrismaCheckoutRepository implements CheckoutRepository {
       idempotencyKey: string;
       contact: StartCheckoutInput;
       reservationExpiresAt: Date;
-      pricingSnapshot: Prisma.InputJsonObject;
+      pricingSnapshot: CheckoutJsonObject;
       actorUserId: string | null;
       requestId: string;
       clientIp: string | null;
@@ -257,7 +278,7 @@ export class PrismaCheckoutRepository implements CheckoutRepository {
         status: 'OPEN',
         reservationExpiresAt: input.reservationExpiresAt,
         idempotencyKey: input.idempotencyKey,
-        pricingSnapshot: input.pricingSnapshot,
+        pricingSnapshot: toPrismaJsonInput(input.pricingSnapshot),
         createdBy: input.actorUserId,
         updatedBy: input.actorUserId,
       },
@@ -292,7 +313,7 @@ export class PrismaCheckoutRepository implements CheckoutRepository {
     id: string,
     input: Readonly<{
       reservationExpiresAt: Date;
-      pricingSnapshot: Prisma.InputJsonObject;
+      pricingSnapshot: CheckoutJsonObject;
       actorUserId: string | null;
     }>,
     transaction: TransactionContext,
@@ -301,7 +322,23 @@ export class PrismaCheckoutRepository implements CheckoutRepository {
       where: { id },
       data: {
         reservationExpiresAt: input.reservationExpiresAt,
-        pricingSnapshot: input.pricingSnapshot,
+        pricingSnapshot: toPrismaJsonInput(input.pricingSnapshot),
+        updatedBy: input.actorUserId,
+      },
+      include: sessionInclude,
+    });
+    return mapSession(row);
+  }
+
+  async extendReservationExpiry(
+    id: string,
+    input: Readonly<{ reservationExpiresAt: Date; actorUserId: string | null }>,
+    transaction: TransactionContext,
+  ): Promise<CheckoutSessionRecord> {
+    const row = await asPrismaTransaction(transaction).checkoutSession.update({
+      where: { id },
+      data: {
+        reservationExpiresAt: input.reservationExpiresAt,
         updatedBy: input.actorUserId,
       },
       include: sessionInclude,

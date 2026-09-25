@@ -1,6 +1,13 @@
-import type { Prisma } from '@honey/db';
-
+import type { JsonValue } from '../../../errors/index.js';
 import type { TransactionContext } from '../../../platform/domain/transaction.js';
+
+/**
+ * Domain-owned JSON shape for order snapshots. Deliberately not
+ * `Prisma.JsonValue` / `Prisma.InputJsonObject` — domain code must stay
+ * persistence-independent (docs/module-boundaries.md §1). Infrastructure
+ * translates to and from the Prisma JSON types at the repository boundary.
+ */
+export type OrderJsonObject = Readonly<Record<string, JsonValue>>;
 
 export type OrderOwner =
   | Readonly<{ userId: string; anonymousId?: never }>
@@ -10,9 +17,9 @@ export type OrderLineSnapshotInput = Readonly<{
   productId: string | null;
   variantId: string | null;
   skuSnapshot: string;
-  productNameSnapshot: Prisma.InputJsonObject;
-  variantNameSnapshot: Prisma.InputJsonObject;
-  attributesSnapshot: Prisma.InputJsonObject;
+  productNameSnapshot: OrderJsonObject;
+  variantNameSnapshot: OrderJsonObject;
+  attributesSnapshot: OrderJsonObject;
   imageUrlSnapshot: string | null;
   quantity: number;
   unitPriceMinor: bigint;
@@ -37,9 +44,9 @@ export type CreatePendingOrderInput = Readonly<{
   taxInclusive: boolean;
   grandTotalMinor: bigint;
   couponCodeSnapshot: string | null;
-  shippingMethodSnapshot: Prisma.InputJsonObject;
-  shippingAddressSnapshot: Prisma.InputJsonObject;
-  billingAddressSnapshot: Prisma.InputJsonObject;
+  shippingMethodSnapshot: OrderJsonObject;
+  shippingAddressSnapshot: OrderJsonObject;
+  billingAddressSnapshot: OrderJsonObject;
   placedAt: Date;
   actorUserId: string | null;
   lines: readonly OrderLineSnapshotInput[];
@@ -56,8 +63,8 @@ export type CreatedPendingOrder = Readonly<{
 }>;
 
 export type CustomerOrderLine = Readonly<{
-  productNameSnapshot: Prisma.JsonValue;
-  variantNameSnapshot: Prisma.JsonValue;
+  productNameSnapshot: JsonValue;
+  variantNameSnapshot: JsonValue;
   skuSnapshot: string;
   imageUrlSnapshot: string | null;
   quantity: number;
@@ -83,9 +90,9 @@ export type CustomerOrder = Readonly<{
   taxTotalMinor: bigint;
   grandTotalMinor: bigint;
   couponCodeSnapshot: string | null;
-  shippingMethodSnapshot: Prisma.JsonValue;
-  shippingAddressSnapshot: Prisma.JsonValue;
-  billingAddressSnapshot: Prisma.JsonValue;
+  shippingMethodSnapshot: JsonValue;
+  shippingAddressSnapshot: JsonValue;
+  billingAddressSnapshot: JsonValue;
   placedAt: Date;
   lines: readonly CustomerOrderLine[];
 }>;

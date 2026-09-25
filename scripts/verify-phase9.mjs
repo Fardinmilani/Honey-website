@@ -142,10 +142,10 @@ for (const path of cssFiles) {
   assert.doesNotMatch(css, physical, `Physical directional CSS in ${path}`);
 }
 
-for (const absent of [
-  'apps/web/src/app/[locale]/(storefront)/checkout',
-  'apps/web/src/app/[locale]/(admin)/admin/page.tsx',
-]) {
+// `.../(storefront)/checkout` was asserted absent here while it was still
+// Phase 13 scope; Phase 13 is now complete (see `scripts/verify-phase13.mjs`),
+// so only the still-future admin console (Phase 17) is asserted absent.
+for (const absent of ['apps/web/src/app/[locale]/(admin)/admin/page.tsx']) {
   await assert.rejects(access(resolve(root, absent)), undefined, `${absent} must not exist`);
 }
 

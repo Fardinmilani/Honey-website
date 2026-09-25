@@ -5,10 +5,10 @@ import {
   type Provider,
 } from '@nestjs/common';
 
-import { CartService } from '../cart/application/cart.service.js';
-import { InventoryService } from '../inventory/application/inventory.service.js';
-import { OrdersService } from '../orders/application/orders.service.js';
-import { PricingService } from '../pricing/application/pricing.service.js';
+import { CartService } from '../cart/index.js';
+import { InventoryService } from '../inventory/index.js';
+import { OrdersService } from '../orders/index.js';
+import { PricingService } from '../pricing/index.js';
 import { TRANSACTION_RUNNER } from '../../platform/domain/tokens.js';
 import type { TransactionRunner } from '../../platform/domain/transaction.js';
 import { CheckoutService } from './application/checkout.service.js';

@@ -378,6 +378,10 @@ assert.doesNotMatch(
 
 const cartRoute = resolve(root, 'apps/web/src/app/[locale]/(storefront)/cart');
 await access(cartRoute);
-await assert.rejects(access(resolve(root, 'apps/web/src/app/[locale]/(storefront)/checkout')));
+// This script no longer asserts that `/checkout` is absent: that was a
+// Phase-12-scope guard valid only while Phase 13 had not started. Phase 13
+// is now complete (see `scripts/verify-phase13.mjs`, which asserts the
+// checkout route's actual, positive requirements) and its `checkout` route
+// existing is correct, not a Phase 12 scope leak.
 
 process.stdout.write('Phase 12 cart and pricing structural verification passed.\n');

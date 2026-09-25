@@ -32,6 +32,7 @@ type CheckoutProxyOptions = Readonly<{
     | '/v1/checkout'
     | `/v1/checkout/${string}`
     | `/v1/checkout/${string}/confirm`
+    | `/v1/checkout/${string}/extend`
     | '/v1/orders'
     | `/v1/orders/${string}`;
   method: 'GET' | 'POST';
@@ -100,7 +101,8 @@ async function requestJson(request: Request): Promise<unknown | null> {
   const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
   if (!contentType.startsWith('application/json')) return null;
   try {
-    return (await request.json()) as unknown;
+    const body: unknown = await request.json();
+    return body;
   } catch {
     return null;
   }
@@ -188,18 +190,24 @@ export async function parseStartCheckout(request: Request): Promise<StartCheckou
 
   const normalizedEmail = email.trim();
   const normalizedPhone = phone?.trim();
+  // The guard above already rejects `billingAddressRaw !== undefined && billingAddress
+  // === null`, so `billingAddress` can never genuinely be `null` here. TypeScript cannot
+  // narrow that across the compound `||` guard, so this makes it explicit instead of
+  // widening `StartCheckoutInput.billingAddress` (which stays a strictly optional,
+  // non-null key) to accept `null`.
+  const safeBillingAddress = billingAddress === null ? undefined : billingAddress;
   return normalizedPhone === undefined
     ? {
         email: normalizedEmail,
         shippingAddress,
-        ...(billingAddress === undefined ? {} : { billingAddress }),
+        ...(safeBillingAddress === undefined ? {} : { billingAddress: safeBillingAddress }),
         sameAsShipping,
       }
     : {
         email: normalizedEmail,
         phone: normalizedPhone,
         shippingAddress,
-        ...(billingAddress === undefined ? {} : { billingAddress }),
+        ...(safeBillingAddress === undefined ? {} : { billingAddress: safeBillingAddress }),
         sameAsShipping,
       };
 }
@@ -282,7 +290,8 @@ async function parseUpstreamJson(response: Response): Promise<unknown | null> {
   const body = await response.text();
   if (body === '') return null;
   try {
-    return JSON.parse(body) as unknown;
+    const parsed: unknown = JSON.parse(body);
+    return parsed;
   } catch {
     return null;
   }
@@ -316,6 +325,10 @@ export async function proxyCheckoutRequest(
   });
   const cookies = selectedCookieHeader(request);
   if (cookies !== undefined) headers.set('cookie', cookies);
+  if (options.method === 'POST') {
+    const csrf = request.headers.get(env.csrfHeaderName);
+    if (csrf !== null) headers.set(env.csrfHeaderName, csrf);
+  }
   if (options.idempotencyKey !== undefined) {
     headers.set('idempotency-key', options.idempotencyKey);
   }

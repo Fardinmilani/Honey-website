@@ -158,6 +158,74 @@ Next.js middleware, route guards, and conditionally rendered admin navigation ar
 requests is independently authorized by the API. Hiding a button is not
 authorization.
 
+### 3.4 Guest checkout ownership
+
+Guests may cart, checkout, and hold a stock reservation with no account
+(product-scope.md §3.4). This is evaluated separately because ownership here is
+cookie-derived rather than credential-derived.
+
+- **Identity source.** The anonymous cart cookie holds a server-generated,
+  cryptographically random `anonymousId` (`crypto.randomUUID()`, ~122 bits of
+  entropy — not guessable, not sequential). It is set `HttpOnly`, `SameSite=Lax`,
+  and — in production — `Secure` and `__Host-`-prefixed (enforced by a
+  fail-closed config check at boot; see §6). The client never supplies this id:
+  every checkout, cart, and order endpoint reads it from the cookie jar only.
+- **Single ownership choke point.** `ownerFor()` in the checkout application
+  service resolves the owner to `{ userId }` when a valid session exists,
+  otherwise `{ anonymousId }` — never both, never client-selectable. Every
+  checkout read/write (`start`, `get`, `extend`, `confirm`) and every order read
+  goes through this same resolution.
+- **Fails closed on identity change, by design.** If a guest authenticates
+  partway through an existing checkout, the owner resolution switches to
+  `{ userId }`; the prior anonymous-owned session does not match and
+  `lockOwnedSession` returns nothing, so the checkout becomes inaccessible
+  (`404`) rather than silently reattaching to the new identity. There is no
+  guest-to-account cart/checkout merge. This matches product-scope.md, which
+  does not specify one — building a merge would be an invented feature and is
+  intentionally out of scope for this evaluation.
+- **No existence disclosure.** A checkout or order id/number that is
+  syntactically valid but owned by someone else returns `404`, identical to a
+  non-existent one — verified in `packages/backend/test/phase13.integration.test.ts`
+  and `apps/api/test/phase13.test.ts`.
+- **CSRF applies to guests too.** The double-submit CSRF check (§6) is required
+  on every cart and checkout write regardless of whether a session cookie is
+  present, so guest checkout is not a weaker CSRF surface than an authenticated
+  one.
+- **Independent rate limiting.** Checkout writes are throttled by a dedicated
+  limiter keyed on a hash of the session cookie, else the cart cookie, else the
+  IP — separate from the global API limiter — so a guest cannot be used to
+  bypass per-identity throttling simply by never authenticating.
+- **No money or stock field reaches this path.** `StartCheckoutDto` carries only
+  contact and address fields. In addition, the same generic tampering scan
+  described in §4 runs on every checkout write (not only cart writes): any
+  injected `price`, `total`, `discount`, `shipping`, `tax`, `stock`, `payment`,
+  `status`, `reservation`, or `location`-shaped field is rejected with
+  `CHECKOUT_MONEY_FIELD_FORBIDDEN` and recorded as `security.tampering_attempt`
+  before validation ever runs — verified in `apps/api/test/phase13.test.ts`.
+- **Accepted gap — no order recovery without the cookie.** Guest order access is
+  scoped exclusively to the anonymous cart cookie. If a guest clears cookies or
+  switches device/browser, the API has no email+order-number lookup fallback to
+  recover access. Order history (product-scope.md §3.5) is specified only for
+  authenticated accounts; a guest-recovery lookup is not specified anywhere in
+  product-scope.md. This is recorded here as an accepted product gap, not
+  silently built — see `docs/progress.md` *Unresolved decisions* if a human
+  wants to prioritize it.
+- **Residual risk, already mitigated elsewhere.** A same-origin XSS could still
+  overwrite the cart cookie via `document.cookie` (no cookie attribute prevents
+  a same-origin script from writing a new cookie of the same name, `HttpOnly` or
+  not) and redirect a victim's subsequent guest actions to an attacker-chosen
+  `anonymousId`. This is a general property of cookies, not specific to guest
+  checkout, and the primary control is the CSP in §6 (no `unsafe-inline`, no
+  `unsafe-eval`), not any property of this cookie. No additional
+  guest-checkout-specific control is warranted.
+
+**Conclusion of this evaluation:** the guest checkout ownership model is
+sound — server-derived identity, a single resolution choke point, fail-closed
+behavior on identity change, no existence disclosure, and CSRF/rate-limit/
+tampering controls applied equally to guests. The one accepted gap (no
+cookie-independent order recovery) is a product-scope absence, not a security
+defect, and is left to a human to prioritize rather than built here.
+
 ---
 
 ## 4. Input validation

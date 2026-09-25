@@ -204,6 +204,18 @@
         "required": ["data", "meta"],
         "type": "object"
       },
+      "CheckoutResponseDto": {
+        "properties": {
+          "email": { "format": "email", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "status": {
+            "enum": ["OPEN", "AWAITING_PAYMENT", "COMPLETED", "EXPIRED", "CANCELLED"],
+            "type": "string"
+          }
+        },
+        "required": ["id", "status", "email"],
+        "type": "object"
+      },
       "CollectionListResponseDto": {
         "properties": {
           "data": {
@@ -221,6 +233,14 @@
           "meta": { "$ref": "#/components/schemas/MetaDto" }
         },
         "required": ["data", "meta"],
+        "type": "object"
+      },
+      "ConfirmCheckoutResponseDto": {
+        "properties": {
+          "checkout": { "$ref": "#/components/schemas/CheckoutResponseDto" },
+          "orderNumber": { "example": "HNY-2026-000123", "type": "string" }
+        },
+        "required": ["checkout", "orderNumber"],
         "type": "object"
       },
       "CouponResponseDto": {
@@ -256,6 +276,15 @@
           "targetIds",
           "status"
         ],
+        "type": "object"
+      },
+      "CustomerOrderResponseDto": {
+        "properties": {
+          "grandTotal": { "$ref": "#/components/schemas/MoneyDto" },
+          "number": { "example": "HNY-2026-000123", "type": "string" },
+          "status": { "type": "string" }
+        },
+        "required": ["number", "status", "grandTotal"],
         "type": "object"
       },
       "DirectUploadDto": {
@@ -2928,6 +2957,136 @@
         "tags": ["Catalog"]
       }
     },
+    "/v1/checkout": {
+      "post": {
+        "operationId": "startCheckout",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CheckoutResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Start an owner-scoped checkout",
+        "tags": ["Checkout"]
+      }
+    },
+    "/v1/checkout/{id}": {
+      "get": {
+        "operationId": "getCheckout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CheckoutResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Read the current owner checkout",
+        "tags": ["Checkout"]
+      }
+    },
+    "/v1/checkout/{id}/confirm": {
+      "post": {
+        "operationId": "confirmCheckout",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ConfirmCheckoutResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Create one pending-payment order",
+        "tags": ["Checkout"]
+      }
+    },
+    "/v1/checkout/{id}/extend": {
+      "post": {
+        "operationId": "extendCheckoutReservation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CheckoutResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Extend an active checkout reservation hold once, up to the 30-minute maximum",
+        "tags": ["Checkout"]
+      }
+    },
     "/v1/me": {
       "get": {
         "description": "Returns only the safe account and effective authorization summary for the current principal.",
@@ -3026,6 +3185,58 @@
         "security": [{ "sessionCookie": [] }],
         "summary": "Revoke one of this account’s sessions",
         "tags": ["Identity"]
+      }
+    },
+    "/v1/orders": {
+      "get": {
+        "operationId": "listMyOrders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/CustomerOrderResponseDto" },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "List current customer account orders",
+        "tags": ["Orders"]
+      }
+    },
+    "/v1/orders/{number}": {
+      "get": {
+        "operationId": "getMyOrder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": { "example": "HNY-2026-000123", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CustomerOrderResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Read one owner-scoped order",
+        "tags": ["Orders"]
       }
     }
   },

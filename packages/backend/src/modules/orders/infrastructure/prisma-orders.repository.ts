@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient, Prisma, type PrismaClient } from '@honey/db';
 
 import { ConflictAppError } from '../../../errors/index.js';
+import type { JsonValue } from '../../../errors/index.js';
 import type { TransactionContext } from '../../../platform/domain/transaction.js';
 import { asPrismaTransaction } from '../../../platform/infrastructure/prisma-platform.adapter.js';
 import type {
@@ -10,11 +11,27 @@ import type {
   CreatePendingOrderInput,
   CustomerOrder,
   CustomerOrderLine,
+  OrderJsonObject,
   OrderOwner,
   OrdersRepository,
 } from '../domain/orders.js';
 
 type Client = PrismaClient | ReturnType<typeof asPrismaTransaction>;
+
+/**
+ * Prisma's generated JSON types (mutable, optional-keyed) and the domain's
+ * `JsonValue` / `OrderJsonObject` (readonly, required-keyed) describe the
+ * same runtime shape — parsed JSON. This is the one place that boundary is
+ * crossed, per docs/module-boundaries.md §1: domain never sees a Prisma type,
+ * infrastructure translates.
+ */
+function toDomainJson(value: Prisma.JsonValue): JsonValue {
+  return value as unknown as JsonValue;
+}
+
+function toPrismaJsonInput(value: OrderJsonObject): Prisma.InputJsonObject {
+  return value as unknown as Prisma.InputJsonObject;
+}
 
 type CreatedRow = Readonly<{
   id: string;
@@ -87,8 +104,8 @@ function mapCreated(row: CreatedRow): CreatedPendingOrder {
 
 function mapCustomerLine(row: CustomerLineRow): CustomerOrderLine {
   return {
-    productNameSnapshot: row.productNameSnapshot,
-    variantNameSnapshot: row.variantNameSnapshot,
+    productNameSnapshot: toDomainJson(row.productNameSnapshot),
+    variantNameSnapshot: toDomainJson(row.variantNameSnapshot),
     skuSnapshot: row.skuSnapshot,
     imageUrlSnapshot: row.imageUrlSnapshot,
     quantity: row.quantity,
@@ -116,9 +133,9 @@ function mapCustomerOrder(row: CustomerOrderRow): CustomerOrder {
     taxTotalMinor: row.taxTotalMinor,
     grandTotalMinor: row.grandTotalMinor,
     couponCodeSnapshot: row.couponCodeSnapshot,
-    shippingMethodSnapshot: row.shippingMethodSnapshot,
-    shippingAddressSnapshot: row.shippingAddressSnapshot,
-    billingAddressSnapshot: row.billingAddressSnapshot,
+    shippingMethodSnapshot: toDomainJson(row.shippingMethodSnapshot),
+    shippingAddressSnapshot: toDomainJson(row.shippingAddressSnapshot),
+    billingAddressSnapshot: toDomainJson(row.billingAddressSnapshot),
     placedAt: row.placedAt,
     lines: row.lines.map(mapCustomerLine),
   };
@@ -219,9 +236,9 @@ export class PrismaOrdersRepository implements OrdersRepository {
         taxTotalMinor: input.taxTotalMinor,
         grandTotalMinor: input.grandTotalMinor,
         couponCodeSnapshot: input.couponCodeSnapshot,
-        shippingMethodSnapshot: input.shippingMethodSnapshot,
-        shippingAddressSnapshot: input.shippingAddressSnapshot,
-        billingAddressSnapshot: input.billingAddressSnapshot,
+        shippingMethodSnapshot: toPrismaJsonInput(input.shippingMethodSnapshot),
+        shippingAddressSnapshot: toPrismaJsonInput(input.shippingAddressSnapshot),
+        billingAddressSnapshot: toPrismaJsonInput(input.billingAddressSnapshot),
         placedAt: input.placedAt,
         createdBy: input.actorUserId,
         updatedBy: input.actorUserId,
@@ -231,9 +248,9 @@ export class PrismaOrdersRepository implements OrdersRepository {
             productId: line.productId,
             variantId: line.variantId,
             skuSnapshot: line.skuSnapshot,
-            productNameSnapshot: line.productNameSnapshot,
-            variantNameSnapshot: line.variantNameSnapshot,
-            attributesSnapshot: line.attributesSnapshot,
+            productNameSnapshot: toPrismaJsonInput(line.productNameSnapshot),
+            variantNameSnapshot: toPrismaJsonInput(line.variantNameSnapshot),
+            attributesSnapshot: toPrismaJsonInput(line.attributesSnapshot),
             imageUrlSnapshot: line.imageUrlSnapshot,
             quantity: line.quantity,
             unitPriceMinor: line.unitPriceMinor,

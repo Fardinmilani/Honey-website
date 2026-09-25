@@ -1,25 +1,23 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Prisma } from '@honey/db';
-
 import {
   ConflictAppError,
   DependencyUnavailableAppError,
   NotFoundAppError,
   ValidationAppError,
 } from '../../../errors/index.js';
+import type { JsonValue } from '../../../errors/index.js';
 import type { TransactionContext, TransactionRunner } from '../../../platform/domain/transaction.js';
-import { CartService, type CartRequestContext } from '../../cart/application/cart.service.js';
-import type { CheckoutCartLineRecord } from '../../cart/domain/cart.js';
-import { InventoryService } from '../../inventory/application/inventory.service.js';
-import type { InventoryActorContext } from '../../inventory/domain/inventory.js';
-import { OrdersService } from '../../orders/application/orders.service.js';
-import { PricingService, type CheckoutPricingResult } from '../../pricing/application/pricing.service.js';
+import type { CartService, CartRequestContext, CheckoutCartLineRecord } from '../../cart/index.js';
+import type { InventoryService, InventoryActorContext } from '../../inventory/index.js';
+import type { OrdersService } from '../../orders/index.js';
+import type { PricingService, CheckoutPricingResult } from '../../pricing/index.js';
 import type { CheckoutShippingQuotePort } from '../shipping/domain/checkout-shipping-quote.port.js';
 import type { StandardShippingCharge, StandardShippingQuote } from '../shipping/domain/standard-shipping-quote.js';
 import type {
   CheckoutAddress,
   CheckoutAddressInput,
+  CheckoutJsonObject,
   CheckoutOwner,
   CheckoutRepository,
   CheckoutSessionRecord,
@@ -84,7 +82,7 @@ type NormalizedContext = Readonly<{
 }>;
 
 type SnapshotBuild = Readonly<{
-  value: Prisma.InputJsonObject;
+  value: CheckoutJsonObject;
   fingerprint: string;
   projection: CheckoutPricingProjection;
   shipping: CheckoutShippingProjection;
@@ -179,16 +177,16 @@ function inventoryActor(context: NormalizedContext): InventoryActorContext {
 }
 
 function isJsonObject(
-  value: Prisma.JsonValue | undefined,
-): value is { [key: string]: Prisma.JsonValue } {
+  value: JsonValue | undefined,
+): value is { [key: string]: JsonValue } {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function jsonString(value: Prisma.JsonValue | undefined): string | null {
+function jsonString(value: JsonValue | undefined): string | null {
   return typeof value === 'string' ? value : null;
 }
 
-function moneyFromJson(value: Prisma.JsonValue | undefined): CheckoutMoney | null {
+function moneyFromJson(value: JsonValue | undefined): CheckoutMoney | null {
   if (!isJsonObject(value)) return null;
   const amountMinor = jsonString(value['amountMinor']);
   const currency = jsonString(value['currency']);
@@ -198,7 +196,7 @@ function moneyFromJson(value: Prisma.JsonValue | undefined): CheckoutMoney | nul
   return { amountMinor, currency };
 }
 
-function pricingFromSnapshot(value: Prisma.JsonValue | null): {
+function pricingFromSnapshot(value: JsonValue | null): {
   fingerprint: string;
   pricing: CheckoutPricingProjection;
   shipping: CheckoutShippingProjection;
@@ -247,7 +245,7 @@ function pricingFromSnapshot(value: Prisma.JsonValue | null): {
   };
 }
 
-function addressSnapshot(address: CheckoutAddress): Prisma.InputJsonObject {
+function addressSnapshot(address: CheckoutAddress): CheckoutJsonObject {
   return {
     fullName: address.fullName,
     phone: address.phone,
@@ -262,7 +260,7 @@ function addressSnapshot(address: CheckoutAddress): Prisma.InputJsonObject {
 
 function localizedSnapshot(
   values: readonly Readonly<{ locale: string; name: string }>[],
-): Prisma.InputJsonObject {
+): CheckoutJsonObject {
   return Object.fromEntries(values.map((value) => [value.locale, value.name]));
 }
 
@@ -435,6 +433,73 @@ export class CheckoutService {
     return this.#projection(session);
   }
 
+  /**
+   * Explicit checkout re-entry hold extension (domain-model.md §7): the
+   * customer returned to an in-progress checkout with an active reservation.
+   * This is a deliberate, dedicated operation rather than a side effect of
+   * every `get()` poll, so simply refreshing the checkout page can never
+   * extend stock indefinitely. `InventoryService.extendReservationsOnce` is
+   * itself idempotent and self-limiting to one real extension (15 -> 30
+   * minutes measured from the original reservation, never further), so
+   * calling this endpoint more than once is safe and a no-op after the first
+   * successful extension — the browser's countdown is advisory only; the
+   * stored `reservationExpiresAt` the server returns is authoritative.
+   */
+  async extend(contextInput: CheckoutRequestContext, checkoutIdInput: string): Promise<CheckoutProjection> {
+    const context = this.#context(contextInput);
+    const checkoutId = uuid(checkoutIdInput, 'checkoutId');
+    // Every branch below returns a value instead of throwing, so that any
+    // release/expiry write it made is part of the transaction that commits.
+    // Domain-error branches are translated to a thrown error only after the
+    // transaction has already committed — throwing from inside `run()` would
+    // roll back the very expiry-marking write the branch just made.
+    const outcome = await this.transactions.run(async (transaction) => {
+      const owner = ownerFor(context);
+      const locked = await this.repository.lockOwnedSession(checkoutId, owner, transaction);
+      if (locked === null) return { state: 'NOT_FOUND' as const };
+      if (locked.status !== 'OPEN' || locked.reservationExpiresAt === null) {
+        return { state: 'NOT_EXTENDABLE' as const };
+      }
+      const now = new Date();
+      if (locked.reservationExpiresAt.getTime() <= now.getTime()) {
+        await this.inventory.releaseReservations(
+          { checkoutSessionId: locked.id, reason: 'checkout_expired', actor: inventoryActor(context) },
+          transaction,
+        );
+        await this.repository.markExpired(locked.id, context.userId, transaction);
+        return { state: 'EXPIRED' as const };
+      }
+      const extension = await this.inventory.extendReservationsOnce(
+        { checkoutSessionId: locked.id, actor: inventoryActor(context), now },
+        transaction,
+      );
+      if (extension.expiresAt === null) return { state: 'NOT_ACTIVE' as const };
+      if (extension.expiresAt.getTime() === locked.reservationExpiresAt.getTime()) {
+        // Already extended once (or nothing to extend) — return the current
+        // state unchanged rather than writing an identical timestamp again.
+        return { state: 'EXTENDED' as const, session: locked };
+      }
+      const updated = await this.repository.extendReservationExpiry(
+        locked.id,
+        { reservationExpiresAt: extension.expiresAt, actorUserId: context.userId },
+        transaction,
+      );
+      return { state: 'EXTENDED' as const, session: updated };
+    });
+    switch (outcome.state) {
+      case 'NOT_FOUND':
+        throw new NotFoundAppError();
+      case 'NOT_EXTENDABLE':
+        throw new ConflictAppError({ code: 'CHECKOUT_NOT_EXTENDABLE' });
+      case 'EXPIRED':
+        throw new ConflictAppError({ code: 'RESERVATION_EXPIRED' });
+      case 'NOT_ACTIVE':
+        throw new ConflictAppError({ code: 'RESERVATION_NOT_ACTIVE' });
+      case 'EXTENDED':
+        return this.#projection(outcome.session);
+    }
+  }
+
   async confirm(
     contextInput: CheckoutRequestContext,
     checkoutIdInput: string,
@@ -525,6 +590,20 @@ export class CheckoutService {
           retryable: false,
         });
       }
+      if (priced.tax.rate.isInclusive) {
+        // `order_line` requires `line_total_minor = unit_price_minor * quantity
+        // - discount_allocated_minor + tax_amount_minor` (immutable migration
+        // constraint). That formula only reconstructs a correct, non-double
+        // -counted gross line total when the stored unit price is tax
+        // -exclusive. No tax-inclusive rate is configured anywhere in this
+        // codebase today; failing closed here avoids ever persisting an
+        // order line whose stored total silently double-counts tax instead
+        // of quietly writing an incorrect customer-facing invoice.
+        throw new DependencyUnavailableAppError({
+          code: 'CHECKOUT_INCLUSIVE_TAX_UNSUPPORTED',
+          retryable: false,
+        });
+      }
       const taxRateBps = priced.tax.rate.rateBps;
       const taxByLine = distributeTax(
         priced.lines.map((line) => ({ id: line.id, amountMinor: line.lineTotalMinor })),
@@ -580,7 +659,11 @@ export class CheckoutService {
               discountAllocatedMinor: price.discountMinor,
               taxRateBps,
               taxAmountMinor,
-              lineTotalMinor: price.lineTotalMinor,
+              // `order_line_values` requires the stored gross total to equal
+              // unitPrice*quantity - discount + tax; tax is exclusive here
+              // (guarded above), so the net merchandise line total plus this
+              // line's apportioned tax is the correct gross figure.
+              lineTotalMinor: price.lineTotalMinor + taxAmountMinor,
               harvestBatchCodeSnapshot: null,
             };
           }),

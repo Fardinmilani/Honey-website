@@ -1,7 +1,7 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 13 — Checkout, Reservations & Orders (**CURRENT but NOT STARTED**)
+**Current phase:** Phase 13 — Checkout, Reservations & Orders (**complete 2026-09-25, uncommitted — see `docs/progress.md`**)
 **Completed phase:** Phase 12 — Cart & Pricing (**complete 2026-09-12**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the

@@ -111,7 +111,12 @@ assert.doesNotMatch(web, /from\s+['"]@honey\/db['"]/u);
 assert.doesNotMatch(api, /allocateLandedCost|availableToSell\(/u);
 assert.match(worker, /Phase 2 workspace marker/u);
 assert.doesNotMatch(worker, /inventory processor|Worker\(/u);
-assert.doesNotMatch(inventory, /acquireReservation|reservation sweeper|StockReservationService/u);
+// Phase 13 is now complete and legitimately calls a low-level, inventory-owned
+// `acquireReservations` stock-acquisition primitive (locking/decrementing rows);
+// that is an inventory-layer concern. What must still never live in the
+// inventory module is the checkout-owned reservation *concept* itself (its own
+// service/session type) or the Phase-16-owned expiry sweep/scheduler.
+assert.doesNotMatch(inventory, /reservation sweeper|StockReservationService|CheckoutSession/u);
 assert.doesNotMatch(
   (await files('apps/web/src/app')).join('\n'),
   /admin\/suppliers|admin\/procurement|admin\/inventory/u,

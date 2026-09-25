@@ -22,7 +22,7 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 10 | Storefront Catalog & SEO | ✅ Complete | 2026-08-09 |
 | 11 | Sourcing, Procurement & Inventory | ✅ Complete | 2026-08-10 |
 | 12 | Cart & Pricing | Complete | 2026-09-12 |
-| 13 | Checkout, Reservations & Orders | CURRENT but NOT STARTED | — |
+| 13 | Checkout, Reservations & Orders | ✅ Complete (uncommitted — awaiting human review/commit) | 2026-09-25 |
 | 14 | Payments | â¬œ Not started | â€” |
 | 15 | Shipping & Fulfilment | â¬œ Not started | â€” |
 | 16 | Background Jobs | â¬œ Not started | â€” |
@@ -31,8 +31,216 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 13 — Checkout, Reservations & Orders (**CURRENT but NOT STARTED**).
+**Current phase:** Phase 13 — Checkout, Reservations & Orders (**complete 2026-09-25, uncommitted**).
 **Previous phase:** Phase 12 — Cart & Pricing (**complete 2026-09-12**).
+
+---
+
+## Phase 13 — Checkout, Reservations & Orders
+
+**Completed:** 2026-09-25 · **Status:** Complete, uncommitted (awaiting human review/commit)
+
+Checkout-time stock reservations, checkout sessions, order creation, and order
+history/confirmation. The reservation/checkout/order domain, application
+services, repositories, and controller had already been scaffolded on disk
+before this closing pass; this pass audited that code against
+[`implementation-phases.md §13`](implementation-phases.md), closed the gaps
+found by that audit (architecture-boundary lint, a real API-layer test suite,
+the storefront UI, and a genuine production bug), and produced the
+release-readiness evidence below. No Phase 14 (payments), Phase 15 (shipping),
+or Phase 16 (background jobs) work was started.
+
+### Files created
+
+- `apps/api/test/phase13.test.ts` — API-layer HTTP security tests (idempotency,
+  CSRF, cookie-derived ownership, cross-owner denial, tampering detection on
+  checkout writes, `PRICE_CHANGED` contract, order list/detail ownership, no
+  internal-field leakage). 11 tests.
+- `packages/backend/test/phase13.integration.test.ts` — backend integration
+  tests against the real application services (reservation TTL/extension,
+  concurrent-checkout stock exhaustion, split-location acquisition, confirm
+  idempotency/replay, order snapshot immutability).
+- `apps/web/src/components/checkout/checkout-flow.tsx` + `checkout.module.css`
+  — the client checkout state machine (contact/address form → server-priced
+  review → confirm → redirect to order confirmation), with sessionStorage-based
+  resumability and idempotency-key persistence, and a one-time, explicit
+  reservation extension on re-entry (never on a timer or poll).
+- `apps/web/src/app/[locale]/(storefront)/checkout/page.tsx` — checkout route
+  (noindex, `robots: {index:false, follow:false}`).
+- `apps/web/src/components/orders/order-detail.tsx`, `order-history.tsx` +
+  `orders.module.css` — order confirmation and order-history UI.
+- `apps/web/src/app/[locale]/(storefront)/orders/page.tsx`,
+  `apps/web/src/app/[locale]/(storefront)/orders/[number]/page.tsx` — order
+  routes (noindex).
+- `apps/web/src/app/api/bff/checkout/[checkoutId]/extend/route.ts` — the
+  missing BFF route for the reservation-extension endpoint.
+- `apps/web/e2e/checkout.spec.ts`, `apps/web/e2e/checkout-a11y.spec.ts` —
+  Playwright end-to-end checkout flow, cross-owner-denial, and axe
+  accessibility tests.
+
+### Files modified
+
+- `apps/api/src/modules/checkout/checkout.controller.ts`,
+  `packages/backend/src/modules/checkout/{application/checkout.service.ts,
+  checkout.module.ts, domain/checkout.ts, infrastructure/prisma-checkout.repository.ts}`,
+  `packages/backend/src/modules/orders/{application/orders.service.ts,
+  domain/orders.ts, infrastructure/prisma-orders.repository.ts}` — fixed a
+  Prisma-type leak into the domain layer (module-boundary lint violation),
+  a `consistent-type-imports` lint violation, and wired the reservation TTL
+  extension into checkout re-entry.
+- `apps/web/src/app/api/bff/checkout/_proxy.ts` — fixed an
+  `exactOptionalPropertyTypes` type error; added the `/extend` path to the
+  proxy's allowed-path union; **fixed a real bug**: the proxy verified CSRF at
+  the BFF layer but never forwarded the `x-csrf-token`-equivalent header to
+  the upstream API, so every checkout write (start/confirm/extend) was
+  rejected by the API's own CSRF hook with a 403 once a genuine browser
+  session reached it. Found by the new Playwright checkout spec, not by any
+  unit test (unit tests mock the HTTP boundary this bug lived in). Fixed by
+  forwarding the header exactly as `apps/web/src/app/api/bff/cart/_proxy.ts`
+  already does for cart writes.
+- `apps/web/src/components/cart/cart-contents.tsx` — added a "Checkout" entry
+  link, shown only when the cart has at least one `PURCHASABLE` line, reusing
+  the existing `checkout.checkoutTitle` i18n message and cart CSS module
+  conventions.
+- `docs/security-model.md` — added §3.4 "Guest checkout ownership": identity
+  source, the single `ownerFor()` ownership choke point, fail-closed behaviour
+  on identity change (no guest-to-account merge, matching product scope), no
+  existence disclosure on cross-owner reads, CSRF parity for guests, and one
+  accepted non-security gap (no order recovery without the cookie).
+- `packages/i18n/test/pathnames.test.mjs` — fixed a pre-existing test bug
+  (unrelated to this phase's own changes, discovered while regression-testing
+  the new checkout/order routes): the test's hardcoded expected key order had
+  `/checkout` out of true alphabetical position relative to `/collections`.
+  The actual `pathnames.ts` implementation was already correct; only the
+  test's fixture was wrong. Confirmed via `git diff packages/i18n` returning
+  empty before the fix, i.e. this was not a regression from this phase's work.
+
+### Infrastructure fix (not a code change)
+
+- The local development database was missing the
+  `20260912120000_phase13_checkout_reservations` migration (it existed on
+  disk but had never been applied to the `honey_local` database). This
+  surfaced only under a real end-to-end run (`POST /v1/checkout` failed with
+  `PrismaClientKnownRequestError P2022: column checkout_session.pricing_snapshot
+  does not exist`), not under mocked unit/integration tests. Applied via
+  `pnpm prisma migrate deploy` — no new migration was authored, no migration
+  file was edited; this only ran an already-committed, already-reviewed
+  migration that had simply never been applied locally. `prisma migrate
+  status` reports all 7 migrations applied afterward.
+
+### Decisions made
+
+- **Money/stock tampering scan already covers checkout writes, not only cart
+  writes.** This was discovered (not designed) this phase: the existing
+  global Fastify `preValidation` hook that rejects money/stock-shaped field
+  names on cart writes applies generically to checkout writes too. Verified
+  by test and documented in `docs/security-model.md`.
+- **Guest checkout ownership model is sound with one accepted gap.** See
+  `docs/security-model.md` §3.4. The accepted gap — no order recovery without
+  the browser's cookie — is a product-scope absence, not a security defect,
+  and is listed below rather than built silently.
+- **Checkout re-entry extends a reservation exactly once, explicitly, never on
+  a timer.** Matches the backend's own self-limiting extension design
+  (15-minute TTL, one extension to a 30-minute maximum) documented in
+  `checkout.service.ts`. Verified end-to-end by
+  `apps/web/e2e/checkout.spec.ts`.
+- **No new dependency was added.** `@axe-core/playwright` was already a
+  dependency (used by `cart-a11y.spec.ts`); no `pnpm-lock.yaml` change was
+  needed.
+
+### Unresolved decisions
+
+- **No order recovery without the anonymous-session cookie.** A guest who
+  loses their cookie (new device, cleared storage, different browser) cannot
+  look up a past order. This is not in `docs/product-scope.md` and was not
+  built. A human should decide whether "email-based magic-link order lookup"
+  or "require an account before checkout" is ever wanted; until then this
+  is an accepted, documented gap, not a silent omission.
+- **Local dev/CI database provisioning does not self-verify migration
+  currency.** The `pnpm db:seed`/`db:migrate` scripts exist, but nothing
+  currently fails loudly and early if a developer's local database has drifted
+  from `prisma/migrations/`, as this phase's own local environment had. A
+  human should decide whether to add a `predev`/`pretest` guard that runs
+  `prisma migrate status` and fails fast with a clear message.
+
+### Risks
+
+- **Technical:** the checkout UI's sessionStorage-based idempotency-key
+  persistence assumes a single browser tab; a user with two tabs open on the
+  same checkout could generate two idempotency keys for the same logical
+  attempt. This cannot double-create an order (the API's idempotency and
+  reservation-ownership checks are the real safety net), but it could produce
+  a confusing "already confirmed elsewhere" error in that tab. Not addressed
+  this phase; out of scope for a single-seller MVP checkout.
+- **Security:** none newly introduced. The CSRF-forwarding bug fixed this
+  phase was a pre-existing gap that made checkout writes *fail closed* (403),
+  never an authorization bypass.
+- **Product:** the accepted "no order recovery without cookie" gap (above) is
+  a real customer-support cost once the store has live guest traffic.
+- **Delivery:** Phase 14 (payments) cannot begin meaningfully until a human
+  has reviewed and committed this phase; per `AGENTS.md` this agent will not
+  commit it.
+
+### Acceptance checklist (per `implementation-phases.md §13`)
+
+- [x] Checkout-time stock reservations with 15-minute TTL and one extension to
+  a 30-minute maximum — implemented in `checkout.service.ts`; extension wired
+  into UI re-entry this phase; verified by
+  `packages/backend/test/phase13.integration.test.ts` and
+  `apps/web/e2e/checkout.spec.ts`.
+- [x] All-or-nothing, split-location acquisition, locked in ascending
+  `(variant_id, stock_location_id)` order, default-location-first — verified
+  by the backend integration tests (pre-existing implementation, audited not
+  redesigned).
+- [x] Transport-independent, idempotent expiry/release service with lazy
+  expiry on read.
+- [x] Checkout sessions with guest-safe address/contact ownership and the
+  checkout-owned minimal `STANDARD` shipping-quote seam.
+- [x] Authoritative destination tax resolution, fails closed absent
+  configuration.
+- [x] Server-owned checkout pricing snapshot/fingerprint for `PRICE_CHANGED`
+  reconfirmation — verified by `apps/api/test/phase13.test.ts`.
+- [x] Confirm transaction ordering per `domain-model.md §9`.
+- [x] Mandatory `Idempotency-Key` on start and confirm — verified by
+  `apps/api/test/phase13.test.ts`.
+- [x] Concurrency-safe `HNY-YYYY-######` order references.
+- [x] Order creation with immutable line/address snapshots including all
+  locales.
+- [x] Initial `PENDING_PAYMENT` / `UNPAID` / `UNFULFILLED` order state — no
+  `PAID` state is ever produced by this phase; verified explicitly by
+  `apps/web/e2e/checkout.spec.ts`.
+- [x] Order confirmation and account order history, plus secure guest
+  own-order access — built this phase (`order-detail.tsx`, `order-history.tsx`
+  and their routes); cross-owner denial verified by both
+  `apps/api/test/phase13.test.ts` and `apps/web/e2e/checkout.spec.ts`.
+- [x] Checkout UI in both locales — built this phase, reusing the pre-existing,
+  already-parity-checked `checkout` i18n message namespace and `/checkout`,
+  `/orders`, `/orders/[number]` pathnames.
+- [x] Out of scope respected: no PSP/provider integration, no `PAID`
+  transition, no shipping provider/zone/carrier work, no BullMQ consumers.
+
+### Verification results
+
+- `pnpm turbo run lint typecheck test --filter=@honey/api` — 58/58 tests
+  passed (10 files), lint clean, typecheck clean.
+- `pnpm turbo run lint typecheck build --filter=@honey/web` — clean; build
+  manifest includes `/[locale]/checkout`, `/[locale]/orders`,
+  `/[locale]/orders/[number]`, and the new BFF routes.
+- `pnpm turbo run test --filter=@honey/web` — 40/40 tests passed (9 files).
+- `pnpm turbo run test --filter=@honey/i18n` — 29/29 tests passed (after
+  fixing the pre-existing pathnames-test ordering bug above).
+- `npx playwright test` (full suite, `apps/web`) — **93/93 passed**, including
+  the 6 new checkout tests (full flow to an `UNPAID` order, one-time
+  reservation extension on re-entry, cross-owner order-read denial) and the 3
+  new checkout axe accessibility tests, with zero regressions in the
+  pre-existing 84 catalog/cart/locale/performance/visual tests.
+- `pnpm prisma migrate status` (via `packages/db`) — all 7 migrations applied
+  after running `pnpm prisma migrate deploy` to apply the previously-unapplied
+  `20260912120000_phase13_checkout_reservations` migration.
+- `git status --porcelain apps/web/public/media/hero` and
+  `git diff --stat HEAD -- apps/web/public/media/hero` — both empty; Hero
+  assets untouched.
+- No `git add`, `git commit`, or `git push` was executed.
 
 ---
 

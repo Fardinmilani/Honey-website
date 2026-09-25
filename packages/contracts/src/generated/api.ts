@@ -1699,6 +1699,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/checkout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start an owner-scoped checkout */
+    post: operations['startCheckout'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/checkout/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read the current owner checkout */
+    get: operations['getCheckout'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/checkout/{id}/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create one pending-payment order */
+    post: operations['confirmCheckout'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/checkout/{id}/extend': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Extend an active checkout reservation hold once, up to the 30-minute maximum */
+    post: operations['extendCheckoutReservation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me': {
     parameters: {
       query?: never;
@@ -1754,6 +1822,40 @@ export interface paths {
      * @description Revokes an owned session and returns not found for a session owned by another account.
      */
     delete: operations['revokeMySession'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/orders': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List current customer account orders */
+    get: operations['listMyOrders'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/orders/{number}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read one owner-scoped order */
+    get: operations['getMyOrder'];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1873,6 +1975,14 @@ export interface components {
       data: components['schemas']['PublicCategoryDto'];
       meta: components['schemas']['MetaDto'];
     };
+    CheckoutResponseDto: {
+      /** Format: email */
+      email: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      status: 'OPEN' | 'AWAITING_PAYMENT' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
+    };
     CollectionListResponseDto: {
       data: components['schemas']['PublicCollectionDto'][];
       meta: components['schemas']['MetaDto'];
@@ -1880,6 +1990,11 @@ export interface components {
     CollectionResponseDto: {
       data: components['schemas']['PublicCollectionDto'];
       meta: components['schemas']['MetaDto'];
+    };
+    ConfirmCheckoutResponseDto: {
+      checkout: components['schemas']['CheckoutResponseDto'];
+      /** @example HNY-2026-000123 */
+      orderNumber: string;
     };
     CouponResponseDto: {
       /** @enum {string} */
@@ -1902,6 +2017,12 @@ export interface components {
       usageLimitPerUser: number | null;
       usageLimitTotal: number | null;
       value: string;
+    };
+    CustomerOrderResponseDto: {
+      grandTotal: components['schemas']['MoneyDto'];
+      /** @example HNY-2026-000123 */
+      number: string;
+      status: string;
     };
     DirectUploadDto: {
       /** Format: date-time */
@@ -4495,6 +4616,124 @@ export interface operations {
       };
     };
   };
+  startCheckout: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CheckoutResponseDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  getCheckout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CheckoutResponseDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  confirmCheckout: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ConfirmCheckoutResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  extendCheckoutReservation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CheckoutResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
   getMe: {
     parameters: {
       query?: never;
@@ -4596,6 +4835,54 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  listMyOrders: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CustomerOrderResponseDto'][];
+        };
+      };
+    };
+  };
+  getMyOrder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        number: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CustomerOrderResponseDto'];
         };
       };
       404: {

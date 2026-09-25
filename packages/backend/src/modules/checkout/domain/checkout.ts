@@ -1,6 +1,13 @@
-import type { Prisma } from '@honey/db';
-
+import type { JsonValue } from '../../../errors/index.js';
 import type { TransactionContext } from '../../../platform/domain/transaction.js';
+
+/**
+ * Domain-owned JSON shape for the checkout pricing snapshot. Deliberately not
+ * `Prisma.JsonValue` / `Prisma.InputJsonObject` — domain code must stay
+ * persistence-independent (docs/module-boundaries.md §1). Infrastructure
+ * translates to and from the Prisma JSON types at the repository boundary.
+ */
+export type CheckoutJsonObject = Readonly<Record<string, JsonValue>>;
 
 export type CheckoutOwner =
   | Readonly<{ userId: string; anonymousId?: never }>
@@ -40,7 +47,7 @@ export type CheckoutSessionRecord = Readonly<{
   shippingQuoteId: string | null;
   status: 'OPEN' | 'AWAITING_PAYMENT' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
   reservationExpiresAt: Date | null;
-  pricingSnapshot: Prisma.JsonValue | null;
+  pricingSnapshot: JsonValue | null;
   idempotencyKey: string;
   createdAt: Date;
   updatedAt: Date;
@@ -76,7 +83,7 @@ export interface CheckoutRepository {
       idempotencyKey: string;
       contact: StartCheckoutInput;
       reservationExpiresAt: Date;
-      pricingSnapshot: Prisma.InputJsonObject;
+      pricingSnapshot: CheckoutJsonObject;
       actorUserId: string | null;
       requestId: string;
       clientIp: string | null;
@@ -87,9 +94,19 @@ export interface CheckoutRepository {
     id: string,
     input: Readonly<{
       reservationExpiresAt: Date;
-      pricingSnapshot: Prisma.InputJsonObject;
+      pricingSnapshot: CheckoutJsonObject;
       actorUserId: string | null;
     }>,
+    transaction: TransactionContext,
+  ): Promise<CheckoutSessionRecord>;
+  /**
+   * Persists a reservation-hold extension. Unlike `updatePricingSnapshot`,
+   * this never touches the pricing snapshot — extension is purely a stock
+   * -hold lifecycle event (domain-model.md §7), not a re-price.
+   */
+  extendReservationExpiry(
+    id: string,
+    input: Readonly<{ reservationExpiresAt: Date; actorUserId: string | null }>,
     transaction: TransactionContext,
   ): Promise<CheckoutSessionRecord>;
   markAwaitingPayment(

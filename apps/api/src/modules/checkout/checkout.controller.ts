@@ -287,6 +287,24 @@ export class CheckoutController {
     return this.#respond(reply, await this.checkout.get(await this.#context(request, reply), params.id));
   }
 
+  @Post(':id/extend')
+  @Public()
+  @HttpCode(200)
+  @ApiOperation({
+    operationId: 'extendCheckoutReservation',
+    summary: 'Extend an active checkout reservation hold once, up to the 30-minute maximum',
+  })
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @ApiOkResponse({ type: CheckoutResponseDto })
+  @ApiConflictResponse({ type: ProblemDetailsDto })
+  async extend(
+    @Param() params: CheckoutParamDto,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<CheckoutProjection> {
+    return this.#respond(reply, await this.checkout.extend(await this.#context(request, reply), params.id));
+  }
+
   @Post(':id/confirm')
   @Public()
   @HttpCode(200)

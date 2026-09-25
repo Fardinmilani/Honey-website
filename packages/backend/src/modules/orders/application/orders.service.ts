@@ -9,7 +9,7 @@ import type {
 } from '../domain/orders.js';
 
 const ORDER_NUMBER = /^HNY-[0-9]{4}-[0-9]{6}$/u;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 function validation(path: string, code: string): ValidationAppError {
   return new ValidationAppError([{ path, code }]);
@@ -74,9 +74,15 @@ export class OrdersService {
     }
     const lineTotal = input.lines.reduce((total, line) => total + line.lineTotalMinor, 0n);
     const merchandiseTotal = input.subtotalMinor - input.discountTotalMinor;
+    // Each persisted order line stores a gross total (`order_line_values`
+    // requires unitPrice*quantity - discount + tax); for tax-exclusive orders
+    // that gross total already carries the line's apportioned tax, so the
+    // sum across lines reconciles against merchandise plus tax, not
+    // merchandise alone.
+    const expectedLineTotal = merchandiseTotal + (input.taxInclusive ? 0n : input.taxTotalMinor);
     const expectedGrand =
       merchandiseTotal + input.shippingTotalMinor + (input.taxInclusive ? 0n : input.taxTotalMinor);
-    if (lineTotal !== merchandiseTotal || expectedGrand !== input.grandTotalMinor) {
+    if (lineTotal !== expectedLineTotal || expectedGrand !== input.grandTotalMinor) {
       throw validation('totals', 'ORDER_TOTAL_MISMATCH');
     }
     for (const line of input.lines) {
