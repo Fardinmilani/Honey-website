@@ -324,21 +324,37 @@ property test across rounding edge cases.
 
 **Goal:** the transaction that turns a cart into an immutable order.
 
-**Deliverables** — stock reservations with TTL, row-locked acquisition in
-ascending `variant_id` order, a sweeper job, and lazy expiry on read; checkout
-sessions, addresses, and shipping-quote selection; the confirm transaction in the
-exact order specified in [`domain-model.md §9`](domain-model.md); mandatory
-`Idempotency-Key`; order creation with immutable line and address snapshots
-including all locales; the order status state machine; order confirmation and
-account order history; checkout UI in both locales.
+**Deliverables** — checkout-time stock reservations with the documented 15-minute
+TTL and one extension up to a 30-minute maximum; all-or-nothing, split-location
+acquisition across sellable inventory rows, locked globally in ascending
+`(variant_id, stock_location_id)` order and allocated default-location-first;
+the transport-independent, idempotent expiry/release application service and
+lazy expiry on read; checkout sessions, guest-safe address/contact ownership,
+and the checkout-owned minimal `STANDARD` shipping-quote seam; authoritative
+destination tax resolution that accepts an explicitly configured zero rate and
+otherwise fails closed; a server-owned checkout pricing snapshot/fingerprint for
+safe `PRICE_CHANGED` reconfirmation; the confirm transaction in the exact order
+specified in [`domain-model.md §9`](domain-model.md); mandatory
+`Idempotency-Key`; concurrency-safe `HNY-YYYY-######` order references; order
+creation with immutable line and address snapshots including all locales; initial
+`PENDING_PAYMENT` / `UNPAID` / `UNFULFILLED` order state; order confirmation and
+account order history plus secure guest own-order access; checkout UI in both
+locales.
 
-**Out of scope** — real payment capture (Phase 14), shipment creation (Phase 15).
+**Out of scope** — PSP/provider integration, payment creation/capture/verification
+or a `PAID` transition (Phase 14); shipping providers, zones/method/rate matrices,
+carrier integration, shipment creation, tracking, or fulfilment (Phase 15);
+and BullMQ consumers, repeatable scheduling, or cron processes (Phase 16).
 
 **Acceptance** — concurrent checkouts for the last unit produce exactly one
-order and one `INSUFFICIENT_STOCK`; a replayed confirm returns the original
-order; order rows reject updates to financial fields at the database level; an
-order renders correctly after the product is renamed, re-priced, and archived;
-an abandoned checkout releases its reservation.
+order and one `INSUFFICIENT_STOCK`; split-location acquisition is atomic and
+never exposes a location; a replayed confirm returns the original order; a
+changed server price, coupon, quote, or tax result returns `PRICE_CHANGED` and
+requires reconfirmation rather than silently creating an order; absent required
+production quote/tax configuration fails closed; order rows reject updates to
+financial fields at the database level; an order renders correctly after the
+product is renamed, re-priced, and archived; and an abandoned checkout releases
+its reservation.
 
 ---
 
@@ -377,9 +393,10 @@ amount.
 
 **Goal:** rates that the server computes and shipments staff can operate.
 
-**Deliverables** — the `ShippingProvider` port; the `manual-flat` adapter; zones,
-methods with translations, weight- and subtotal-based rates, free-shipping
-thresholds; quoting during checkout with expiry and re-quote on confirm;
+**Deliverables** — extend the Phase 13 checkout-owned `STANDARD` quote seam with
+the `ShippingProvider` port; the `manual-flat` adapter; zones, methods with
+translations, weight- and subtotal-based rates, free-shipping thresholds; full
+shipping-method quoting during checkout with expiry and re-quote on confirm;
 shipments, shipment lines, tracking numbers and events; partial fulfilment;
 customer-facing tracking; fulfilment notification emails.
 
@@ -411,7 +428,9 @@ shutdown that lets active jobs finish; `docker/worker.Dockerfile`; queue metrics
 and a `JobFailure` record.
 
 Job **producers** already exist in `packages/backend/**/infrastructure` from the
-phases that needed them; this phase adds only the consumption side.
+phases that needed them; this phase adds only the consumption side. In particular,
+the reservation sweep invokes the Phase 13 expiry/release application service;
+it does not introduce new reservation business rules.
 
 **Out of scope** — new business logic of any kind. Every rule a processor needs
 already exists as an application service, or the phase that should have created

@@ -11,6 +11,7 @@ import type { CouponRecord, VariantPriceRecord } from '../../pricing/index.js';
 import type {
   CartAddIdempotencyClaim,
   CartAddIdempotencyLookup,
+  CheckoutCartLineRecord,
   CartLineRecord,
   CartOwner,
   CartProductSummary,
@@ -67,6 +68,31 @@ type LineRow = Readonly<{
   }>;
 }>;
 
+type CheckoutLineRow = Readonly<{
+  id: string;
+  cartId: string;
+  variantId: string;
+  quantity: number;
+  variant: Readonly<{
+    sku: string;
+    status: string;
+    deletedAt: Date | null;
+    netWeightGrams: number;
+    jarSizeLabelKey: string;
+    packagingTypeKey: string;
+    translations: readonly Readonly<{ locale: string; name: string }>[];
+    product: Readonly<{
+      id: string;
+      status: string;
+      deletedAt: Date | null;
+      publishedAt: Date | null;
+      translations: readonly Readonly<{ locale: string; name: string }>[];
+      categories: readonly Readonly<{ categoryId: string }>[];
+      collections: readonly Readonly<{ collectionId: string }>[];
+    }>;
+  }>;
+}>;
+
 const CART_IMAGE_ROLES = ['THUMBNAIL', 'GALLERY', 'LIFESTYLE'] as const;
 const MAX_IMAGE_CANDIDATES_PER_SCOPE = 3;
 const CART_ADD_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1_000;
@@ -106,6 +132,37 @@ const lineInclude = (locale: string) =>
       },
     },
   }) satisfies Prisma.CartLineInclude;
+
+const checkoutLineInclude = {
+  variant: {
+    select: {
+      sku: true,
+      status: true,
+      deletedAt: true,
+      netWeightGrams: true,
+      jarSizeLabelKey: true,
+      packagingTypeKey: true,
+      translations: {
+        select: { locale: true, name: true },
+        orderBy: { locale: 'asc' },
+      },
+      product: {
+        select: {
+          id: true,
+          status: true,
+          deletedAt: true,
+          publishedAt: true,
+          translations: {
+            select: { locale: true, name: true },
+            orderBy: { locale: 'asc' },
+          },
+          categories: { select: { categoryId: true } },
+          collections: { select: { collectionId: true } },
+        },
+      },
+    },
+  },
+} satisfies Prisma.CartLineInclude;
 
 function clientFor(client: PrismaClient, transaction: TransactionContext | undefined): Client {
   return transaction === undefined ? client : asPrismaTransaction(transaction);
@@ -190,6 +247,42 @@ function mapLine(row: LineRow): CartLineRecord {
     quantity: row.quantity,
     addedAt: row.addedAt,
     product: mapProductSummary(row.variant),
+  };
+}
+
+function mapCheckoutLine(row: CheckoutLineRow): CheckoutCartLineRecord {
+  const productNames = row.variant.product.translations.map((translation) => ({
+    locale: translation.locale,
+    name: translation.name,
+  }));
+  const variantNames = row.variant.translations.map((translation) => ({
+    locale: translation.locale,
+    name: translation.name,
+  }));
+  return {
+    id: row.id,
+    cartId: row.cartId,
+    variantId: row.variantId,
+    quantity: row.quantity,
+    product: {
+      productId: row.variant.product.id,
+      sku: row.variant.sku,
+      netWeightGrams: row.variant.netWeightGrams,
+      jarSizeLabelKey: row.variant.jarSizeLabelKey,
+      packagingTypeKey: row.variant.packagingTypeKey,
+      published:
+        row.variant.status === 'PUBLISHED' &&
+        row.variant.deletedAt === null &&
+        row.variant.product.status === 'PUBLISHED' &&
+        row.variant.product.deletedAt === null &&
+        row.variant.product.publishedAt !== null &&
+        productNames.length > 0 &&
+        variantNames.length > 0,
+      categoryIds: row.variant.product.categories.map((category) => category.categoryId),
+      collectionIds: row.variant.product.collections.map((collection) => collection.collectionId),
+      productNames,
+      variantNames,
+    },
   };
 }
 
@@ -419,6 +512,18 @@ export class PrismaCartRepository implements CartRepository {
       orderBy: { id: 'asc' },
     });
     return rows.map((row) => mapLine(row));
+  }
+
+  async listCheckoutLines(
+    cartId: string,
+    transaction: TransactionContext,
+  ): Promise<readonly CheckoutCartLineRecord[]> {
+    const rows = await asPrismaTransaction(transaction).cartLine.findMany({
+      where: { cartId },
+      include: checkoutLineInclude,
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((row) => mapCheckoutLine(row));
   }
 
   async getVariant(

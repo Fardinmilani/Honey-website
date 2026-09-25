@@ -59,6 +59,34 @@ export type CartLineRecord = Readonly<{
   product: CartProductSummary;
 }>;
 
+/**
+ * Server-only catalog data needed to create immutable order snapshots. It is
+ * intentionally not part of the customer cart projection.
+ */
+export type CheckoutCartLineRecord = Readonly<{
+  id: string;
+  cartId: string;
+  variantId: string;
+  quantity: number;
+  product: Readonly<{
+    productId: string;
+    sku: string;
+    netWeightGrams: number;
+    jarSizeLabelKey: string;
+    packagingTypeKey: string;
+    published: boolean;
+    categoryIds: readonly string[];
+    collectionIds: readonly string[];
+    productNames: readonly Readonly<{ locale: string; name: string }> [];
+    variantNames: readonly Readonly<{ locale: string; name: string }> [];
+  }>;
+}>;
+
+export type CheckoutCartRecord = Readonly<{
+  cart: CartRecord;
+  lines: readonly CheckoutCartLineRecord[];
+}>;
+
 export type CartAvailability = Readonly<{
   variantId: string;
   availableToSell: number;
@@ -207,6 +235,10 @@ export interface CartRepository {
     locale: string,
     transaction?: TransactionContext,
   ): Promise<readonly CartLineRecord[]>;
+  listCheckoutLines(
+    cartId: string,
+    transaction: TransactionContext,
+  ): Promise<readonly CheckoutCartLineRecord[]>;
   getVariant(
     variantId: string,
     locale: string,

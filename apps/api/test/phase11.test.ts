@@ -91,6 +91,7 @@ describe('Phase 11 admin API authorization', () => {
       lowStockAlertActive: false,
       version: 1,
       isSellable: true,
+      isDefault: true,
       createdAt: '2026-08-10T00:00:00.000Z',
       updatedAt: '2026-08-10T00:00:00.000Z',
     });

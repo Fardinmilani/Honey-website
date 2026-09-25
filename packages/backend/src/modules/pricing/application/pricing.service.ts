@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { ConflictAppError, ForbiddenAppError, ValidationAppError } from '../../../errors/index.js';
+import type { TransactionContext } from '../../../platform/domain/transaction.js';
 import type {
   AuthenticatedPrincipal,
   PermissionCode,
@@ -10,12 +11,15 @@ import type {
   CouponLine,
   CouponEvaluation,
   CouponRecord,
+  DiscountAllocationResult,
   TaxJurisdiction,
+  TaxCalculation,
   TaxRateRecord,
   VariantPriceRecord,
 } from '../domain/pricing.js';
 import {
   calculateTax,
+  allocateProportionalDiscount,
   evaluateCoupon,
   normalizeCouponCode,
   resolveCurrentPrice,
@@ -33,6 +37,45 @@ export type PricingConfig = Readonly<{
 export type CouponLookupResult = Readonly<{
   coupon: CouponRecord | null;
   evaluation: CouponEvaluation | null;
+}>;
+
+export type CheckoutPricingLine = Readonly<{
+  id: string;
+  variantId: string;
+  quantity: number;
+  published: boolean;
+  categoryIds: readonly string[];
+  collectionIds: readonly string[];
+}>;
+
+export type CheckoutPricingInput = Readonly<{
+  currency: string;
+  lines: readonly CheckoutPricingLine[];
+  couponCode: string | null;
+  userId: string | null;
+  jurisdiction: TaxJurisdiction;
+  now: Date;
+  transaction: TransactionContext;
+}>;
+
+export type CheckoutPricingResult = Readonly<{
+  currency: string;
+  lines: readonly Readonly<{
+    id: string;
+    variantId: string;
+    quantity: number;
+    unitPriceMinor: bigint;
+    subtotalMinor: bigint;
+    discountMinor: bigint;
+    lineTotalMinor: bigint;
+  }>[];
+  subtotalMinor: bigint;
+  discountTotalMinor: bigint;
+  merchandiseTotalMinor: bigint;
+  coupon: CouponRecord | null;
+  couponEvaluation: CouponEvaluation | null;
+  discountAllocation: DiscountAllocationResult;
+  tax: TaxCalculation;
 }>;
 
 export type CreateVariantPriceInput = Omit<
@@ -78,12 +121,13 @@ export class PricingService {
     variantIds: readonly string[],
     currency: string,
     now: Date,
+    transaction?: TransactionContext,
   ): Promise<ReadonlyMap<string, VariantPriceRecord>> {
     const unique = [...new Set(variantIds)];
     if (unique.length === 0) return new Map();
     const [existingVariantIds, prices] = await Promise.all([
-      this.repository.existingVariantIds(unique),
-      this.repository.pricesForVariants(unique, currency),
+      this.repository.existingVariantIds(unique, transaction),
+      this.repository.pricesForVariants(unique, currency, transaction),
     ]);
     const byVariant = new Map<string, VariantPriceRecord[]>();
     for (const price of prices) {
@@ -133,6 +177,131 @@ export class PricingService {
         customerRedemptionCount,
       }),
     };
+  }
+
+  /**
+   * Resolves all money during the caller's short checkout transaction. A
+   * coupon row is locked before it is evaluated, so an order cannot consume a
+   * stale last use. Tax deliberately fails closed in CheckoutService when the
+   * data-driven resolver has no policy for the authoritative destination.
+   */
+  async priceCheckout(input: CheckoutPricingInput): Promise<CheckoutPricingResult> {
+    if (input.lines.length === 0) throw validation('lines', 'CHECKOUT_CART_EMPTY');
+    const prices = await this.resolvePrices(
+      input.lines.map((line) => line.variantId),
+      input.currency,
+      input.now,
+      input.transaction,
+    );
+    const priced = input.lines.map((line) => {
+      if (!line.published) throw new ConflictAppError({ code: 'CHECKOUT_VARIANT_NOT_AVAILABLE' });
+      const price = prices.get(line.variantId);
+      if (price === undefined) throw new ConflictAppError({ code: 'CHECKOUT_PRICE_UNAVAILABLE' });
+      if (!Number.isSafeInteger(line.quantity) || line.quantity < 1) {
+        throw validation('lines.quantity', 'CHECKOUT_QUANTITY_INVALID');
+      }
+      const subtotalMinor = price.amountMinor * BigInt(line.quantity);
+      return { ...line, unitPriceMinor: price.amountMinor, subtotalMinor };
+    });
+    const subtotalMinor = priced.reduce((total, line) => total + line.subtotalMinor, 0n);
+    let coupon: CouponRecord | null = null;
+    let couponEvaluation: CouponEvaluation | null = null;
+    if (input.couponCode !== null) {
+      coupon = await this.repository.lockCoupon(normalizeCouponCode(input.couponCode), input.transaction);
+      if (coupon === null) throw new ConflictAppError({ code: 'CHECKOUT_COUPON_INVALID' });
+      const redemptionCount =
+        input.userId === null || coupon.usageLimitPerUser === null
+          ? null
+          : await this.repository.countCouponRedemptions(coupon.id, input.userId, input.transaction);
+      couponEvaluation = evaluateCoupon({
+        coupon,
+        currency: input.currency,
+        now: input.now,
+        cartSubtotalMinor: subtotalMinor,
+        lines: priced.map((line) => ({
+          id: line.id,
+          variantId: line.variantId,
+          categoryIds: line.categoryIds,
+          collectionIds: line.collectionIds,
+          subtotalMinor: line.subtotalMinor,
+        })),
+        customerRedemptionCount: redemptionCount,
+      });
+      if (!couponEvaluation.eligible) {
+        throw new ConflictAppError({ code: 'CHECKOUT_COUPON_INVALID' });
+      }
+    }
+    const discountMinor = couponEvaluation?.effect?.discountMinor ?? 0n;
+    const discountAllocation = allocateProportionalDiscount(
+      priced.map((line) => ({
+        id: line.id,
+        subtotalMinor: line.subtotalMinor,
+        eligible: couponEvaluation?.eligibleLineIds.includes(line.id) ?? false,
+      })),
+      discountMinor,
+    );
+    const allocationByLine = new Map(
+      discountAllocation.lines.map((allocation) => [allocation.id, allocation]),
+    );
+    const lines = priced.map((line) => {
+      const allocation = allocationByLine.get(line.id);
+      if (allocation === undefined) throw new Error('Checkout discount allocation is incomplete.');
+      return {
+        id: line.id,
+        variantId: line.variantId,
+        quantity: line.quantity,
+        unitPriceMinor: line.unitPriceMinor,
+        subtotalMinor: line.subtotalMinor,
+        discountMinor: allocation.discountMinor,
+        lineTotalMinor: allocation.finalTotalMinor,
+      };
+    });
+    const tax = calculateTax({
+      taxableAmountMinor: discountAllocation.finalMerchandiseTotalMinor,
+      rate: resolveTaxRate({
+        rates: await this.repository.listTaxRates(input.transaction),
+        jurisdiction: input.jurisdiction,
+      }),
+    });
+    return {
+      currency: input.currency,
+      lines,
+      subtotalMinor,
+      discountTotalMinor: discountAllocation.discountMinor,
+      merchandiseTotalMinor: discountAllocation.finalMerchandiseTotalMinor,
+      coupon,
+      couponEvaluation,
+      discountAllocation,
+      tax,
+    };
+  }
+
+  async redeemCheckoutCoupon(
+    input: Readonly<{
+      coupon: CouponRecord | null;
+      userId: string | null;
+      orderId: string;
+      amountMinor: bigint;
+      actorUserId: string | null;
+      transaction: TransactionContext;
+    }>,
+  ): Promise<void> {
+    if (input.coupon === null) return;
+    try {
+      await this.repository.redeemCoupon(
+        {
+          couponId: input.coupon.id,
+          userId: input.userId,
+          orderId: input.orderId,
+          amountMinor: input.amountMinor,
+          actorUserId: input.actorUserId,
+        },
+        input.transaction,
+      );
+    } catch (error) {
+      if (error instanceof ConflictAppError || error instanceof ValidationAppError) throw error;
+      throw new ConflictAppError({ code: 'CHECKOUT_COUPON_REDEMPTION_FAILED' });
+    }
   }
 
   async resolveTax(jurisdiction: TaxJurisdiction): Promise<TaxRateRecord | null> {

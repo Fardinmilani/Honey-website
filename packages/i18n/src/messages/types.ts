@@ -129,6 +129,74 @@ export type SearchMessages = {
   readonly sortName: string;
 };
 
+/**
+ * Customer-facing checkout and order-history copy.  Checkout is deliberately
+ * payment-neutral: an order can be created without implying that it is paid.
+ */
+export type CheckoutMessages = {
+  readonly checkoutTitle: string;
+  readonly checkoutDescription: string;
+  readonly checkoutLoading: string;
+  readonly checkoutUnavailable: string;
+  readonly checkoutRetry: string;
+  readonly contactHeading: string;
+  readonly emailLabel: string;
+  readonly phoneLabel: string;
+  readonly shippingAddressHeading: string;
+  readonly billingAddressHeading: string;
+  readonly sameAsShipping: string;
+  readonly fullNameLabel: string;
+  readonly addressPhoneLabel: string;
+  readonly countryLabel: string;
+  readonly provinceLabel: string;
+  readonly cityLabel: string;
+  readonly postalCodeLabel: string;
+  readonly addressLine1Label: string;
+  readonly addressLine2Label: string;
+  readonly addressLine2Hint: string;
+  readonly requiredField: string;
+  readonly continueToReview: string;
+  readonly reviewHeading: string;
+  readonly reservationExpires: string;
+  readonly reservationUnavailable: string;
+  readonly summaryHeading: string;
+  readonly subtotal: string;
+  readonly discount: string;
+  readonly shipping: string;
+  readonly tax: string;
+  readonly total: string;
+  readonly noShippingQuote: string;
+  readonly confirmOrder: string;
+  readonly confirmingOrder: string;
+  readonly orderCreatedHeading: string;
+  readonly orderCreatedDescription: string;
+  readonly viewOrder: string;
+  readonly startOver: string;
+  readonly cartEmpty: string;
+  readonly returnToCart: string;
+  readonly invalidForm: string;
+  readonly requestError: string;
+  readonly rateLimitError: string;
+  readonly priceChanged: string;
+  readonly reservationExpired: string;
+  readonly unavailableItems: string;
+  readonly checkoutExpired: string;
+  readonly checkoutNotFound: string;
+  readonly orderTitle: string;
+  readonly ordersTitle: string;
+  readonly ordersEmpty: string;
+  readonly orderNumber: string;
+  readonly placedAt: string;
+  readonly paymentStatus: string;
+  readonly fulfilmentStatus: string;
+  readonly orderItems: string;
+  readonly quantity: string;
+  readonly unitPrice: string;
+  readonly lineTotal: string;
+  readonly orderUnavailable: string;
+  readonly browseProducts: string;
+};
+
 export type SeoMessages = {
   readonly homeTitle: string;
   readonly homeDescription: string;
@@ -152,6 +220,7 @@ export type MessageNamespaces = {
   readonly catalog: CatalogMessages;
   readonly product: ProductMessages;
   readonly search: SearchMessages;
+  readonly checkout: CheckoutMessages;
   readonly seo: SeoMessages;
 };
 
@@ -168,6 +237,7 @@ export const messageNamespaces = [
   'catalog',
   'product',
   'search',
+  'checkout',
   'seo',
 ] as const satisfies readonly MessageNamespace[];
 

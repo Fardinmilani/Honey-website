@@ -14,6 +14,8 @@ import { InMemoryRateLimitStore, rateLimitError, type RateLimitStore } from './r
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const CART_ROUTE_PREFIX = '/v1/cart';
+const CHECKOUT_ROUTE_PREFIX = '/v1/checkout';
+const ORDER_ROUTE_PREFIX = '/v1/orders';
 const WATCHED_CART_FIELD_TOKENS = [
   'price',
   'amount',
@@ -28,6 +30,10 @@ const WATCHED_CART_FIELD_TOKENS = [
   'reserved',
   'allocated',
   'payment',
+  'status',
+  'ordernumber',
+  'reservation',
+  'location',
 ];
 const MAX_CART_TAMPERING_OBJECTS = 10_000;
 
@@ -66,6 +72,23 @@ function isCartWrite(request: FastifyRequest): boolean {
   return isCartPath(request) && !SAFE_METHODS.has(request.method.toUpperCase());
 }
 
+function isCheckoutPath(request: FastifyRequest): boolean {
+  const path = pathOf(request);
+  return path === CHECKOUT_ROUTE_PREFIX || path.startsWith(`${CHECKOUT_ROUTE_PREFIX}/`);
+}
+
+function isCheckoutWrite(request: FastifyRequest): boolean {
+  return isCheckoutPath(request) && !SAFE_METHODS.has(request.method.toUpperCase());
+}
+
+function isCheckoutAllowedShippingField(normalized: string): boolean {
+  return (
+    normalized === 'shippingaddress' ||
+    normalized === 'billingaddress' ||
+    normalized === 'sameasshipping'
+  );
+}
+
 function rateKey(request: FastifyRequest, config: ApiConfig): string {
   const session = request.cookies[config.sessionCookie.name];
   const cart = request.cookies[config.cart.cookie.name];
@@ -88,7 +111,7 @@ async function cartTamperingActorUserId(
   }
 }
 
-function watchedField(body: unknown): string | null {
+function watchedField(body: unknown, checkout: boolean): string | null {
   const pending: unknown[] = [body];
   const visited = new WeakSet<object>();
   let objectsScanned = 0;
@@ -106,7 +129,8 @@ function watchedField(body: unknown): string | null {
     }
     for (const [key, value] of Object.entries(current)) {
       const normalized = key.replace(/[_-]/gu, '').toLowerCase();
-      if (WATCHED_CART_FIELD_TOKENS.some((token) => normalized.includes(token))) return key;
+      const forbidden = WATCHED_CART_FIELD_TOKENS.some((token) => normalized.includes(token));
+      if (forbidden && !(checkout && isCheckoutAllowedShippingField(normalized))) return key;
       pending.push(value);
     }
   }
@@ -132,6 +156,10 @@ export function registerSecurityHooks(
     config.cart.couponRateLimitMax,
     config.rateLimit.windowMs,
   );
+  const checkoutWriteRateLimit = new InMemoryRateLimitStore(
+    config.cart.writeRateLimitMax,
+    config.rateLimit.windowMs,
+  );
   fastify.addHook('onRequest', (request, _reply, done) => {
     requestContext.run({ requestId: request.id }, done);
   });
@@ -142,13 +170,14 @@ export function registerSecurityHooks(
     const result = await rateLimitStore.consume(request.ip, Date.now());
     setRateHeaders(reply, result);
     if (!result.allowed) throw rateLimitError(result);
-    if (!isCartWrite(request)) return;
-    const cartResult = await cartWriteRateLimit.consume(
-      `cart:${rateKey(request, config)}`,
+    if (!isCartWrite(request) && !isCheckoutWrite(request)) return;
+    const scope = isCheckoutWrite(request) ? 'checkout' : 'cart';
+    const scopedResult = await (isCheckoutWrite(request) ? checkoutWriteRateLimit : cartWriteRateLimit).consume(
+      `${scope}:${rateKey(request, config)}`,
       Date.now(),
     );
-    setRateHeaders(reply, cartResult);
-    if (!cartResult.allowed) throw rateLimitError(cartResult);
+    setRateHeaders(reply, scopedResult);
+    if (!scopedResult.allowed) throw rateLimitError(scopedResult);
     if (path === '/v1/cart/coupon') {
       const couponResult = await couponRateLimit.consume(
         `coupon:${rateKey(request, config)}`,
@@ -160,8 +189,8 @@ export function registerSecurityHooks(
   });
 
   fastify.addHook('preValidation', async (request) => {
-    if (!isCartWrite(request)) return;
-    const offendingField = watchedField(request.body);
+    if (!isCartWrite(request) && !isCheckoutWrite(request)) return;
+    const offendingField = watchedField(request.body, isCheckoutWrite(request));
     if (offendingField === null) return;
     const anonymousId = request.cookies[config.cart.cookie.name];
     if (cartTamperingRecorder !== undefined) {
@@ -177,7 +206,14 @@ export function registerSecurityHooks(
         ...(anonymousId === undefined ? {} : { anonymousId }),
       });
     }
-    throw new ValidationAppError([{ path: offendingField, code: 'CART_MONEY_FIELD_FORBIDDEN' }]);
+    throw new ValidationAppError([
+      {
+        path: offendingField,
+        code: isCheckoutWrite(request)
+          ? 'CHECKOUT_MONEY_FIELD_FORBIDDEN'
+          : 'CART_MONEY_FIELD_FORBIDDEN',
+      },
+    ]);
   });
 
   fastify.addHook('preValidation', async (request) => {
@@ -187,14 +223,22 @@ export function registerSecurityHooks(
       method: request.method,
       cookieToken: request.cookies[config.csrf.cookieName],
       headerToken: headerValue(request, config.csrf.headerName),
-      exempt: OPERATIONAL_PATHS.has(path) || (!hasSessionCookie && !isCartWrite(request)),
+      exempt:
+        OPERATIONAL_PATHS.has(path) ||
+        (!hasSessionCookie && !isCartWrite(request) && !isCheckoutWrite(request)),
     });
   });
 
   fastify.addHook('onSend', async (request, reply, payload) => {
     reply.header('X-Request-Id', request.id);
     const path = pathOf(request);
-    if (path.startsWith('/v1/admin/') || isCartPath(request)) {
+    if (
+      path.startsWith('/v1/admin/') ||
+      isCartPath(request) ||
+      isCheckoutPath(request) ||
+      path === ORDER_ROUTE_PREFIX ||
+      path.startsWith(`${ORDER_ROUTE_PREFIX}/`)
+    ) {
       reply.header('Cache-Control', 'private, no-store');
     }
     return payload;

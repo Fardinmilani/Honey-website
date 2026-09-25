@@ -1920,16 +1920,43 @@ Business decisions needed before the phases they block. Also listed in
 
 | # | Question | Blocks | Needed by |
 |---|---|---|---|
-| 1 | Which payment provider first (Zarinpal / IDPay / direct Shaparak IPG)? Is an international provider needed at launch? | Phase 14 | Before Phase 13 completes |
-| 2 | Currency display: store IRR, show Toman on the Persian storefront? A second currency for English? | Phases 12â€“14 | Before Phase 12 |
-| 3 | Shipping: flat-rate and manual only at launch, or an integrated carrier? | Phase 15 | Before Phase 15 |
-| 4 | VAT applicability, rate, and whether prices are tax-inclusive | Phase 12 | Before Phase 12 |
-| 5 | Guest checkout allowed, or is an account required? | Phase 13 | Before Phase 13 |
-| 6 | Invoice format, numbering scheme, and any statutory fields | Phase 13 | Before Phase 13 |
+| 1 | Which payment provider first (Zarinpal / IDPay / direct Shaparak IPG)? Is an international provider needed at launch? | Phase 14 | Before Phase 14 implementation |
+| 2 | Currency display: store IRR, show Toman on the Persian storefront? A second currency for English? The current explicit-IRR behavior has no conversion fallback. | Production currency presentation / Phases 12–14 | Before production currency rollout |
+| 3 | Full production shipping/carrier design: flat-rate and manual only at launch, or an integrated carrier? The Phase 13 `STANDARD` quote seam fails closed without valid server data and does not decide Phase 15 shipping operations. | Phase 15 | Before Phase 15 |
+| 4 | Final production VAT applicability, rate, and inclusive/exclusive policy. Phase 13 uses an authoritative destination `TaxRate`; an explicit configured zero is valid and missing required configuration fails closed. | Production order activation / legal launch | Before accepting production orders |
+| ~~5~~ | ~~Guest checkout allowed, or account required?~~ | â€” | **Resolved 2026-09-12:** guest checkout is allowed with anonymous server-derived ownership and opaque high-entropy guest access; no account or fake user is created. |
+| 6 | Legal entity, statutory invoice format, and fields. The Phase 13 `HNY-YYYY-######` reference is not an invoice number. | Statutory invoicing / legal launch | Before issuing statutory invoices |
 | 7 | Are customer reviews in scope for launch? | Phase 18 | Before Phase 18 |
 | ~~8~~ | ~~Hosting target~~ | â€” | **âœ… Resolved 2026-08-05** |
 | 9 | Production domain / apex vs `www` | Enabling `WEB_INDEXING_ENABLED=true`, production SEO launch, sitemap submission | Before production indexing |
 | 10 | Licensed Persian and Latin webfonts for the brand | Phase 9 polish | Open |
+
+**Phase 13 scope decisions (2026-09-12).** The former confirmation and
+reservation-accounting blockers are resolved without broadening into later
+phases:
+
+- Guests may check out without an account through opaque, server-derived
+  ownership; the customer-facing `HNY-YYYY-######` reference is non-statutory.
+- Checkout owns only a minimal, server-authoritative `STANDARD` quote with an
+  ID, expiry, re-quote, deterministic test/development fixture, and production
+  fail-closed behavior ([ADR-0038](adr/0038-phase13-minimal-shipping-quote-boundary.md)).
+  Full carrier, zone, method, rate, shipment, and fulfilment work stays in
+  Phase 15.
+- Checkout uses the existing destination `TaxRate` engine. An explicitly
+  configured zero is valid; missing required configuration fails closed rather
+  than fabricating tax.
+- Reservations may split across sellable locations, lock all candidates in
+  `(variant_id, stock_location_id)` order, and use the per-location active
+  uniqueness rule ([ADR-0036](adr/0036-split-location-checkout-reservations.md)).
+- Reservation, release, and allocation ledger entries use reason-aware balance
+  projection, so `onHand` is not changed by a hold or allocation
+  ([ADR-0037](adr/0037-reason-aware-inventory-ledger.md)).
+- Phase 13 supplies expiry/release business logic and lazy expiry only; Phase 16
+  schedules it. A server-generated checkout pricing snapshot/fingerprint enables
+  `PRICE_CHANGED` reconfirmation without client-supplied money.
+
+These are Phase 13 planning decisions, not completion evidence. Phase 13 remains
+**CURRENT but NOT STARTED** until its implementation and verification are done.
 
 **Revised — #9 Production domain (2026-08-09).** Phase 10 no longer requires a
 fixed brand domain to implement. Canonical/hreflang/sitemap/JSON-LD URLs derive
@@ -1942,7 +1969,7 @@ must redirect at the edge. Tests may use `https://example.com` as a fixture only
 Docker Compose behind a reverse proxy with TLS. Provider-neutral, with the
 architecture kept portable to managed services later
 ([ADR-0023](adr/0023-self-hosted-vps-deployment.md)). Phase 3 is unblocked.
-Questions 1â€“7, 9, and 10 remain open and are **not** affected by this decision.
+Questions 1–4, 6–7, 9, and 10 remain open and are **not** affected by this decision.
 
 **Technical decisions deliberately deferred**, with a default recorded so nothing
 is blocked: search engine beyond Postgres (Phase 19, only if measurement

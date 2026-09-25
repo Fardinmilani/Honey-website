@@ -10,6 +10,21 @@ describe('API configuration', () => {
     expect(config.port).toBe(4000);
     expect(config.bodyLimitBytes).toBe(1_048_576);
     expect(config.trustProxy).toBe(false);
+    expect(config.checkout.standardShipping).toEqual({
+      state: 'CONFIGURED',
+      amountMinor: 10_000n,
+      currency: 'IRR',
+    });
+  });
+
+  it('treats malformed checkout shipping configuration as unavailable instead of free', () => {
+    const config = loadApiConfig({
+      NODE_ENV: 'test',
+      DATABASE_URL: databaseUrl,
+      CHECKOUT_STANDARD_SHIPPING_AMOUNT_MINOR: '-1',
+      CHECKOUT_STANDARD_SHIPPING_CURRENCY: 'IRR',
+    });
+    expect(config.checkout.standardShipping).toEqual({ state: 'UNAVAILABLE' });
   });
 
   it('prevents startup when required configuration is missing or malformed', () => {

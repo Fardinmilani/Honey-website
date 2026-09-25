@@ -11,6 +11,8 @@ import {
   SourcingModule,
   ProcurementModule,
   PricingModule,
+  CheckoutModule,
+  OrdersModule,
   type DatabaseHealthPort,
 } from '@honey/backend';
 import type { GracefulShutdown } from './bootstrap/graceful-shutdown.js';
@@ -27,6 +29,7 @@ import { AdminProcurementController } from './modules/procurement/procurement.co
 import { AdminInventoryController } from './modules/inventory/inventory.controller.js';
 import { CartController } from './modules/cart/cart.controller.js';
 import { AdminPricingController } from './modules/pricing/pricing.controller.js';
+import { CheckoutController, OrdersController } from './modules/checkout/checkout.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
@@ -53,6 +56,8 @@ export class AppModule {
           AdminInventoryController,
           CartController,
           AdminPricingController,
+          CheckoutController,
+          OrdersController,
           ValidationProbeController,
         ]
       : [
@@ -66,10 +71,19 @@ export class AppModule {
           AdminInventoryController,
           CartController,
           AdminPricingController,
+          CheckoutController,
+          OrdersController,
         ];
   }
 
   static register(options: AppModuleOptions): DynamicModule {
+    const platformModule = PlatformModule.register({
+      databaseUrl: options.config.databaseUrl,
+      readinessTimeoutMs: options.config.readinessTimeoutMs,
+      ...(options.databaseHealthOverride === undefined
+        ? {}
+        : { databaseHealthOverride: options.databaseHealthOverride }),
+    });
     const inventoryModule = InventoryModule.register({
       databaseUrl: options.config.databaseUrl,
     });
@@ -83,16 +97,32 @@ export class AppModule {
       databaseUrl: options.config.databaseUrl,
       redisUrl: options.config.redisUrl,
     });
+    const cartModule = CartModule.register({
+      databaseUrl: options.config.databaseUrl,
+      config: {
+        activeTtlMs: options.config.cart.activeTtlMs,
+        maximumLineQuantity: options.config.cart.maximumLineQuantity,
+        defaultCurrency: options.config.cart.defaultCurrency,
+        enabledCurrencies: options.config.cart.enabledCurrencies,
+      },
+      inventoryModule,
+      pricingModule,
+      mediaModule,
+    });
+    const ordersModule = OrdersModule.register({ databaseUrl: options.config.databaseUrl });
+    const checkoutModule = CheckoutModule.register({
+      databaseUrl: options.config.databaseUrl,
+      standardShipping: options.config.checkout.standardShipping,
+      cartModule,
+      pricingModule,
+      inventoryModule,
+      ordersModule,
+      platformModule,
+    });
     return {
       module: AppModule,
       imports: [
-        PlatformModule.register({
-          databaseUrl: options.config.databaseUrl,
-          readinessTimeoutMs: options.config.readinessTimeoutMs,
-          ...(options.databaseHealthOverride === undefined
-            ? {}
-            : { databaseHealthOverride: options.databaseHealthOverride }),
-        }),
+        platformModule,
         IdentityModule.register({
           config: options.config.identity.config,
           databaseUrl: options.config.databaseUrl,
@@ -120,18 +150,9 @@ export class AppModule {
           pricingModule,
           mediaModule,
         }),
-        CartModule.register({
-          databaseUrl: options.config.databaseUrl,
-          config: {
-            activeTtlMs: options.config.cart.activeTtlMs,
-            maximumLineQuantity: options.config.cart.maximumLineQuantity,
-            defaultCurrency: options.config.cart.defaultCurrency,
-            enabledCurrencies: options.config.cart.enabledCurrencies,
-          },
-          inventoryModule,
-          pricingModule,
-          mediaModule,
-        }),
+        cartModule,
+        ordersModule,
+        checkoutModule,
       ],
       controllers: [...AppModule.controllers(options.enableTestRoutes === true)],
       providers: [

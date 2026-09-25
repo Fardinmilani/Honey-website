@@ -209,7 +209,7 @@ InventoryItem                                    ← current state, one row per 
   CHECK (onHand >= 0 AND reserved >= 0 AND allocated >= 0)
 
 StockLedgerEntry                                 ← append-only, the audit truth
-  id · variantId · stockLocationId · delta(signed)
+  id · variantId · stockLocationId · delta(signed; reason selects its balance)
   reason(RECEIPT|RESERVATION|RESERVATION_RELEASE|ALLOCATION|FULFILMENT|
          RETURN|ADJUSTMENT|WRITE_OFF|TRANSFER_IN|TRANSFER_OUT|CORRECTION)
   refType · refId · note · actorUserId · createdAt
@@ -223,9 +223,26 @@ availableToSell(variant) = Σ over sellable locations of
     onHand − reserved − allocated
 ```
 
-`InventoryItem` is a derived cache of the ledger, maintained inside the same
-transaction as every ledger write. A nightly reconciliation job recomputes it from
-the ledger and alerts on any drift; the ledger always wins.
+**Reason-aware ledger projection.** `delta` is non-zero, but is not always an
+`onHand` change. Its target balance is fixed by `reason`:
+
+| Reason | Required delta | `InventoryItem` projection |
+|---|---:|---|
+| `RECEIPT`, `RETURN`, `ADJUSTMENT`, `WRITE_OFF`, `TRANSFER_IN`, `TRANSFER_OUT`, `CORRECTION` | signed physical movement | `onHand += delta` |
+| `FULFILMENT` | `-q` | `onHand += delta`; `allocated += delta` |
+| `RESERVATION` | `+q` | `reserved += q`; `onHand` and `allocated` are unchanged |
+| `RESERVATION_RELEASE` | `-q` | `reserved += delta`; `onHand` and `allocated` are unchanged |
+| `ALLOCATION` | `+q` | `reserved -= q`; `allocated += q`; `onHand` is unchanged |
+
+The reservation, release, and allocation entries above are the Phase 13
+contract in [ADR-0037](adr/0037-reason-aware-inventory-ledger.md). A release is
+therefore a real non-zero ledger entry, not a forbidden zero-delta workaround.
+The reconciliation projection is reason-aware and recomputes `onHand`,
+`reserved`, and `allocated`; the ledger always wins.
+
+`InventoryItem` is a derived cache of that projection, maintained inside the
+same transaction as every ledger write. A nightly reconciliation job recomputes
+the balances and alerts on any drift.
 
 **Display policy.** The storefront shows a band (`IN_STOCK`, `LOW_STOCK`,
 `OUT_OF_STOCK`), not an exact count — exact counts are a competitive leak and an
@@ -252,25 +269,36 @@ StockReservation
 ```
 add to cart ──────────────▶ no reservation (availability is advisory only)
 begin checkout ───────────▶ ACTIVE, TTL 15 min
-payment page re-entered ──▶ TTL extended once, max total 30 min
+checkout re-entered ──────▶ TTL extended once, max total 30 min
 order created ────────────▶ CONSUMED  → becomes `allocated`
 payment failed/abandoned ─▶ RELEASED  → stock returns to available
-TTL passes ───────────────▶ EXPIRED   → released by sweeper + lazily on read
+TTL passes ───────────────▶ EXPIRED   → released by expiry service + lazily on read
 ```
 
 **Concurrency rule.** Acquiring or releasing a reservation happens in a
 serializable-safe transaction that takes a row lock on the target
 `InventoryItem` (`SELECT … FOR UPDATE`), re-reads availability inside the lock,
-and fails with `INSUFFICIENT_STOCK` rather than overselling. Locks are always
-taken in ascending `variantId` order to make deadlocks impossible. The
-`CHECK (onHand >= 0 …)` constraints are the last line of defence: overselling is
-a database error, not a silent bug.
+and fails with `INSUFFICIENT_STOCK` rather than overselling. For every variant,
+checkout considers all sellable location rows. It locks **all candidates** in
+the one global order `(variantId ASC, stockLocationId ASC)`, regardless of
+request order. Only after those locks are held does allocation prefer the
+sellable default location, then the remaining locations by `stockLocationId`
+ascending. A cart line may therefore create one `StockReservation` per
+`(variant, stockLocation, checkoutSession)`; acquisition is all-or-nothing.
+The active-reservation uniqueness rule is
+`(variant_id, stock_location_id, checkout_session_id)`. This is an internal
+allocation policy, not customer-selectable warehouse routing, and locations
+never appear in customer responses. The `CHECK (onHand >= 0 …)` constraints are
+the last line of defence: overselling is a database error, not a silent bug.
 
-**Expiry.** A BullMQ repeatable job sweeps expired reservations every minute.
-Because a sweeper can lag, availability reads also treat `ACTIVE` reservations
-past `expiresAt` as released. Both paths are idempotent.
+**Expiry.** Phase 13 supplies the transport-independent, idempotent expiry and
+release application service. Availability reads also treat `ACTIVE` reservations
+past `expiresAt` as released, so a delayed scheduler cannot strand stock. Phase
+16 supplies the BullMQ repeatable schedule; Phase 13 does not add a worker,
+consumer, or cron process.
 
-Rationale in [ADR-0012](adr/0012-stock-reservation-strategy.md).
+Rationale in [ADR-0012](adr/0012-stock-reservation-strategy.md) and
+[ADR-0036](adr/0036-split-location-checkout-reservations.md).
 
 ---
 
@@ -302,7 +330,7 @@ again inside the checkout transaction.
 1. line subtotal        = unitPrice × quantity
 2. line discounts       = allocated proportionally from order-level coupons
 3. order subtotal       = Σ (line subtotal − line discount)
-4. shipping             = provider quote for method + address + parcel set
+4. shipping             = server-authoritative quote for method + address + parcel set
 5. tax                  = per configured rules, inclusive or exclusive
 6. grand total          = subtotal + shipping + tax
 7. rounding             = half-up at the currency's minor unit, applied once at
@@ -312,6 +340,11 @@ again inside the checkout transaction.
 
 Coupon stacking is disallowed at launch: one coupon per order, validated server
 -side. A client that sends a discount amount is rejected.
+
+**Checkout tax resolution.** The shipping address supplies the authoritative
+country/region context for the existing `TaxRate` engine. An explicitly active
+zero rate is valid. Missing or inapplicable required tax configuration is
+`UNRESOLVED` and blocks confirmation; checkout never invents a zero final tax.
 
 ---
 
@@ -332,6 +365,7 @@ CheckoutSession
   id · cartId · userId? · email · phone?
   shippingAddressId? · billingAddressId? · sameAsShipping
   shippingMethodCode? · shippingQuoteId?
+  pricingSnapshot?(jsonb, server-generated projection + fingerprint)
   status(OPEN|AWAITING_PAYMENT|COMPLETED|EXPIRED|CANCELLED)
   reservationExpiresAt · idempotencyKey · createdAt · completedAt
 
@@ -348,13 +382,39 @@ cached page are advisory and are re-verified before money is taken.
 user's cart by variant with quantities summed and clamped to available stock; the
 anonymous cart becomes `MERGED`.
 
+**Guest checkout.** A guest may progress from cart to checkout, reservation, and
+order without an account. The server derives guest ownership from the opaque,
+high-entropy anonymous browser identity; the client never supplies `userId` or
+an owner. Guest confirmation and own-order access require that server-derived
+anonymous owner or a server-issued opaque, high-entropy guest-access proof. It
+is not an account credential, does not create a fake user, and is never exposed
+as a guessable order reference. Any required first-order email verification
+applies to the contact email without requiring account creation.
+
+**Phase 13 shipping boundary.** Checkout owns the minimal server-authoritative
+`STANDARD` quote seam: a selected `ShippingQuote` has a server-generated ID,
+amount, currency, and expiry, and is re-quoted for the address before confirm.
+Development and test may use a deterministic fixture; production fails closed
+when the required server configuration/data is absent or invalid. Phase 13 does
+not add a carrier, provider port, shipping-zone/method/rate matrix, or shipment
+workflow; those remain Phase 15 ([ADR-0038](adr/0038-phase13-minimal-shipping-quote-boundary.md)).
+
+**Price-change reconfirmation.** Checkout initiation persists a server-generated
+pricing snapshot and opaque fingerprint after repricing. Confirm recalculates
+price, coupon, quote, tax, and totals inside its transaction. If that result no
+longer matches the stored fingerprint, the API returns `PRICE_CHANGED` without
+creating an order or consuming a reservation, returns only the fresh safe
+projection, and refreshes the stored snapshot for a deliberate reconfirmation.
+The browser never supplies money or a replacement snapshot. A completed confirm
+does not refresh the snapshot; ordinary cart/checkout reads do not either.
+
 **Checkout confirm transaction** — one Postgres transaction, in this order:
 
 1. Load the cart with row locks; reject if empty or already converted.
 2. Re-price every line from `VariantPrice` at `now`.
 3. Re-validate the coupon (window, limits, eligibility) and recompute discounts.
-4. Re-quote shipping for the selected method and address.
-5. Recompute tax and totals.
+4. Re-quote the server-owned `STANDARD` shipping quote for the selected address.
+5. Resolve tax from the authoritative destination and recompute totals.
 6. Verify every `StockReservation` is `ACTIVE`, unexpired, and sufficient.
 7. Create `Order` + immutable `OrderLine` snapshots + address snapshots.
 8. Mark reservations `CONSUMED`; move `reserved → allocated`; append ledger rows.
@@ -362,10 +422,11 @@ anonymous cart becomes `MERGED`.
 10. Write `OutboxEvent(order.created)`.
 11. **Commit.**
 
-Only after commit does the API call the payment provider. `Idempotency-Key` is
-mandatory: a retried confirm returns the original order rather than creating a
-second one. If any step fails, the transaction rolls back and the reservation
-survives so the customer can retry.
+Phase 13 stops after commit: it does not call a payment provider, create a
+payment, or claim payment success. Those actions begin in Phase 14.
+`Idempotency-Key` is mandatory: a retried confirm returns the original order
+rather than creating a second one. If any step fails, the transaction rolls back
+and the reservation survives so the customer can retry.
 
 ---
 
@@ -377,7 +438,7 @@ re-priced, re-photographed, or deleted.
 
 ```
 Order
-  id · number (unique, human-readable, e.g. HNY-2026-000123)
+  id · number (unique, human-readable, `HNY-YYYY-######`)
   userId? · email · phone
   localeAtPurchase · currency
   status(PENDING_PAYMENT|PAID|PROCESSING|PARTIALLY_FULFILLED|FULFILLED|
@@ -415,6 +476,13 @@ ReturnRequest        orderId · lines[] · reason · status · requestedAt · re
   display source.
 - `productNameSnapshot` stores every locale available at purchase time, so an
   order placed in Persian can still be shown to English-speaking support staff.
+- `number` is generated only by the server under a database-safe concurrency
+  mechanism and the unique constraint. It is a customer-facing order reference,
+  not a statutory invoice number.
+- Phase 13 creates only `PENDING_PAYMENT` / `UNPAID` / `UNFULFILLED` and writes
+  the initial status-history row. It never creates a `PAID` order or payment
+  record. Later phases extend the explicit transition table without changing
+  immutable order data.
 - Corrections happen through new records — refunds, credit notes, adjustments —
   never by editing the original.
 - Status transitions go through an explicit state machine with an allowed-

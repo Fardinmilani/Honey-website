@@ -55,6 +55,9 @@ that costs, and what was rejected.
 | [0033](0033-cart-discount-allocation.md) | Cart discount remainders use stable line-ID order | Accepted |
 | [0034](0034-cart-active-ttl.md) | Active carts expire lazily with a configured TTL | Accepted |
 | [0035](0035-cart-mutation-idempotency-and-owner-locking.md) | Cart mutations serialize by owner and use durable add idempotency | Accepted |
+| [0036](0036-split-location-checkout-reservations.md) | Checkout reservations split safely across sellable locations | Accepted |
+| [0037](0037-reason-aware-inventory-ledger.md) | Reservation and allocation ledger entries use reason-aware balance projection | Accepted |
+| [0038](0038-phase13-minimal-shipping-quote-boundary.md) | Minimal checkout-owned `STANDARD` quote enables Phase 13 without pulling in Phase 15 | Accepted |
 
 ### Supersession chain
 

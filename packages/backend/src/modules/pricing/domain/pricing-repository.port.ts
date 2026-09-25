@@ -1,4 +1,5 @@
 import type { CouponRecord, TaxRateRecord, VariantPriceRecord } from './pricing.js';
+import type { TransactionContext } from '../../../platform/domain/transaction.js';
 
 export type PricingAuditActor = Readonly<{
   actorUserId: string;
@@ -7,16 +8,35 @@ export type PricingAuditActor = Readonly<{
 }>;
 
 export interface PricingRepository {
-  existingVariantIds(variantIds: readonly string[]): Promise<ReadonlySet<string>>;
+  existingVariantIds(
+    variantIds: readonly string[],
+    transaction?: TransactionContext,
+  ): Promise<ReadonlySet<string>>;
   pricesForVariants(
     variantIds: readonly string[],
     currency: string,
+    transaction?: TransactionContext,
   ): Promise<readonly VariantPriceRecord[]>;
   listVariantPrices(variantId?: string): Promise<readonly VariantPriceRecord[]>;
-  findCoupon(code: string): Promise<CouponRecord | null>;
+  findCoupon(code: string, transaction?: TransactionContext): Promise<CouponRecord | null>;
+  lockCoupon(code: string, transaction: TransactionContext): Promise<CouponRecord | null>;
   listCoupons(): Promise<readonly CouponRecord[]>;
-  countCouponRedemptions(couponId: string, userId: string): Promise<number>;
-  listTaxRates(): Promise<readonly TaxRateRecord[]>;
+  countCouponRedemptions(
+    couponId: string,
+    userId: string,
+    transaction?: TransactionContext,
+  ): Promise<number>;
+  listTaxRates(transaction?: TransactionContext): Promise<readonly TaxRateRecord[]>;
+  redeemCoupon(
+    input: Readonly<{
+      couponId: string;
+      userId: string | null;
+      orderId: string;
+      amountMinor: bigint;
+      actorUserId: string | null;
+    }>,
+    transaction: TransactionContext,
+  ): Promise<void>;
   createVariantPrice(
     input: VariantPriceRecord,
     actor: PricingAuditActor,

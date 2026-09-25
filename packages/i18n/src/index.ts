@@ -82,6 +82,7 @@ export {
 export type {
   AccessibilityMessages,
   CatalogMessages,
+  CheckoutMessages,
   CommonMessages,
   ErrorsMessages,
   HomeMessages,

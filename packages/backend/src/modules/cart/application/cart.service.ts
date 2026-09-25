@@ -12,6 +12,7 @@ import type {
   CartAddIdempotencyLookup,
   CartAvailability,
   CartConfig,
+  CheckoutCartRecord,
   CartLineRecord,
   CartLineState,
   CartOwner,
@@ -373,6 +374,57 @@ export class CartService {
   async mergeAnonymousIntoUser(contextInput: CartRequestContext): Promise<void> {
     const context = this.#context(contextInput);
     await this.#mergeIfNecessary(context);
+  }
+
+  /**
+   * Performs the existing anonymous-to-user handoff before a checkout opens a
+   * long-lived reservation. The actual cart lock is obtained separately in
+   * the caller's checkout transaction.
+   */
+  async prepareForCheckout(contextInput: CartRequestContext): Promise<void> {
+    await this.#mergeIfNecessary(this.#context(contextInput));
+  }
+
+  /**
+   * Locks the owner and current ACTIVE cart inside an encompassing checkout
+   * transaction. It intentionally never creates a new cart: checkout from an
+   * empty or expired cart must fail instead of producing a fake workflow.
+   */
+  async lockCheckoutCart(
+    contextInput: CartRequestContext,
+    transaction: TransactionContext,
+  ): Promise<CheckoutCartRecord> {
+    const context = this.#context(contextInput);
+    const owner = ownerFor(context);
+    await this.repository.lockCartOwner(owner, transaction);
+    const found = await this.repository.findActiveCart(owner, transaction);
+    if (found === null) throw new ConflictAppError({ code: 'CHECKOUT_CART_NOT_ACTIVE' });
+    const cart = await this.repository.lockCart(found.id, transaction);
+    if (cart === null || cart.status !== 'ACTIVE') {
+      throw new ConflictAppError({ code: 'CHECKOUT_CART_NOT_ACTIVE' });
+    }
+    if (cart.expiresAt <= new Date()) {
+      await this.repository.abandonCart(cart.id, transaction);
+      throw new ConflictAppError({ code: 'CHECKOUT_CART_EXPIRED' });
+    }
+    const lines = await this.repository.listCheckoutLines(cart.id, transaction);
+    if (lines.length === 0) throw new ValidationAppError([{ path: 'cart', code: 'CHECKOUT_CART_EMPTY' }]);
+    return { cart, lines };
+  }
+
+  /** Converts only the locked current owner's cart after a pending order exists. */
+  async convertCheckoutCart(
+    contextInput: CartRequestContext,
+    cartIdInput: string,
+    transaction: TransactionContext,
+  ): Promise<void> {
+    const context = this.#context(contextInput);
+    const cartId = uuid(cartIdInput, 'cartId');
+    const cart = await this.repository.lockCart(cartId, transaction);
+    if (cart === null || !this.#owns(cart, context)) throw new NotFoundAppError();
+    if (cart.status === 'CONVERTED') return;
+    if (cart.status !== 'ACTIVE') throw new ConflictAppError({ code: 'CHECKOUT_CART_NOT_ACTIVE' });
+    await this.repository.updateCart(cart.id, { status: 'CONVERTED' }, transaction);
   }
 
   async recordTamperingAttempt(input: CartTamperingAttempt): Promise<void> {
@@ -795,5 +847,11 @@ export class CartService {
       locale: normalizeLocale(input.locale),
       currency: normalizeCartCurrency(input.currency, this.config.enabledCurrencies),
     };
+  }
+
+  #owns(cart: CartRecord, context: NormalizedContext): boolean {
+    return context.userId !== null
+      ? cart.userId === context.userId
+      : context.anonymousId !== null && cart.anonymousId === context.anonymousId;
   }
 }

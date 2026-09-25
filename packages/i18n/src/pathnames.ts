@@ -45,6 +45,18 @@ export const pathnames = {
     fa: '/sabad-kharid',
     en: '/cart',
   },
+  '/checkout': {
+    fa: '/takmil-sefaresh',
+    en: '/checkout',
+  },
+  '/orders': {
+    fa: '/sefareshha',
+    en: '/orders',
+  },
+  '/orders/[number]': {
+    fa: '/sefareshha/[number]',
+    en: '/orders/[number]',
+  },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type InternalPathname = keyof typeof pathnames;

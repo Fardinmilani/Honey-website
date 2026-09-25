@@ -1272,6 +1272,7 @@ model CheckoutSession {
   sameAsShipping        Boolean            @default(true) @map("same_as_shipping")
   shippingMethodCode    String?            @map("shipping_method_code")
   shippingQuoteId       String?            @unique @map("shipping_quote_id") @db.Uuid
+  pricingSnapshot       Json?              @map("pricing_snapshot") @db.JsonB
   status                CheckoutStatus     @default(OPEN)
   reservationExpiresAt  DateTime?          @map("reservation_expires_at") @db.Timestamptz(3)
   idempotencyKey        String             @unique @map("idempotency_key")

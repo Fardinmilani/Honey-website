@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
-import type { CatalogConfig, IdentityConfig, MediaConfig, S3StorageConfig } from '@honey/backend';
+import {
+  isConfiguredStandardShippingQuote,
+  resolveStandardShippingQuoteConfiguration,
+  type CatalogConfig,
+  type IdentityConfig,
+  type MediaConfig,
+  type S3StorageConfig,
+  type StandardShippingQuoteConfiguration,
+} from '@honey/backend';
 
 const NODE_ENV_VALUES = ['development', 'test', 'production'] as const;
 const LOG_LEVEL_VALUES = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
@@ -100,6 +108,8 @@ const schema = z
     CART_ENABLED_CURRENCIES: z.string().min(3).max(256),
     CART_WRITE_RATE_LIMIT_MAX: positiveInteger.max(10_000),
     CART_COUPON_RATE_LIMIT_MAX: positiveInteger.max(10_000),
+    CHECKOUT_STANDARD_SHIPPING_AMOUNT_MINOR: z.string().optional(),
+    CHECKOUT_STANDARD_SHIPPING_CURRENCY: z.string().optional(),
   })
   .passthrough();
 
@@ -145,6 +155,9 @@ export type ApiConfig = Readonly<{
     enabledCurrencies: readonly string[];
     writeRateLimitMax: number;
     couponRateLimitMax: number;
+  }>;
+  checkout: Readonly<{
+    standardShipping: StandardShippingQuoteConfiguration;
   }>;
 }>;
 
@@ -230,6 +243,10 @@ function defaultsFor(environment: string | undefined): Readonly<Record<string, s
     CART_ENABLED_CURRENCIES: 'IRR',
     CART_WRITE_RATE_LIMIT_MAX: '120',
     CART_COUPON_RATE_LIMIT_MAX: '20',
+    // Deterministic development/test fixture only. Production deliberately has
+    // no default, so confirmation cannot turn absent configuration into free shipping.
+    CHECKOUT_STANDARD_SHIPPING_AMOUNT_MINOR: '10000',
+    CHECKOUT_STANDARD_SHIPPING_CURRENCY: 'IRR',
   };
 }
 
@@ -293,6 +310,15 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
   ) {
     throw new Error('Cart currency configuration is invalid.');
   }
+  const configuredStandardShipping = resolveStandardShippingQuoteConfiguration({
+    amountMinor: parsed.data.CHECKOUT_STANDARD_SHIPPING_AMOUNT_MINOR,
+    currency: parsed.data.CHECKOUT_STANDARD_SHIPPING_CURRENCY,
+  });
+  const standardShipping: StandardShippingQuoteConfiguration =
+    isConfiguredStandardShippingQuote(configuredStandardShipping) &&
+    enabledCurrencies.includes(configuredStandardShipping.currency)
+      ? configuredStandardShipping
+      : { state: 'UNAVAILABLE' };
   if (parsed.data.NODE_ENV === 'production') {
     if (
       allowedOrigins.length === 0 ||
@@ -459,5 +485,6 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
       writeRateLimitMax: parsed.data.CART_WRITE_RATE_LIMIT_MAX,
       couponRateLimitMax: parsed.data.CART_COUPON_RATE_LIMIT_MAX,
     },
+    checkout: { standardShipping },
   };
 }

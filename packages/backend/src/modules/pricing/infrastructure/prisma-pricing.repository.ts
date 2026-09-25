@@ -1,9 +1,17 @@
-import { createPrismaClient, type PrismaClient } from '@honey/db';
+import { createPrismaClient, Prisma, type PrismaClient } from '@honey/db';
 
 import { randomUUID } from 'node:crypto';
 
 import type { CouponRecord, TaxRateRecord, VariantPriceRecord } from '../domain/pricing.js';
 import type { PricingAuditActor, PricingRepository } from '../domain/pricing-repository.port.js';
+import type { TransactionContext } from '../../../platform/domain/transaction.js';
+import { asPrismaTransaction } from '../../../platform/infrastructure/prisma-platform.adapter.js';
+
+type Client = PrismaClient | ReturnType<typeof asPrismaTransaction>;
+
+function clientFor(client: PrismaClient, transaction: TransactionContext | undefined): Client {
+  return transaction === undefined ? client : asPrismaTransaction(transaction);
+}
 
 function mapPrice(row: {
   id: string;
@@ -88,9 +96,12 @@ export class PrismaPricingRepository implements PricingRepository {
     this.#client = createPrismaClient({ databaseUrl });
   }
 
-  async existingVariantIds(variantIds: readonly string[]): Promise<ReadonlySet<string>> {
+  async existingVariantIds(
+    variantIds: readonly string[],
+    transaction?: TransactionContext,
+  ): Promise<ReadonlySet<string>> {
     if (variantIds.length === 0) return new Set();
-    const rows = await this.#client.productVariant.findMany({
+    const rows = await clientFor(this.#client, transaction).productVariant.findMany({
       where: { id: { in: [...new Set(variantIds)] } },
       select: { id: true },
     });
@@ -100,9 +111,10 @@ export class PrismaPricingRepository implements PricingRepository {
   async pricesForVariants(
     variantIds: readonly string[],
     currency: string,
+    transaction?: TransactionContext,
   ): Promise<readonly VariantPriceRecord[]> {
     if (variantIds.length === 0) return [];
-    const rows = await this.#client.variantPrice.findMany({
+    const rows = await clientFor(this.#client, transaction).variantPrice.findMany({
       where: { variantId: { in: [...new Set(variantIds)] }, currency },
       orderBy: [{ variantId: 'asc' }, { validFrom: 'desc' }],
     });
@@ -117,11 +129,26 @@ export class PrismaPricingRepository implements PricingRepository {
     return rows.map(mapPrice);
   }
 
-  async findCoupon(code: string): Promise<CouponRecord | null> {
-    const row = await this.#client.coupon.findFirst({
+  async findCoupon(code: string, transaction?: TransactionContext): Promise<CouponRecord | null> {
+    const row = await clientFor(this.#client, transaction).coupon.findFirst({
       where: { code: { equals: code, mode: 'insensitive' } },
     });
     return row === null ? null : mapCoupon(row);
+  }
+
+  async lockCoupon(code: string, transaction: TransactionContext): Promise<CouponRecord | null> {
+    const client = asPrismaTransaction(transaction);
+    await client.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "coupon"
+        WHERE lower("code") = lower(${code})
+        ORDER BY "id" ASC
+        LIMIT 1
+        FOR UPDATE
+      `,
+    );
+    return this.findCoupon(code, transaction);
   }
 
   async listCoupons(): Promise<readonly CouponRecord[]> {
@@ -129,15 +156,58 @@ export class PrismaPricingRepository implements PricingRepository {
     return rows.map(mapCoupon);
   }
 
-  async countCouponRedemptions(couponId: string, userId: string): Promise<number> {
-    return this.#client.couponRedemption.count({ where: { couponId, userId } });
+  async countCouponRedemptions(
+    couponId: string,
+    userId: string,
+    transaction?: TransactionContext,
+  ): Promise<number> {
+    return clientFor(this.#client, transaction).couponRedemption.count({ where: { couponId, userId } });
   }
 
-  async listTaxRates(): Promise<readonly TaxRateRecord[]> {
-    const rows = await this.#client.taxRate.findMany({
+  async listTaxRates(transaction?: TransactionContext): Promise<readonly TaxRateRecord[]> {
+    const rows = await clientFor(this.#client, transaction).taxRate.findMany({
       orderBy: [{ country: 'asc' }, { region: 'asc' }],
     });
     return rows.map(mapTaxRate);
+  }
+
+  async redeemCoupon(
+    input: Readonly<{
+      couponId: string;
+      userId: string | null;
+      orderId: string;
+      amountMinor: bigint;
+      actorUserId: string | null;
+    }>,
+    transaction: TransactionContext,
+  ): Promise<void> {
+    const client = asPrismaTransaction(transaction);
+    const coupon = await client.coupon.findUnique({ where: { id: input.couponId } });
+    if (coupon === null) throw new Error('Coupon disappeared while it was locked.');
+    if (coupon.usageLimitTotal !== null && coupon.usedCount >= coupon.usageLimitTotal) {
+      throw new Error('Coupon usage limit was reached.');
+    }
+    if (coupon.usageLimitPerUser !== null && input.userId !== null) {
+      const count = await client.couponRedemption.count({
+        where: { couponId: input.couponId, userId: input.userId },
+      });
+      if (count >= coupon.usageLimitPerUser) throw new Error('Coupon per-user limit was reached.');
+    }
+    await client.couponRedemption.create({
+      data: {
+        id: randomUUID(),
+        couponId: input.couponId,
+        userId: input.userId,
+        orderId: input.orderId,
+        amountMinor: input.amountMinor,
+        createdBy: input.actorUserId,
+        updatedBy: input.actorUserId,
+      },
+    });
+    await client.coupon.update({
+      where: { id: input.couponId },
+      data: { usedCount: { increment: 1 }, updatedBy: input.actorUserId },
+    });
   }
 
   async createVariantPrice(

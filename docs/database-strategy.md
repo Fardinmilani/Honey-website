@@ -32,7 +32,7 @@ access of any kind.
 | Table names | `snake_case`, singular (`order_line`, not `OrderLines`) |
 | Prisma models | `PascalCase` with `@@map` to the snake_case table |
 | Primary keys | `id uuid` — UUID v7, time-ordered for index locality |
-| Human codes | Separate column: `order.number`, `harvest_batch.batch_code` |
+| Human codes | Separate column: `order.number`, `harvest_batch.batch_code`; Phase 13 order references are server-generated `HNY-YYYY-######`, not statutory invoice numbers |
 | Money | `amount_minor bigint` + `currency char(3)`. Never `float`, never `numeric` for currency amounts |
 | Rates | Basis points as `integer` (`tax_rate_bps = 900` → 9%) |
 | Timestamps | `timestamptz`, UTC, `created_at` / `updated_at` on every mutable table |
@@ -105,9 +105,9 @@ ALTER TABLE harvest_batch
 ALTER TABLE order_line   ADD CHECK (quantity > 0 AND unit_price_minor >= 0 AND line_total_minor >= 0);
 ALTER TABLE "order"      ADD CHECK (grand_total_minor >= 0 AND refunded_total_minor <= grand_total_minor);
 
--- one active reservation row per (variant, checkout session)
+-- one active reservation row per (variant, location, checkout session)
 CREATE UNIQUE INDEX reservation_active_unique
-  ON stock_reservation (variant_id, checkout_session_id)
+  ON stock_reservation (variant_id, stock_location_id, checkout_session_id)
   WHERE status = 'ACTIVE';
 
 -- coupon codes are unique case-insensitively
@@ -121,6 +121,21 @@ everything descriptive and monetary does not.
 
 **Append-only triggers** — `stock_ledger_entry`, `audit_log`, and
 `order_status_history` reject `UPDATE` and `DELETE` entirely.
+
+**Reason-aware stock ledger.** `stock_ledger_entry.delta` remains non-zero, but
+its target balance is selected by the immutable `reason`, not assumed to be
+physical `on_hand`. Phase 13 must enforce the mappings in
+[ADR-0037](adr/0037-reason-aware-inventory-ledger.md): `RESERVATION +q` raises
+only `reserved`; `RESERVATION_RELEASE -q` lowers only `reserved`; and
+`ALLOCATION +q` moves `reserved` to `allocated` while leaving `on_hand`
+unchanged. Reconciliation computes all three balances by reason. A zero-delta
+reservation workaround is invalid.
+
+**Checkout pricing snapshot.** Phase 13 stores a nullable, server-generated
+`checkout_session.pricing_snapshot` JSONB projection with its opaque
+fingerprint. It is created at checkout initiation and refreshed only when a
+confirm detects `PRICE_CHANGED`; it is never client-written or an order-money
+source. The immutable order remains the final legal and financial snapshot.
 
 ---
 
@@ -145,6 +160,7 @@ product_category (category_id, product_id)                -- listing join
 
 ```sql
 inventory_item (variant_id, stock_location_id)  UNIQUE
+stock_reservation (variant_id, stock_location_id, checkout_session_id) UNIQUE WHERE status = 'ACTIVE'
 stock_reservation (expires_at) WHERE status = 'ACTIVE'    -- partial: sweeper reads only these
 stock_reservation (checkout_session_id)
 stock_ledger_entry (variant_id, created_at DESC)          -- history view
@@ -223,6 +239,12 @@ never disagree.
 - Destructive statements (`DROP COLUMN`, `DROP TABLE`, type narrowing) require an
   explicit approval note in the PR and may only appear in a contract migration.
 
+The Phase 13 forward migration may add the nullable checkout pricing snapshot,
+replace the active-reservation partial unique index with the per-location form,
+and add reason-aware ledger validation/reconciliation support. It must not edit
+the initial or Phase 12 migrations, and any hot-index replacement follows the
+lock-safety checklist below.
+
 **Expand → migrate → contract**, so rolling deploys never break:
 
 ```
@@ -254,8 +276,10 @@ Release N+2   drop the old column
   (`SELECT … FOR UPDATE`) rather than a higher isolation level, so behaviour is
   predictable and retries are unnecessary.
 - **Lock ordering is global and fixed**: inventory rows are always locked in
-  ascending `variant_id` order. This makes deadlock between two concurrent
-  checkouts structurally impossible.
+  ascending `(variant_id, stock_location_id)` order. This makes deadlock between
+  two concurrent split-location checkouts structurally impossible. Allocation
+  preference is applied only after every candidate row is locked and must never
+  change the lock order.
 - Transactions are short. No HTTP calls, no queue publishes to external systems,
   no file I/O inside a transaction — the outbox exists precisely so that side
   effects happen after commit.

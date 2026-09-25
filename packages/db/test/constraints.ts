@@ -169,6 +169,7 @@ async function assertPhase12Schema(client: Client): Promise<void> {
         'cart_active_anonymous_unique',
         'cart_active_expiry_idx',
         'variant_price_current_lookup_idx',
+        'reservation_active_unique',
       ],
     ],
   );
@@ -196,6 +197,43 @@ async function assertPhase12Schema(client: Client): Promise<void> {
   const currentPriceIndex = byName.get('variant_price_current_lookup_idx');
   if (currentPriceIndex === undefined) throw new Error('current price lookup index is missing');
   assert.match(currentPriceIndex.definition, /\(variant_id, currency, valid_from DESC\)/u);
+
+  const activeReservationIndex = byName.get('reservation_active_unique');
+  if (activeReservationIndex === undefined) {
+    throw new Error('active reservation unique index is missing');
+  }
+  assert.match(activeReservationIndex.definition, /UNIQUE/u);
+  assert.match(
+    activeReservationIndex.definition,
+    /\(variant_id, stock_location_id, checkout_session_id\)/u,
+  );
+  assert.match(activeReservationIndex.predicate ?? '', /status = 'ACTIVE'/u);
+}
+
+async function assertSplitLocationActiveReservationIsAllowed(client: Client): Promise<void> {
+  await client.query('BEGIN');
+  try {
+    await client.query(
+      `INSERT INTO "stock_reservation" (
+         "id", "variant_id", "stock_location_id", "quantity", "checkout_session_id", "status", "expires_at"
+       ) VALUES ($1, $2, $3, 1, $4, 'ACTIVE', now() + interval '15 minutes')`,
+      [
+        '018f0000-0002-7000-8000-000000000020',
+        seedIds.ownVariant,
+        seedIds.studioLocation,
+        testIds.checkout,
+      ],
+    );
+    const result = await client.query<{ count: string }>(
+      `SELECT count(*)::text AS "count"
+       FROM "stock_reservation"
+       WHERE "variant_id" = $1 AND "checkout_session_id" = $2 AND "status" = 'ACTIVE'`,
+      [seedIds.ownVariant, testIds.checkout],
+    );
+    assert.equal(result.rows[0]?.count, '2');
+  } finally {
+    await client.query('ROLLBACK');
+  }
 }
 
 async function assertInactiveCartHistoryIsAllowed(client: Client): Promise<void> {
@@ -218,6 +256,7 @@ async function assertInactiveCartHistoryIsAllowed(client: Client): Promise<void>
 
 export async function runConstraintTests(client: Client): Promise<number> {
   await createValidTestRecords(client);
+  await assertSplitLocationActiveReservationIsAllowed(client);
   const cases: ReadonlyArray<readonly [string, readonly string[], () => Promise<unknown>]> = [
     [
       'invalid trusted media shape',

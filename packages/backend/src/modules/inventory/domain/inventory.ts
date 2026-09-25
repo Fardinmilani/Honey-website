@@ -13,8 +13,19 @@ export type Phase11LedgerReason = (typeof PHASE11_LEDGER_REASONS)[number];
 export const ADJUSTMENT_REASONS = ['ADJUSTMENT', 'WRITE_OFF', 'CORRECTION'] as const;
 export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number];
 
+export const RESERVATION_STATUSES = ['ACTIVE', 'CONSUMED', 'RELEASED', 'EXPIRED'] as const;
+export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
+
+export const RESERVATION_LEDGER_REASONS = [
+  'RESERVATION',
+  'RESERVATION_RELEASE',
+  'ALLOCATION',
+] as const;
+export type ReservationLedgerReason = (typeof RESERVATION_LEDGER_REASONS)[number];
+
 export type InventoryActorContext = Readonly<{
-  actorUserId: string;
+  /** A guest/system inventory transition has no User row to attribute. */
+  actorUserId: string | null;
   metadata: RequestMetadata;
 }>;
 
@@ -42,6 +53,7 @@ export type InventoryItemRecord = Readonly<{
   lowStockAlertActive: boolean;
   version: number;
   isSellable: boolean;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -73,6 +85,124 @@ export type StockMovement = Readonly<{
   refType: string;
   refId: string;
   note: string | null;
+}>;
+
+export type ReservationLine = Readonly<{
+  variantId: string;
+  quantity: number;
+}>;
+
+export type ReservationAllocation = Readonly<{
+  reservationId: string;
+  variantId: string;
+  stockLocationId: string;
+  quantity: number;
+  expiresAt: Date;
+}>;
+
+export type StockReservationRecord = Readonly<{
+  id: string;
+  variantId: string;
+  stockLocationId: string;
+  quantity: number;
+  cartId: string | null;
+  checkoutSessionId: string | null;
+  orderId: string | null;
+  status: ReservationStatus;
+  expiresAt: Date;
+  createdAt: Date;
+  consumedAt: Date | null;
+  releasedAt: Date | null;
+  releaseReason: string | null;
+}>;
+
+export type ReservationAccountingChange = Readonly<{
+  variantId: string;
+  stockLocationId: string;
+  deltaReserved: number;
+  deltaAllocated: number;
+  ledgerDelta: number;
+  reason: ReservationLedgerReason;
+  refType: string;
+  refId: string;
+  note: string | null;
+}>;
+
+export type InventoryLedgerState = Readonly<{
+  onHand: number;
+  reserved: number;
+  allocated: number;
+}>;
+
+export type ReservationAcquireInput = Readonly<{
+  checkoutSessionId: string;
+  cartId?: string | null;
+  lines: readonly ReservationLine[];
+  actor: InventoryActorContext;
+  now?: Date;
+}>;
+
+export type ReservationAcquireResult = Readonly<{
+  allocations: readonly ReservationAllocation[];
+  expiresAt: Date;
+  replayed: boolean;
+}>;
+
+export type ReservationReleaseInput = Readonly<{
+  checkoutSessionId: string;
+  reason: string;
+  actor: InventoryActorContext;
+  now?: Date;
+}>;
+
+export type ReservationReleaseResult = Readonly<{
+  released: number;
+  alreadyFinal: number;
+}>;
+
+export type ReservationExtensionInput = Readonly<{
+  checkoutSessionId: string;
+  actor: InventoryActorContext;
+  now?: Date;
+}>;
+
+export type ReservationExtensionResult = Readonly<{
+  expiresAt: Date | null;
+  extended: boolean;
+}>;
+
+export type ReservationAssertionInput = Readonly<{
+  checkoutSessionId: string;
+  lines: readonly ReservationLine[];
+  actor: InventoryActorContext;
+  now?: Date;
+}>;
+
+export type ReservationAssertionResult = Readonly<{
+  allocations: readonly ReservationAllocation[];
+  expiresAt: Date;
+}>;
+
+export type ReservationConsumptionInput = Readonly<{
+  checkoutSessionId: string;
+  orderId: string;
+  actor: InventoryActorContext;
+  now?: Date;
+}>;
+
+export type ReservationConsumptionResult = Readonly<{
+  allocations: readonly ReservationAllocation[];
+  replayed: boolean;
+}>;
+
+export type ReservationExpiryInput = Readonly<{
+  batchSize?: number;
+  actor: InventoryActorContext;
+  now?: Date;
+}>;
+
+export type ReservationExpiryResult = Readonly<{
+  expired: number;
 }>;
 
 export type AvailabilitySnapshot = Readonly<{
@@ -111,7 +241,7 @@ export type ProductionIntakeInput = Readonly<{
 export type ReconciliationDrift = Readonly<{
   variantId: string;
   stockLocationId: string;
-  field: 'onHand' | 'incoming';
+  field: 'onHand' | 'incoming' | 'reserved' | 'allocated';
   expected: number;
   actual: number;
 }>;
@@ -164,6 +294,27 @@ export function compareInventoryKeys(left: InventoryKey, right: InventoryKey): n
   return variant === 0 ? left.stockLocationId.localeCompare(right.stockLocationId) : variant;
 }
 
+/**
+ * Stock ledger events use a reason-aware counter reducer. Reservation events
+ * are availability workflow events, not physical movements of stock.
+ */
+export function reduceInventoryLedgerState(
+  current: InventoryLedgerState,
+  entry: Readonly<{ reason: string; delta: number }>,
+): InventoryLedgerState {
+  if (entry.reason === 'RESERVATION' || entry.reason === 'RESERVATION_RELEASE') {
+    return { ...current, reserved: current.reserved + entry.delta };
+  }
+  if (entry.reason === 'ALLOCATION') {
+    return {
+      ...current,
+      reserved: current.reserved - entry.delta,
+      allocated: current.allocated + entry.delta,
+    };
+  }
+  return { ...current, onHand: current.onHand + entry.delta };
+}
+
 export type InventoryRepository = {
   runInTransaction<Result>(
     work: (transaction: TransactionContext) => Promise<Result>,
@@ -207,7 +358,15 @@ export type InventoryRepository = {
   ensureAndLockItems(
     transaction: TransactionContext,
     keys: readonly InventoryKey[],
-    actorUserId: string,
+    actorUserId: string | null,
+  ): Promise<readonly InventoryItemRecord[]>;
+  lockItems(
+    transaction: TransactionContext,
+    keys: readonly InventoryKey[],
+  ): Promise<readonly InventoryItemRecord[]>;
+  lockSellableItemsForVariants(
+    transaction: TransactionContext,
+    variantIds: readonly string[],
   ): Promise<readonly InventoryItemRecord[]>;
   applyMovements(
     transaction: TransactionContext,
@@ -227,12 +386,87 @@ export type InventoryRepository = {
   ): Promise<void>;
   variantExists(variantId: string): Promise<boolean>;
   locationExists(stockLocationId: string): Promise<boolean>;
-  ledgerOnHandByKey(): Promise<readonly (InventoryKey & Readonly<{ onHand: number }>)[]>;
+  ledgerStateByKey(): Promise<readonly (InventoryKey & InventoryLedgerState)[]>;
   repairCurrentState(
     transaction: TransactionContext,
-    repairs: readonly (InventoryKey & Readonly<{ onHand?: number; incoming?: number }>)[],
+    repairs: readonly (
+      InventoryKey & Readonly<{
+        onHand?: number;
+        incoming?: number;
+        reserved?: number;
+        allocated?: number;
+      }>
+    )[],
     actor: InventoryActorContext,
   ): Promise<void>;
+  listReservationsForCheckout(
+    transaction: TransactionContext,
+    checkoutSessionId: string,
+  ): Promise<readonly StockReservationRecord[]>;
+  lockReservationsForCheckout(
+    transaction: TransactionContext,
+    checkoutSessionId: string,
+  ): Promise<readonly StockReservationRecord[]>;
+  lockReservationCheckout(
+    transaction: TransactionContext,
+    checkoutSessionId: string,
+  ): Promise<void>;
+  listExpiredReservationIds(
+    now: Date,
+    batchSize: number,
+    variantIds?: readonly string[],
+  ): Promise<readonly string[]>;
+  lockReservationsByIds(
+    transaction: TransactionContext,
+    reservationIds: readonly string[],
+  ): Promise<readonly StockReservationRecord[]>;
+  listReservationsByIds(
+    transaction: TransactionContext,
+    reservationIds: readonly string[],
+  ): Promise<readonly StockReservationRecord[]>;
+  createReservations(
+    transaction: TransactionContext,
+    reservations: readonly Readonly<{
+      id: string;
+      variantId: string;
+      stockLocationId: string;
+      quantity: number;
+      cartId: string | null;
+      checkoutSessionId: string;
+      expiresAt: Date;
+      createdAt: Date;
+    }>[],
+    actor: InventoryActorContext,
+  ): Promise<readonly StockReservationRecord[]>;
+  markReservationsReleased(
+    transaction: TransactionContext,
+    reservations: readonly Readonly<{
+      id: string;
+      status: 'RELEASED' | 'EXPIRED';
+      releasedAt: Date;
+      releaseReason: string;
+    }>[],
+    actor: InventoryActorContext,
+  ): Promise<void>;
+  markReservationsConsumed(
+    transaction: TransactionContext,
+    reservations: readonly Readonly<{
+      id: string;
+      orderId: string;
+      consumedAt: Date;
+    }>[],
+    actor: InventoryActorContext,
+  ): Promise<void>;
+  extendReservations(
+    transaction: TransactionContext,
+    reservations: readonly Readonly<{ id: string; expiresAt: Date }>[],
+    actor: InventoryActorContext,
+  ): Promise<void>;
+  applyReservationAccounting(
+    transaction: TransactionContext,
+    changes: readonly ReservationAccountingChange[],
+    actor: InventoryActorContext,
+  ): Promise<readonly InventoryItemRecord[]>;
   appendAudit(
     transaction: TransactionContext,
     actor: InventoryActorContext,

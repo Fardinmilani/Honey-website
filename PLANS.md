@@ -1,7 +1,7 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 13 — Checkout & Orders (**CURRENT but NOT STARTED**)
+**Current phase:** Phase 13 — Checkout, Reservations & Orders (**CURRENT but NOT STARTED**)
 **Completed phase:** Phase 12 — Cart & Pricing (**complete 2026-09-12**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
@@ -74,7 +74,7 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 10 | Storefront Catalog | **Complete 2026-08-09** — listing, filtering, PDP, SEO, structured data, sitemaps |
 | 11 | Sourcing, Procurement & Inventory | **Complete 2026-08-10** — suppliers, purchase orders, batches, stock ledger, public bands |
 | 12 | Cart & Pricing | **Complete 2026-09-12** — server-authoritative pricing and private repriced carts |
-| 13 | Checkout & Orders | **CURRENT but NOT STARTED** — reservations, checkout transaction, immutable order snapshots |
+| 13 | Checkout, Reservations & Orders | **CURRENT but NOT STARTED** — reservations, checkout transaction, immutable order snapshots |
 | 14 | Payments | Provider abstraction, first provider, server-verified outcomes, reconciliation |
 | 15 | Shipping & Fulfilment | Provider abstraction, rates, shipments, tracking |
 | 16 | Background Jobs | Worker composition root, queues, scheduling, retries, dead letters |
@@ -134,14 +134,21 @@ These block or shape later phases and need a human decision. Tracked in
    Shaparak IPG), and is an international provider needed at launch? *Blocks
    Phase 14.*
 2. **Currency and display** — IRR stored, Toman displayed? Any second currency
-   for the English storefront? *Shapes Phases 12–14.*
+   for the English storefront? *Shapes Phases 12–14; it does not change the
+   Phase 13 server-side currency invariant.*
 3. **Shipping carriers** — flat-rate and manual only at launch, or an integrated
-   carrier from day one? *Blocks Phase 15.*
-4. **Tax/VAT** — is VAT applicable, at what rate, and is it price-inclusive?
-   *Shapes Phase 12.*
-5. **Guest checkout** — allowed, or account required? *Shapes Phase 13.*
-6. **Legal entity and invoicing** — invoice format, numbering, and any statutory
-   fields required. *Shapes Phase 13.*
+   carrier from day one? *Blocks Phase 15.* Phase 13 has only the minimal,
+   checkout-owned `STANDARD` quote seam in [ADR-0038](docs/adr/0038-phase13-minimal-shipping-quote-boundary.md).
+4. **Tax/VAT** — final production VAT applicability, rate, and inclusive/exclusive
+   policy. *Does not block Phase 13:* confirmation uses the existing `TaxRate`
+   engine for an authoritative destination, accepts an explicitly configured
+   zero rate, and otherwise fails closed.
+5. **Guest checkout** — **resolved 2026-09-12:** guests may complete checkout
+   without an account through server-derived anonymous ownership and opaque,
+   high-entropy guest access. No fake user or account is created.
+6. **Legal entity and invoicing** — invoice format and statutory fields remain
+   open. Phase 13's `HNY-YYYY-######` reference is unique and concurrency-safe,
+   but is explicitly not a statutory invoice number.
 7. **Reviews** — are customer reviews in scope for launch? *Shapes Phase 18.*
 8. **Production domain** — the domain name, and whether the canonical host is the
    apex or `www`. *No longer blocks Phase 10 implementation.* Canonical URLs are

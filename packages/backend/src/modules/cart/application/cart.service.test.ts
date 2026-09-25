@@ -16,6 +16,7 @@ import type {
   CartAddIdempotencyClaim,
   CartAddIdempotencyLookup,
   CartConfig,
+  CheckoutCartLineRecord,
   CartLineRecord,
   CartOwner,
   CartPricingPort,
@@ -158,6 +159,27 @@ class MemoryRepository implements CartRepository {
 
   async listLines(cartId: string): Promise<readonly CartLineRecord[]> {
     return [...this.lines.values()].filter((line) => line.cartId === cartId).sort(byLineId);
+  }
+
+  async listCheckoutLines(cartId: string): Promise<readonly CheckoutCartLineRecord[]> {
+    return (await this.listLines(cartId)).map((line) => ({
+      id: line.id,
+      cartId: line.cartId,
+      variantId: line.variantId,
+      quantity: line.quantity,
+      product: {
+        productId: line.product.productId,
+        sku: line.variantId,
+        netWeightGrams: line.product.netWeightGrams,
+        jarSizeLabelKey: 'jar',
+        packagingTypeKey: 'glass',
+        published: line.product.published,
+        categoryIds: line.product.categoryIds,
+        collectionIds: line.product.collectionIds,
+        productNames: [{ locale: 'en', name: line.product.productName }],
+        variantNames: [{ locale: 'en', name: line.product.variantName }],
+      },
+    }));
   }
 
   async getVariant(
