@@ -52,7 +52,10 @@ export class OrdersService {
   }
 
   listForUser(userIdInput: string, limit = 24): Promise<readonly CustomerOrder[]> {
-    return this.repository.listOrdersForUser(identifier(userIdInput, 'userId'), boundedLimit(limit));
+    return this.repository.listOrdersForUser(
+      identifier(userIdInput, 'userId'),
+      boundedLimit(limit),
+    );
   }
 
   findByCheckoutSession(
@@ -69,7 +72,13 @@ export class OrdersService {
     identifier(input.checkoutSessionId, 'checkoutSessionId');
     if (input.userId !== null) identifier(input.userId, 'userId');
     if (input.lines.length === 0) throw validation('lines', 'ORDER_LINES_REQUIRED');
-    if (input.subtotalMinor < 0n || input.discountTotalMinor < 0n || input.shippingTotalMinor < 0n || input.taxTotalMinor < 0n || input.grandTotalMinor < 0n) {
+    if (
+      input.subtotalMinor < 0n ||
+      input.discountTotalMinor < 0n ||
+      input.shippingTotalMinor < 0n ||
+      input.taxTotalMinor < 0n ||
+      input.grandTotalMinor < 0n
+    ) {
       throw validation('totals', 'ORDER_TOTAL_INVALID');
     }
     const lineTotal = input.lines.reduce((total, line) => total + line.lineTotalMinor, 0n);

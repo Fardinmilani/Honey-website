@@ -1,4 +1,9 @@
-import { invalidRequest, parseIdempotencyKey, parseStartCheckout, proxyCheckoutRequest } from './_proxy';
+import {
+  invalidRequest,
+  parseIdempotencyKey,
+  parseStartCheckout,
+  proxyCheckoutRequest,
+} from './_proxy';
 
 export async function POST(request: Request) {
   const body = await parseStartCheckout(request);

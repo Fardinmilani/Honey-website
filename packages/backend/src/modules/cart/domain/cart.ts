@@ -77,8 +77,8 @@ export type CheckoutCartLineRecord = Readonly<{
     published: boolean;
     categoryIds: readonly string[];
     collectionIds: readonly string[];
-    productNames: readonly Readonly<{ locale: string; name: string }> [];
-    variantNames: readonly Readonly<{ locale: string; name: string }> [];
+    productNames: readonly Readonly<{ locale: string; name: string }>[];
+    variantNames: readonly Readonly<{ locale: string; name: string }>[];
   }>;
 }>;
 

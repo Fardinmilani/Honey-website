@@ -161,7 +161,9 @@ export class PrismaPricingRepository implements PricingRepository {
     userId: string,
     transaction?: TransactionContext,
   ): Promise<number> {
-    return clientFor(this.#client, transaction).couponRedemption.count({ where: { couponId, userId } });
+    return clientFor(this.#client, transaction).couponRedemption.count({
+      where: { couponId, userId },
+    });
   }
 
   async listTaxRates(transaction?: TransactionContext): Promise<readonly TaxRateRecord[]> {

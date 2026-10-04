@@ -36,7 +36,8 @@ export const checkout = {
   confirmOrder: 'Create order',
   confirmingOrder: 'Creating order…',
   orderCreatedHeading: 'Your order has been created',
-  orderCreatedDescription: 'Your order is awaiting payment. We will not mark it paid until payment is verified.',
+  orderCreatedDescription:
+    'Your order is awaiting payment. We will not mark it paid until payment is verified.',
   viewOrder: 'View order',
   startOver: 'Return to cart',
   cartEmpty: 'Your cart has no items ready for checkout.',
@@ -44,7 +45,8 @@ export const checkout = {
   invalidForm: 'Complete the required contact and address details.',
   requestError: 'We could not complete that checkout step. Please try again.',
   rateLimitError: 'Please wait a moment before trying again.',
-  priceChanged: 'Prices or promotions changed. Review the updated order total before confirming again.',
+  priceChanged:
+    'Prices or promotions changed. Review the updated order total before confirming again.',
   reservationExpired: 'Your reservation expired. Return to the cart to begin checkout again.',
   unavailableItems: 'One or more items are no longer available. Return to the cart to update it.',
   checkoutExpired: 'This checkout is no longer active. Return to the cart to begin again.',

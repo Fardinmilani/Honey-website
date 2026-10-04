@@ -67,7 +67,8 @@ export class CheckoutModule {
           inventory: InventoryService,
           orders: OrdersService,
           transactions: TransactionRunner,
-        ) => new CheckoutService(repository, cart, pricing, inventory, orders, shipping, transactions),
+        ) =>
+          new CheckoutService(repository, cart, pricing, inventory, orders, shipping, transactions),
         inject: [CartService, PricingService, InventoryService, OrdersService, TRANSACTION_RUNNER],
       },
       {

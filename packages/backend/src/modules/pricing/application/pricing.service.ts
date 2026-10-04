@@ -207,12 +207,19 @@ export class PricingService {
     let coupon: CouponRecord | null = null;
     let couponEvaluation: CouponEvaluation | null = null;
     if (input.couponCode !== null) {
-      coupon = await this.repository.lockCoupon(normalizeCouponCode(input.couponCode), input.transaction);
+      coupon = await this.repository.lockCoupon(
+        normalizeCouponCode(input.couponCode),
+        input.transaction,
+      );
       if (coupon === null) throw new ConflictAppError({ code: 'CHECKOUT_COUPON_INVALID' });
       const redemptionCount =
         input.userId === null || coupon.usageLimitPerUser === null
           ? null
-          : await this.repository.countCouponRedemptions(coupon.id, input.userId, input.transaction);
+          : await this.repository.countCouponRedemptions(
+              coupon.id,
+              input.userId,
+              input.transaction,
+            );
       couponEvaluation = evaluateCoupon({
         coupon,
         currency: input.currency,

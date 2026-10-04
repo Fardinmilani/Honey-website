@@ -408,7 +408,8 @@ export class CartService {
       throw new ConflictAppError({ code: 'CHECKOUT_CART_EXPIRED' });
     }
     const lines = await this.repository.listCheckoutLines(cart.id, transaction);
-    if (lines.length === 0) throw new ValidationAppError([{ path: 'cart', code: 'CHECKOUT_CART_EMPTY' }]);
+    if (lines.length === 0)
+      throw new ValidationAppError([{ path: 'cart', code: 'CHECKOUT_CART_EMPTY' }]);
     return { cart, lines };
   }
 

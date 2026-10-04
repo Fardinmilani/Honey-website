@@ -7,13 +7,19 @@ import {
   ValidationAppError,
 } from '../../../errors/index.js';
 import type { JsonValue } from '../../../errors/index.js';
-import type { TransactionContext, TransactionRunner } from '../../../platform/domain/transaction.js';
+import type {
+  TransactionContext,
+  TransactionRunner,
+} from '../../../platform/domain/transaction.js';
 import type { CartService, CartRequestContext, CheckoutCartLineRecord } from '../../cart/index.js';
 import type { InventoryService, InventoryActorContext } from '../../inventory/index.js';
 import type { OrdersService } from '../../orders/index.js';
 import type { PricingService, CheckoutPricingResult } from '../../pricing/index.js';
 import type { CheckoutShippingQuotePort } from '../shipping/domain/checkout-shipping-quote.port.js';
-import type { StandardShippingCharge, StandardShippingQuote } from '../shipping/domain/standard-shipping-quote.js';
+import type {
+  StandardShippingCharge,
+  StandardShippingQuote,
+} from '../shipping/domain/standard-shipping-quote.js';
 import type {
   CheckoutAddress,
   CheckoutAddressInput,
@@ -69,7 +75,12 @@ export type CheckoutProjection = Readonly<{
 }>;
 
 export type CheckoutConfirmationResult =
-  | Readonly<{ state: 'CONFIRMED'; checkout: CheckoutProjection; orderNumber: string; replayed: boolean }>
+  | Readonly<{
+      state: 'CONFIRMED';
+      checkout: CheckoutProjection;
+      orderNumber: string;
+      replayed: boolean;
+    }>
   | Readonly<{ state: 'PRICE_CHANGED'; checkout: CheckoutProjection }>;
 
 type NormalizedContext = Readonly<{
@@ -115,14 +126,19 @@ function boundedText(value: string, path: string, maximum: number): string {
   return normalized;
 }
 
-function optionalText(value: string | null | undefined, path: string, maximum: number): string | null {
+function optionalText(
+  value: string | null | undefined,
+  path: string,
+  maximum: number,
+): string | null {
   if (value === null || value === undefined) return null;
   return boundedText(value, path, maximum);
 }
 
 function normalizedAddress(input: CheckoutAddressInput): CheckoutAddressInput {
   const country = boundedText(input.country, 'shippingAddress.country', 2).toUpperCase();
-  if (!/^[A-Z]{2}$/u.test(country)) throw validation('shippingAddress.country', 'CHECKOUT_COUNTRY_INVALID');
+  if (!/^[A-Z]{2}$/u.test(country))
+    throw validation('shippingAddress.country', 'CHECKOUT_COUNTRY_INVALID');
   return {
     fullName: boundedText(input.fullName, 'shippingAddress.fullName', 160),
     phone: boundedText(input.phone, 'shippingAddress.phone', 64),
@@ -176,9 +192,7 @@ function inventoryActor(context: NormalizedContext): InventoryActorContext {
   };
 }
 
-function isJsonObject(
-  value: JsonValue | undefined,
-): value is { [key: string]: JsonValue } {
+function isJsonObject(value: JsonValue | undefined): value is { [key: string]: JsonValue } {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
@@ -205,7 +219,8 @@ function pricingFromSnapshot(value: JsonValue | null): {
   const fingerprint = jsonString(value['fingerprint']);
   const pricingValue = value['pricing'];
   const shippingValue = value['shipping'];
-  if (fingerprint === null || !isJsonObject(pricingValue) || !isJsonObject(shippingValue)) return null;
+  if (fingerprint === null || !isJsonObject(pricingValue) || !isJsonObject(shippingValue))
+    return null;
   const currency = jsonString(pricingValue['currency']);
   const subtotal = moneyFromJson(pricingValue['subtotal']);
   const discount = moneyFromJson(pricingValue['discount']);
@@ -293,9 +308,12 @@ function distributeTax(
     return { id: line.id, remainder: numerator % totalWeight };
   });
   let undistributed = totalMinor - [...result.values()].reduce((sum, amount) => sum + amount, 0n);
-  for (const remainder of [...remainders].sort(
-    (left, right) =>
-      (left.remainder === right.remainder ? left.id.localeCompare(right.id) : right.remainder > left.remainder ? 1 : -1),
+  for (const remainder of [...remainders].sort((left, right) =>
+    left.remainder === right.remainder
+      ? left.id.localeCompare(right.id)
+      : right.remainder > left.remainder
+        ? 1
+        : -1,
   )) {
     if (undistributed === 0n) break;
     const current = result.get(remainder.id);
@@ -359,12 +377,22 @@ export class CheckoutService {
           },
           transaction,
         );
-        const priced = await this.#price(lockedCart.lines, lockedCart.cart, session, context, transaction, now);
+        const priced = await this.#price(
+          lockedCart.lines,
+          lockedCart.cart,
+          session,
+          context,
+          transaction,
+          now,
+        );
         const reservation = await this.inventory.acquireReservations(
           {
             checkoutSessionId: session.id,
             cartId: lockedCart.cart.id,
-            lines: lockedCart.lines.map((line) => ({ variantId: line.variantId, quantity: line.quantity })),
+            lines: lockedCart.lines.map((line) => ({
+              variantId: line.variantId,
+              quantity: line.quantity,
+            })),
             actor: inventoryActor(context),
             now,
           },
@@ -404,11 +432,18 @@ export class CheckoutService {
     }
   }
 
-  async get(contextInput: CheckoutRequestContext, checkoutIdInput: string): Promise<CheckoutProjection> {
+  async get(
+    contextInput: CheckoutRequestContext,
+    checkoutIdInput: string,
+  ): Promise<CheckoutProjection> {
     const context = this.#context(contextInput);
     const checkoutId = uuid(checkoutIdInput, 'checkoutId');
     const session = await this.transactions.run(async (transaction) => {
-      const locked = await this.repository.lockOwnedSession(checkoutId, ownerFor(context), transaction);
+      const locked = await this.repository.lockOwnedSession(
+        checkoutId,
+        ownerFor(context),
+        transaction,
+      );
       if (locked === null) throw new NotFoundAppError();
       if (
         locked.status === 'OPEN' &&
@@ -424,7 +459,11 @@ export class CheckoutService {
           transaction,
         );
         await this.repository.markExpired(locked.id, context.userId, transaction);
-        const expired = await this.repository.lockOwnedSession(checkoutId, ownerFor(context), transaction);
+        const expired = await this.repository.lockOwnedSession(
+          checkoutId,
+          ownerFor(context),
+          transaction,
+        );
         if (expired === null) throw new NotFoundAppError();
         return expired;
       }
@@ -445,7 +484,10 @@ export class CheckoutService {
    * successful extension — the browser's countdown is advisory only; the
    * stored `reservationExpiresAt` the server returns is authoritative.
    */
-  async extend(contextInput: CheckoutRequestContext, checkoutIdInput: string): Promise<CheckoutProjection> {
+  async extend(
+    contextInput: CheckoutRequestContext,
+    checkoutIdInput: string,
+  ): Promise<CheckoutProjection> {
     const context = this.#context(contextInput);
     const checkoutId = uuid(checkoutIdInput, 'checkoutId');
     // Every branch below returns a value instead of throwing, so that any
@@ -463,7 +505,11 @@ export class CheckoutService {
       const now = new Date();
       if (locked.reservationExpiresAt.getTime() <= now.getTime()) {
         await this.inventory.releaseReservations(
-          { checkoutSessionId: locked.id, reason: 'checkout_expired', actor: inventoryActor(context) },
+          {
+            checkoutSessionId: locked.id,
+            reason: 'checkout_expired',
+            actor: inventoryActor(context),
+          },
           transaction,
         );
         await this.repository.markExpired(locked.id, context.userId, transaction);
@@ -525,9 +571,17 @@ export class CheckoutService {
       );
       if (claim !== null) {
         if (claim.completedOrderNumber !== null) {
-          return { state: 'CONFIRMED' as const, session, orderNumber: claim.completedOrderNumber, replayed: true };
+          return {
+            state: 'CONFIRMED' as const,
+            session,
+            orderNumber: claim.completedOrderNumber,
+            replayed: true,
+          };
         }
-        if (claim.requestHash !== createHash('sha256').update(`${session.id}:confirm`, 'utf8').digest('hex')) {
+        if (
+          claim.requestHash !==
+          createHash('sha256').update(`${session.id}:confirm`, 'utf8').digest('hex')
+        ) {
           throw validation('idempotencyKey', 'IDEMPOTENCY_KEY_REUSE');
         }
         throw new ConflictAppError({ code: 'IDEMPOTENCY_KEY_IN_PROGRESS' });
@@ -538,16 +592,33 @@ export class CheckoutService {
           { key, scope, orderNumber: existingOrder.number },
           transaction,
         );
-        return { state: 'CONFIRMED' as const, session, orderNumber: existingOrder.number, replayed: true };
+        return {
+          state: 'CONFIRMED' as const,
+          session,
+          orderNumber: existingOrder.number,
+          replayed: true,
+        };
       }
-      if (session.status !== 'OPEN') throw new ConflictAppError({ code: 'CHECKOUT_NOT_CONFIRMABLE' });
-      if (session.reservationExpiresAt === null || session.reservationExpiresAt.getTime() <= Date.now()) {
+      if (session.status !== 'OPEN')
+        throw new ConflictAppError({ code: 'CHECKOUT_NOT_CONFIRMABLE' });
+      if (
+        session.reservationExpiresAt === null ||
+        session.reservationExpiresAt.getTime() <= Date.now()
+      ) {
         throw new ConflictAppError({ code: 'RESERVATION_EXPIRED' });
       }
       const lockedCart = await this.cart.lockCheckoutCart(context, transaction);
-      if (lockedCart.cart.id !== session.cartId) throw new ConflictAppError({ code: 'CHECKOUT_CART_CHANGED' });
+      if (lockedCart.cart.id !== session.cartId)
+        throw new ConflictAppError({ code: 'CHECKOUT_CART_CHANGED' });
       const now = new Date();
-      const priced = await this.#price(lockedCart.lines, lockedCart.cart, session, context, transaction, now);
+      const priced = await this.#price(
+        lockedCart.lines,
+        lockedCart.cart,
+        session,
+        context,
+        transaction,
+        now,
+      );
       const requoted = await this.shipping.revalidateForConfirmation({
         checkoutSessionId: session.id,
         checkoutCurrency: lockedCart.cart.currency,
@@ -556,7 +627,12 @@ export class CheckoutService {
         freeShippingApplies: this.#freeShipping(priced),
         transaction,
       });
-      const snapshot = this.#snapshot(priced, requoted.quote, requoted.charge, this.#initiationHash(session));
+      const snapshot = this.#snapshot(
+        priced,
+        requoted.quote,
+        requoted.charge,
+        this.#initiationHash(session),
+      );
       const previous = pricingFromSnapshot(session.pricingSnapshot);
       if (previous === null || previous.fingerprint !== snapshot.fingerprint) {
         const updated = await this.repository.updatePricingSnapshot(
@@ -573,7 +649,10 @@ export class CheckoutService {
       await this.inventory.assertActiveReservations(
         {
           checkoutSessionId: session.id,
-          lines: lockedCart.lines.map((line) => ({ variantId: line.variantId, quantity: line.quantity })),
+          lines: lockedCart.lines.map((line) => ({
+            variantId: line.variantId,
+            quantity: line.quantity,
+          })),
           actor: inventoryActor(context),
           now,
         },
@@ -684,10 +763,18 @@ export class CheckoutService {
       );
       await this.cart.convertCheckoutCart(context, lockedCart.cart.id, transaction);
       await this.repository.markAwaitingPayment(session.id, context.userId, now, transaction);
-      await this.repository.completeConfirmationIdempotency({ key, scope, orderNumber: order.number }, transaction);
+      await this.repository.completeConfirmationIdempotency(
+        { key, scope, orderNumber: order.number },
+        transaction,
+      );
       const completed = await this.repository.lockOwnedSession(session.id, owner, transaction);
       if (completed === null) throw new NotFoundAppError();
-      return { state: 'CONFIRMED' as const, session: completed, orderNumber: order.number, replayed: false };
+      return {
+        state: 'CONFIRMED' as const,
+        session: completed,
+        orderNumber: order.number,
+        replayed: false,
+      };
     });
     return outcome.state === 'PRICE_CHANGED'
       ? { state: 'PRICE_CHANGED', checkout: this.#projection(outcome.session) }
@@ -735,7 +822,10 @@ export class CheckoutService {
   }
 
   #freeShipping(priced: CheckoutPricingResult): boolean {
-    return priced.couponEvaluation?.eligible === true && priced.couponEvaluation.effect.shippingEffect === 'DEFERRED';
+    return (
+      priced.couponEvaluation?.eligible === true &&
+      priced.couponEvaluation.effect.shippingEffect === 'DEFERRED'
+    );
   }
 
   #snapshot(
@@ -744,12 +834,12 @@ export class CheckoutService {
     charge: StandardShippingCharge,
     initiationRequestHash: string,
   ): SnapshotBuild {
-    if (priced.tax.state !== 'RESOLVED') throw new Error('Resolved tax is required for a checkout snapshot.');
+    if (priced.tax.state !== 'RESOLVED')
+      throw new Error('Resolved tax is required for a checkout snapshot.');
     const taxTotalMinor = priced.tax.taxAmountMinor;
-    const grandTotalMinor =
-      priced.tax.rate.isInclusive
-        ? priced.merchandiseTotalMinor + charge.totalMinor
-        : priced.merchandiseTotalMinor + charge.totalMinor + taxTotalMinor;
+    const grandTotalMinor = priced.tax.rate.isInclusive
+      ? priced.merchandiseTotalMinor + charge.totalMinor
+      : priced.merchandiseTotalMinor + charge.totalMinor + taxTotalMinor;
     const projection: CheckoutPricingProjection = {
       currency: priced.currency,
       subtotal: serializeMoney(priced.subtotalMinor, priced.currency),
@@ -844,7 +934,8 @@ export class CheckoutService {
   #context(input: CheckoutRequestContext): NormalizedContext {
     const userId = input.userId === null ? null : uuid(input.userId, 'userId');
     const anonymousId = input.anonymousId === null ? null : uuid(input.anonymousId, 'anonymousId');
-    if (userId === null && anonymousId === null) throw validation('checkout', 'CHECKOUT_OWNER_REQUIRED');
+    if (userId === null && anonymousId === null)
+      throw validation('checkout', 'CHECKOUT_OWNER_REQUIRED');
     return {
       userId,
       anonymousId,

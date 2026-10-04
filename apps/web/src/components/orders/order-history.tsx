@@ -1,6 +1,12 @@
 'use client';
 
-import { createTranslator, formatDate, formatMinorMoney, localizedHref, type Locale } from '@honey/i18n';
+import {
+  createTranslator,
+  formatDate,
+  formatMinorMoney,
+  localizedHref,
+  type Locale,
+} from '@honey/i18n';
 import NextLink from 'next/link';
 import { useEffect, useState } from 'react';
 

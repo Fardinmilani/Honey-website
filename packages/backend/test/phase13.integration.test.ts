@@ -7,13 +7,19 @@ import { createPrismaClient, type PrismaClient } from '@honey/db';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { CartService, type CartRequestContext } from '../src/modules/cart/application/cart.service.js';
+import {
+  CartService,
+  type CartRequestContext,
+} from '../src/modules/cart/application/cart.service.js';
 import { InventoryCartAvailabilityAdapter } from '../src/modules/cart/infrastructure/inventory-cart-availability.adapter.js';
 import { PricingCartAdapter } from '../src/modules/cart/infrastructure/pricing-cart.adapter.js';
 import { PrismaCartRepository } from '../src/modules/cart/infrastructure/prisma-cart.repository.js';
 import type { CheckoutRequestContext } from '../src/modules/checkout/application/checkout.service.js';
 import { CheckoutService } from '../src/modules/checkout/application/checkout.service.js';
-import type { StartCheckoutInput, CheckoutAddressInput } from '../src/modules/checkout/domain/checkout.js';
+import type {
+  StartCheckoutInput,
+  CheckoutAddressInput,
+} from '../src/modules/checkout/domain/checkout.js';
 import { PrismaCheckoutRepository } from '../src/modules/checkout/infrastructure/prisma-checkout.repository.js';
 import { StandardShippingQuoteService } from '../src/modules/checkout/shipping/application/standard-shipping-quote.service.js';
 import { PrismaCheckoutShippingQuoteRepository } from '../src/modules/checkout/shipping/infrastructure/prisma-checkout-shipping-quote.repository.js';
@@ -78,7 +84,9 @@ function startInput(overrides: Partial<StartCheckoutInput> = {}): StartCheckoutI
   };
 }
 
-function staffPrincipal(permissions: readonly ('inventory:read' | 'inventory:adjust')[]): AuthenticatedPrincipal {
+function staffPrincipal(
+  permissions: readonly ('inventory:read' | 'inventory:adjust')[],
+): AuthenticatedPrincipal {
   return { userId: randomUUID(), sessionId: randomUUID(), kind: 'STAFF', permissions };
 }
 
@@ -93,7 +101,10 @@ async function createTemporaryDatabase(): Promise<TemporaryDatabase> {
   admin.pathname = '/postgres';
   const target = new URL(base);
   target.pathname = `/${databaseName}`;
-  const client = new Client({ connectionString: admin.toString(), connectionTimeoutMillis: 10_000 });
+  const client = new Client({
+    connectionString: admin.toString(),
+    connectionTimeoutMillis: 10_000,
+  });
   await client.connect();
   try {
     await client.query(`CREATE DATABASE "${databaseName}" TEMPLATE template0`);
@@ -107,12 +118,20 @@ async function migrate(databaseUrl: string): Promise<void> {
   await execFileAsync(
     process.execPath,
     [prismaCli, 'migrate', 'deploy', '--config', 'prisma.config.ts'],
-    { cwd: dbDirectory, env: { ...process.env, DATABASE_URL: databaseUrl }, windowsHide: true, timeout: 120_000 },
+    {
+      cwd: dbDirectory,
+      env: { ...process.env, DATABASE_URL: databaseUrl },
+      windowsHide: true,
+      timeout: 120_000,
+    },
   );
 }
 
 async function dropTemporaryDatabase(database: TemporaryDatabase): Promise<void> {
-  const client = new Client({ connectionString: database.adminUrl, connectionTimeoutMillis: 10_000 });
+  const client = new Client({
+    connectionString: database.adminUrl,
+    connectionTimeoutMillis: 10_000,
+  });
   await client.connect();
   try {
     await client.query(`DROP DATABASE "${database.databaseName}" WITH (FORCE)`);
@@ -148,7 +167,13 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
   async function seedVariant(onHand: number, secondOnHand = 0): Promise<string> {
     const productId = randomUUID();
     await prisma.product.create({
-      data: { id: productId, sku: `PHASE13-P-${randomUUID()}`, sourcingType: 'OWN_PRODUCTION', status: 'PUBLISHED', publishedAt: new Date() },
+      data: {
+        id: productId,
+        sku: `PHASE13-P-${randomUUID()}`,
+        sourcingType: 'OWN_PRODUCTION',
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+      },
     });
     const variantId = randomUUID();
     await prisma.productVariant.create({
@@ -166,19 +191,46 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       },
     });
     await prisma.productTranslation.create({
-      data: { id: randomUUID(), productId, locale: 'en', name: 'Phase thirteen honey', slug: `phase-13-${randomUUID()}` },
+      data: {
+        id: randomUUID(),
+        productId,
+        locale: 'en',
+        name: 'Phase thirteen honey',
+        slug: `phase-13-${randomUUID()}`,
+      },
     });
     await prisma.variantTranslation.create({
       data: { id: randomUUID(), variantId, locale: 'en', name: '450 g jar' },
     });
     await prisma.inventoryItem.create({
-      data: { id: randomUUID(), variantId, stockLocationId: defaultLocationId, onHand, reserved: 0, allocated: 0 },
+      data: {
+        id: randomUUID(),
+        variantId,
+        stockLocationId: defaultLocationId,
+        onHand,
+        reserved: 0,
+        allocated: 0,
+      },
     });
     await prisma.inventoryItem.create({
-      data: { id: randomUUID(), variantId, stockLocationId: secondLocationId, onHand: secondOnHand, reserved: 0, allocated: 0 },
+      data: {
+        id: randomUUID(),
+        variantId,
+        stockLocationId: secondLocationId,
+        onHand: secondOnHand,
+        reserved: 0,
+        allocated: 0,
+      },
     });
     await prisma.variantPrice.create({
-      data: { id: randomUUID(), variantId, currency: 'IRR', amountMinor: 1_000n, validFrom: new Date(Date.now() - 60 * 60 * 1000), validTo: null },
+      data: {
+        id: randomUUID(),
+        variantId,
+        currency: 'IRR',
+        amountMinor: 1_000n,
+        validFrom: new Date(Date.now() - 60 * 60 * 1000),
+        validTo: null,
+      },
     });
     return variantId;
   }
@@ -212,7 +264,11 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
     inputOverrides: Partial<StartCheckoutInput> = {},
   ): ReturnType<CheckoutService['start']> {
     await cart.addLine(cartContext(anonymousId), { variantId, quantity });
-    return checkout.start(checkoutContext(anonymousId), startInput(inputOverrides), `start-${randomUUID()}`);
+    return checkout.start(
+      checkoutContext(anonymousId),
+      startInput(inputOverrides),
+      `start-${randomUUID()}`,
+    );
   }
 
   beforeAll(async () => {
@@ -242,18 +298,49 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       amountMinor: 5_00n,
       currency: 'IRR',
     });
-    checkout = new CheckoutService(checkoutRepository, cart, pricing, inventory, orders, shipping, platform);
+    checkout = new CheckoutService(
+      checkoutRepository,
+      cart,
+      pricing,
+      inventory,
+      orders,
+      shipping,
+      platform,
+    );
 
     defaultLocationId = randomUUID();
     secondLocationId = randomUUID();
     await prisma.stockLocation.create({
-      data: { id: defaultLocationId, code: 'PHASE13-WH-A', name: 'Phase 13 warehouse A', type: 'WAREHOUSE', isSellable: true, isDefault: true },
+      data: {
+        id: defaultLocationId,
+        code: 'PHASE13-WH-A',
+        name: 'Phase 13 warehouse A',
+        type: 'WAREHOUSE',
+        isSellable: true,
+        isDefault: true,
+      },
     });
     await prisma.stockLocation.create({
-      data: { id: secondLocationId, code: 'PHASE13-WH-B', name: 'Phase 13 warehouse B', type: 'WAREHOUSE', isSellable: true, isDefault: false },
+      data: {
+        id: secondLocationId,
+        code: 'PHASE13-WH-B',
+        name: 'Phase 13 warehouse B',
+        type: 'WAREHOUSE',
+        isSellable: true,
+        isDefault: false,
+      },
     });
     await prisma.taxRate.create({
-      data: { id: randomUUID(), code: 'PHASE13-US', name: 'Phase 13 US rate', rateBps: 900, country: 'US', region: null, isInclusive: false, isActive: true },
+      data: {
+        id: randomUUID(),
+        code: 'PHASE13-US',
+        name: 'Phase 13 US rate',
+        rateBps: 900,
+        country: 'US',
+        region: null,
+        isInclusive: false,
+        isActive: true,
+      },
     });
   }, 120_000);
 
@@ -276,7 +363,10 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const before = await prisma.checkoutSession.count();
       await expect(
         checkout.start(checkoutContext(anonymousId), startInput(), `start-${randomUUID()}`),
-      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', errors: [{ path: 'cart', code: 'CHECKOUT_CART_EMPTY' }] });
+      ).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+        errors: [{ path: 'cart', code: 'CHECKOUT_CART_EMPTY' }],
+      });
       expect(await prisma.checkoutSession.count()).toBe(before);
     });
 
@@ -307,7 +397,9 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const deltaMs = expiresAt.getTime() - started.getTime();
       expect(deltaMs).toBeGreaterThan(14 * 60 * 1000);
       expect(deltaMs).toBeLessThanOrEqual(15 * 60 * 1000 + 5_000);
-      const reservation = await prisma.stockReservation.findFirstOrThrow({ where: { variantId, checkoutSessionId: projection.id } });
+      const reservation = await prisma.stockReservation.findFirstOrThrow({
+        where: { variantId, checkoutSessionId: projection.id },
+      });
       expect(reservation.status).toBe('ACTIVE');
       expect(reservation.expiresAt.getTime()).toBe(expiresAt.getTime());
     });
@@ -316,12 +408,16 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const variantId = await seedVariant(100, 0);
       const anonymousId = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, anonymousId, 1);
-      const reservationBefore = await prisma.stockReservation.findFirstOrThrow({ where: { checkoutSessionId: initial.id } });
+      const reservationBefore = await prisma.stockReservation.findFirstOrThrow({
+        where: { checkoutSessionId: initial.id },
+      });
       const createdAt = reservationBefore.createdAt;
 
       const extendedOnce = await checkout.extend(checkoutContext(anonymousId), initial.id);
       const firstExpiry = new Date(extendedOnce.reservationExpiresAt as string);
-      expect(firstExpiry.getTime()).toBeGreaterThan(new Date(initial.reservationExpiresAt as string).getTime());
+      expect(firstExpiry.getTime()).toBeGreaterThan(
+        new Date(initial.reservationExpiresAt as string).getTime(),
+      );
       expect(firstExpiry.getTime()).toBe(createdAt.getTime() + 30 * 60 * 1000);
 
       const extendedTwice = await checkout.extend(checkoutContext(anonymousId), initial.id);
@@ -336,33 +432,51 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const anonymousId = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, anonymousId, 1);
       const past = new Date(Date.now() - 60 * 1000);
-      await prisma.checkoutSession.update({ where: { id: initial.id }, data: { reservationExpiresAt: past } });
-      await prisma.stockReservation.updateMany({ where: { checkoutSessionId: initial.id }, data: { expiresAt: past } });
-
-      await expect(checkout.extend(checkoutContext(anonymousId), initial.id)).rejects.toMatchObject({
-        code: 'RESERVATION_EXPIRED',
+      await prisma.checkoutSession.update({
+        where: { id: initial.id },
+        data: { reservationExpiresAt: past },
       });
+      await prisma.stockReservation.updateMany({
+        where: { checkoutSessionId: initial.id },
+        data: { expiresAt: past },
+      });
+
+      await expect(checkout.extend(checkoutContext(anonymousId), initial.id)).rejects.toMatchObject(
+        {
+          code: 'RESERVATION_EXPIRED',
+        },
+      );
       const session = await prisma.checkoutSession.findUniqueOrThrow({ where: { id: initial.id } });
       expect(session.status).toBe('EXPIRED');
-      const reservations = await prisma.stockReservation.findMany({ where: { checkoutSessionId: initial.id } });
+      const reservations = await prisma.stockReservation.findMany({
+        where: { checkoutSessionId: initial.id },
+      });
       expect(reservations.every((row) => row.status === 'EXPIRED')).toBe(true);
 
       // Calling extend again must not revive it.
-      await expect(checkout.extend(checkoutContext(anonymousId), initial.id)).rejects.toMatchObject({
-        code: 'CHECKOUT_NOT_EXTENDABLE',
-      });
+      await expect(checkout.extend(checkoutContext(anonymousId), initial.id)).rejects.toMatchObject(
+        {
+          code: 'CHECKOUT_NOT_EXTENDABLE',
+        },
+      );
     });
 
     it('does not extend a reservation that was already consumed by a completed order', async () => {
       const variantId = await seedVariant(100, 0);
       const anonymousId = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, anonymousId, 1);
-      const confirmed = await checkout.confirm(checkoutContext(anonymousId), initial.id, `confirm-${randomUUID()}`);
+      const confirmed = await checkout.confirm(
+        checkoutContext(anonymousId),
+        initial.id,
+        `confirm-${randomUUID()}`,
+      );
       expect(confirmed.state).toBe('CONFIRMED');
 
-      await expect(checkout.extend(checkoutContext(anonymousId), initial.id)).rejects.toMatchObject({
-        code: 'CHECKOUT_NOT_EXTENDABLE',
-      });
+      await expect(checkout.extend(checkoutContext(anonymousId), initial.id)).rejects.toMatchObject(
+        {
+          code: 'CHECKOUT_NOT_EXTENDABLE',
+        },
+      );
     });
 
     it('does not extend a reservation that was already released, at the inventory boundary directly', async () => {
@@ -373,10 +487,17 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
 
       // Simulate a subsystem (e.g. a future cancellation flow) releasing the
       // reservation directly at the inventory boundary, bypassing checkout.
-      const releaseResult = await inventory.releaseReservations({ checkoutSessionId: initial.id, reason: 'test_release', actor });
+      const releaseResult = await inventory.releaseReservations({
+        checkoutSessionId: initial.id,
+        reason: 'test_release',
+        actor,
+      });
       expect(releaseResult.released).toBe(1);
 
-      const extension = await inventory.extendReservationsOnce({ checkoutSessionId: initial.id, actor });
+      const extension = await inventory.extendReservationsOnce({
+        checkoutSessionId: initial.id,
+        actor,
+      });
       expect(extension).toEqual({ expiresAt: null, extended: false });
     });
 
@@ -387,7 +508,9 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const before = await prisma.inventoryItem.findUniqueOrThrow({
         where: { variantId_stockLocationId: { variantId, stockLocationId: defaultLocationId } },
       });
-      const reservationsBefore = await prisma.stockReservation.findMany({ where: { checkoutSessionId: initial.id } });
+      const reservationsBefore = await prisma.stockReservation.findMany({
+        where: { checkoutSessionId: initial.id },
+      });
       const ledgerCountBefore = await prisma.stockLedgerEntry.count({ where: { variantId } });
 
       await checkout.extend(checkoutContext(anonymousId), initial.id);
@@ -395,9 +518,16 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const after = await prisma.inventoryItem.findUniqueOrThrow({
         where: { variantId_stockLocationId: { variantId, stockLocationId: defaultLocationId } },
       });
-      expect(after).toMatchObject({ onHand: before.onHand, reserved: before.reserved, allocated: before.allocated, version: before.version });
+      expect(after).toMatchObject({
+        onHand: before.onHand,
+        reserved: before.reserved,
+        allocated: before.allocated,
+        version: before.version,
+      });
       expect(await prisma.stockLedgerEntry.count({ where: { variantId } })).toBe(ledgerCountBefore);
-      const reservationsAfter = await prisma.stockReservation.findMany({ where: { checkoutSessionId: initial.id } });
+      const reservationsAfter = await prisma.stockReservation.findMany({
+        where: { checkoutSessionId: initial.id },
+      });
       expect(reservationsAfter).toHaveLength(reservationsBefore.length);
       for (const row of reservationsAfter) {
         const previous = reservationsBefore.find((candidate) => candidate.id === row.id);
@@ -420,7 +550,9 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
         lines: [{ variantId, quantity: 4 }],
         actor,
       });
-      const byLocation = new Map(result.allocations.map((allocation) => [allocation.stockLocationId, allocation.quantity]));
+      const byLocation = new Map(
+        result.allocations.map((allocation) => [allocation.stockLocationId, allocation.quantity]),
+      );
       expect(byLocation.get(defaultLocationId)).toBe(2);
       expect(byLocation.get(secondLocationId)).toBe(2);
     });
@@ -430,7 +562,12 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const checkoutSessionId = await seedBareCheckoutSession();
       const actor = { actorUserId: null, metadata: { requestId: randomUUID() } };
       await expect(
-        inventory.acquireReservations({ checkoutSessionId, cartId: null, lines: [{ variantId, quantity: 2 }], actor }),
+        inventory.acquireReservations({
+          checkoutSessionId,
+          cartId: null,
+          lines: [{ variantId, quantity: 2 }],
+          actor,
+        }),
       ).rejects.toMatchObject({ code: 'INSUFFICIENT_STOCK' });
       expect(await prisma.stockReservation.count({ where: { checkoutSessionId } })).toBe(0);
       const item = await prisma.inventoryItem.findUniqueOrThrow({
@@ -444,10 +581,22 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const variantId = await seedVariant(10, 0);
       const checkoutSessionId = await seedBareCheckoutSession();
       const actor = { actorUserId: null, metadata: { requestId: randomUUID() } };
-      const first = await inventory.acquireReservations({ checkoutSessionId, cartId: null, lines: [{ variantId, quantity: 3 }], actor });
-      const second = await inventory.acquireReservations({ checkoutSessionId, cartId: null, lines: [{ variantId, quantity: 3 }], actor });
+      const first = await inventory.acquireReservations({
+        checkoutSessionId,
+        cartId: null,
+        lines: [{ variantId, quantity: 3 }],
+        actor,
+      });
+      const second = await inventory.acquireReservations({
+        checkoutSessionId,
+        cartId: null,
+        lines: [{ variantId, quantity: 3 }],
+        actor,
+      });
       expect(second.replayed).toBe(true);
-      expect(await prisma.stockReservation.count({ where: { checkoutSessionId } })).toBe(first.allocations.length);
+      expect(await prisma.stockReservation.count({ where: { checkoutSessionId } })).toBe(
+        first.allocations.length,
+      );
       const item = await prisma.inventoryItem.findUniqueOrThrow({
         where: { variantId_stockLocationId: { variantId, stockLocationId: defaultLocationId } },
       });
@@ -458,9 +607,22 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const variantId = await seedVariant(10, 0);
       const checkoutSessionId = await seedBareCheckoutSession();
       const actor = { actorUserId: null, metadata: { requestId: randomUUID() } };
-      await inventory.acquireReservations({ checkoutSessionId, cartId: null, lines: [{ variantId, quantity: 2 }], actor });
-      const first = await inventory.releaseReservations({ checkoutSessionId, reason: 'double_release_test', actor });
-      const second = await inventory.releaseReservations({ checkoutSessionId, reason: 'double_release_test', actor });
+      await inventory.acquireReservations({
+        checkoutSessionId,
+        cartId: null,
+        lines: [{ variantId, quantity: 2 }],
+        actor,
+      });
+      const first = await inventory.releaseReservations({
+        checkoutSessionId,
+        reason: 'double_release_test',
+        actor,
+      });
+      const second = await inventory.releaseReservations({
+        checkoutSessionId,
+        reason: 'double_release_test',
+        actor,
+      });
       expect(first.released).toBe(1);
       expect(second.released).toBe(0);
       expect(second.alreadyFinal).toBeGreaterThan(0);
@@ -474,8 +636,17 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const variantId = await seedVariant(10, 0);
       const checkoutSessionId = await seedBareCheckoutSession();
       const actor = { actorUserId: null, metadata: { requestId: randomUUID() } };
-      await inventory.acquireReservations({ checkoutSessionId, cartId: null, lines: [{ variantId, quantity: 2 }], actor });
-      await inventory.releaseReservations({ checkoutSessionId, reason: 'ledger_reason_test', actor });
+      await inventory.acquireReservations({
+        checkoutSessionId,
+        cartId: null,
+        lines: [{ variantId, quantity: 2 }],
+        actor,
+      });
+      await inventory.releaseReservations({
+        checkoutSessionId,
+        reason: 'ledger_reason_test',
+        actor,
+      });
       const entries = await prisma.stockLedgerEntry.findMany({
         where: { variantId, refType: 'stock_reservation' },
         orderBy: { createdAt: 'asc' },
@@ -498,11 +669,19 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       // shared database. The repair path itself (drift -> repair -> clean) is
       // already covered end-to-end against a single dedicated variant in
       // phase11.integration.test.ts.
-      const dryRun = await inventory.reconcile(staffPrincipal(['inventory:adjust']), { requestId: randomUUID() }, false);
+      const dryRun = await inventory.reconcile(
+        staffPrincipal(['inventory:adjust']),
+        { requestId: randomUUID() },
+        false,
+      );
       expect(dryRun.drifted).toBe(true);
       expect(
         dryRun.drifts.some(
-          (drift) => drift.variantId === variantId && drift.field === 'onHand' && drift.actual === 10 && drift.expected === 0,
+          (drift) =>
+            drift.variantId === variantId &&
+            drift.field === 'onHand' &&
+            drift.actual === 10 &&
+            drift.expected === 0,
         ),
       ).toBe(true);
       const item = await prisma.inventoryItem.findUniqueOrThrow({
@@ -518,11 +697,17 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const anonymousId = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, anonymousId, 2);
 
-      const result = await checkout.confirm(checkoutContext(anonymousId), initial.id, `confirm-${randomUUID()}`);
+      const result = await checkout.confirm(
+        checkoutContext(anonymousId),
+        initial.id,
+        `confirm-${randomUUID()}`,
+      );
       expect(result.state).toBe('CONFIRMED');
       if (result.state !== 'CONFIRMED') throw new Error('unreachable');
 
-      const orderRow = await prisma.order.findUniqueOrThrow({ where: { number: result.orderNumber } });
+      const orderRow = await prisma.order.findUniqueOrThrow({
+        where: { number: result.orderNumber },
+      });
       expect(orderRow.status).toBe('PENDING_PAYMENT');
       expect(orderRow.paymentStatus).toBe('UNPAID');
       expect(await prisma.order.count({ where: { checkoutSessionId: initial.id } })).toBe(1);
@@ -532,8 +717,12 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const cartRow = await prisma.cart.findUniqueOrThrow({ where: { id: session.cartId } });
       expect(cartRow.status).toBe('CONVERTED');
 
-      const reservations = await prisma.stockReservation.findMany({ where: { checkoutSessionId: initial.id } });
-      expect(reservations.every((row) => row.status === 'CONSUMED' && row.orderId === orderRow.id)).toBe(true);
+      const reservations = await prisma.stockReservation.findMany({
+        where: { checkoutSessionId: initial.id },
+      });
+      expect(
+        reservations.every((row) => row.status === 'CONSUMED' && row.orderId === orderRow.id),
+      ).toBe(true);
     });
 
     it('replays the same order exactly once when confirmed twice with the same Idempotency-Key concurrently', async () => {
@@ -547,7 +736,9 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
         checkout.confirm(checkoutContext(anonymousId), initial.id, key),
       ]);
       expect(results.every((result) => result.state === 'CONFIRMED')).toBe(true);
-      const orderNumbers = new Set(results.map((result) => (result.state === 'CONFIRMED' ? result.orderNumber : null)));
+      const orderNumbers = new Set(
+        results.map((result) => (result.state === 'CONFIRMED' ? result.orderNumber : null)),
+      );
       expect(orderNumbers.size).toBe(1);
       expect(await prisma.order.count({ where: { checkoutSessionId: initial.id } })).toBe(1);
     });
@@ -557,19 +748,37 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const anonymousId = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, anonymousId, 1);
 
-      await prisma.variantPrice.updateMany({ where: { variantId, validTo: null }, data: { validTo: new Date() } });
+      await prisma.variantPrice.updateMany({
+        where: { variantId, validTo: null },
+        data: { validTo: new Date() },
+      });
       await prisma.variantPrice.create({
-        data: { id: randomUUID(), variantId, currency: 'IRR', amountMinor: 9_999n, validFrom: new Date(), validTo: null },
+        data: {
+          id: randomUUID(),
+          variantId,
+          currency: 'IRR',
+          amountMinor: 9_999n,
+          validFrom: new Date(),
+          validTo: null,
+        },
       });
 
-      const result = await checkout.confirm(checkoutContext(anonymousId), initial.id, `confirm-${randomUUID()}`);
+      const result = await checkout.confirm(
+        checkoutContext(anonymousId),
+        initial.id,
+        `confirm-${randomUUID()}`,
+      );
       expect(result.state).toBe('PRICE_CHANGED');
       expect(result.checkout.pricing?.subtotal.amountMinor).toBe('9999');
       expect(await prisma.order.count({ where: { checkoutSessionId: initial.id } })).toBe(0);
 
       // The client must see the authoritative re-priced snapshot and explicitly re-confirm; a second
       // confirm against the now-current price succeeds and creates exactly one order.
-      const second = await checkout.confirm(checkoutContext(anonymousId), initial.id, `confirm-${randomUUID()}`);
+      const second = await checkout.confirm(
+        checkoutContext(anonymousId),
+        initial.id,
+        `confirm-${randomUUID()}`,
+      );
       expect(second.state).toBe('CONFIRMED');
       expect(await prisma.order.count({ where: { checkoutSessionId: initial.id } })).toBe(1);
     });
@@ -578,14 +787,26 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const variantId = await seedVariant(100, 0);
       const anonymousId = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, anonymousId, 1);
-      const result = await checkout.confirm(checkoutContext(anonymousId), initial.id, `confirm-${randomUUID()}`);
+      const result = await checkout.confirm(
+        checkoutContext(anonymousId),
+        initial.id,
+        `confirm-${randomUUID()}`,
+      );
       if (result.state !== 'CONFIRMED') throw new Error('unreachable');
 
-      await prisma.variantTranslation.updateMany({ where: { variantId, locale: 'en' }, data: { name: 'Renamed after purchase' } });
-      await prisma.productVariant.update({ where: { id: variantId }, data: { netWeightGrams: 999 } });
+      await prisma.variantTranslation.updateMany({
+        where: { variantId, locale: 'en' },
+        data: { name: 'Renamed after purchase' },
+      });
+      await prisma.productVariant.update({
+        where: { id: variantId },
+        data: { netWeightGrams: 999 },
+      });
 
       const owned = await orders.getOwnedOrder(result.orderNumber, { anonymousId });
-      expect((owned.lines[0]?.variantNameSnapshot as Record<string, string>)['en']).toBe('450 g jar');
+      expect((owned.lines[0]?.variantNameSnapshot as Record<string, string>)['en']).toBe(
+        '450 g jar',
+      );
       expect(owned.lines[0]?.quantity).toBe(1);
     });
 
@@ -594,10 +815,21 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const anonymousId = randomUUID();
       const key = `start-${randomUUID()}`;
       await cart.addLine(cartContext(anonymousId), { variantId, quantity: 1 });
-      await checkout.start(checkoutContext(anonymousId), startInput({ email: 'first@example.invalid' }), key);
+      await checkout.start(
+        checkoutContext(anonymousId),
+        startInput({ email: 'first@example.invalid' }),
+        key,
+      );
       await expect(
-        checkout.start(checkoutContext(anonymousId), startInput({ email: 'second@example.invalid' }), key),
-      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', errors: [{ path: 'idempotencyKey', code: 'IDEMPOTENCY_KEY_REUSE' }] });
+        checkout.start(
+          checkoutContext(anonymousId),
+          startInput({ email: 'second@example.invalid' }),
+          key,
+        ),
+      ).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+        errors: [{ path: 'idempotencyKey', code: 'IDEMPOTENCY_KEY_REUSE' }],
+      });
     });
   });
 
@@ -607,8 +839,12 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const ownerA = randomUUID();
       const ownerB = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, ownerA, 1);
-      await expect(checkout.get(checkoutContext(ownerB), initial.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
-      await expect(checkout.extend(checkoutContext(ownerB), initial.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(checkout.get(checkoutContext(ownerB), initial.id)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
+      await expect(checkout.extend(checkoutContext(ownerB), initial.id)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
     });
 
     it('denies reading another owner completed order by its (guessable) order number', async () => {
@@ -616,10 +852,16 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const ownerA = randomUUID();
       const ownerB = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, ownerA, 1);
-      const result = await checkout.confirm(checkoutContext(ownerA), initial.id, `confirm-${randomUUID()}`);
+      const result = await checkout.confirm(
+        checkoutContext(ownerA),
+        initial.id,
+        `confirm-${randomUUID()}`,
+      );
       if (result.state !== 'CONFIRMED') throw new Error('unreachable');
 
-      await expect(orders.getOwnedOrder(result.orderNumber, { anonymousId: ownerB })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(
+        orders.getOwnedOrder(result.orderNumber, { anonymousId: ownerB }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
       const owned = await orders.getOwnedOrder(result.orderNumber, { anonymousId: ownerA });
       expect(owned.number).toBe(result.orderNumber);
     });
@@ -641,7 +883,9 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const rejected = results.filter((result) => result.status === 'rejected');
       expect(fulfilled).toHaveLength(1);
       expect(rejected).toHaveLength(1);
-      expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({ code: 'INSUFFICIENT_STOCK' });
+      expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+        code: 'INSUFFICIENT_STOCK',
+      });
 
       const item = await prisma.inventoryItem.findUniqueOrThrow({
         where: { variantId_stockLocationId: { variantId, stockLocationId: defaultLocationId } },
@@ -656,10 +900,16 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const started = await Promise.all(owners.map((owner) => newCheckout(variantId, owner, 1)));
       const results = await Promise.all(
         started.map(({ checkout: session }, index) =>
-          checkout.confirm(checkoutContext(owners[index] as string), session.id, `confirm-${randomUUID()}`),
+          checkout.confirm(
+            checkoutContext(owners[index] as string),
+            session.id,
+            `confirm-${randomUUID()}`,
+          ),
         ),
       );
-      const orderNumbers = results.map((result) => (result.state === 'CONFIRMED' ? result.orderNumber : null));
+      const orderNumbers = results.map((result) =>
+        result.state === 'CONFIRMED' ? result.orderNumber : null,
+      );
       expect(orderNumbers.every((number) => number !== null)).toBe(true);
       expect(new Set(orderNumbers).size).toBe(orderNumbers.length);
       for (const number of orderNumbers) {
@@ -672,8 +922,14 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       const anonymousId = randomUUID();
       const { checkout: initial } = await newCheckout(variantId, anonymousId, 1);
       const past = new Date(Date.now() - 1_000);
-      await prisma.checkoutSession.update({ where: { id: initial.id }, data: { reservationExpiresAt: past } });
-      await prisma.stockReservation.updateMany({ where: { checkoutSessionId: initial.id }, data: { expiresAt: past } });
+      await prisma.checkoutSession.update({
+        where: { id: initial.id },
+        data: { reservationExpiresAt: past },
+      });
+      await prisma.stockReservation.updateMany({
+        where: { checkoutSessionId: initial.id },
+        data: { expiresAt: past },
+      });
 
       const results = await Promise.allSettled([
         checkout.get(checkoutContext(anonymousId), initial.id),
@@ -682,11 +938,15 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       // Whichever transaction observes the elapsed hold first, no order is created and the reservation
       // is never revived by the other. Exactly zero orders and zero ACTIVE reservations remain.
       expect(await prisma.order.count({ where: { checkoutSessionId: initial.id } })).toBe(0);
-      const reservations = await prisma.stockReservation.findMany({ where: { checkoutSessionId: initial.id } });
+      const reservations = await prisma.stockReservation.findMany({
+        where: { checkoutSessionId: initial.id },
+      });
       expect(reservations.every((row) => row.status !== 'ACTIVE')).toBe(true);
       const confirmOutcome = results[1];
       if (confirmOutcome.status === 'rejected') {
-        expect((confirmOutcome.reason as { code?: string }).code).toMatch(/RESERVATION_EXPIRED|CHECKOUT_NOT_CONFIRMABLE/u);
+        expect((confirmOutcome.reason as { code?: string }).code).toMatch(
+          /RESERVATION_EXPIRED|CHECKOUT_NOT_CONFIRMABLE/u,
+        );
       }
     });
 
@@ -716,17 +976,29 @@ describe('Phase 13 checkout, reservations, and orders on PostgreSQL', () => {
       await cart.applyCoupon(cartContext(ownerA), code);
       await cart.addLine(cartContext(ownerB), { variantId, quantity: 1 });
       await cart.applyCoupon(cartContext(ownerB), code);
-      const startedA = await checkout.start(checkoutContext(ownerA), startInput(), `start-${randomUUID()}`);
-      const startedB = await checkout.start(checkoutContext(ownerB), startInput(), `start-${randomUUID()}`);
+      const startedA = await checkout.start(
+        checkoutContext(ownerA),
+        startInput(),
+        `start-${randomUUID()}`,
+      );
+      const startedB = await checkout.start(
+        checkoutContext(ownerB),
+        startInput(),
+        `start-${randomUUID()}`,
+      );
 
       const results = await Promise.allSettled([
         checkout.confirm(checkoutContext(ownerA), startedA.checkout.id, `confirm-${randomUUID()}`),
         checkout.confirm(checkoutContext(ownerB), startedB.checkout.id, `confirm-${randomUUID()}`),
       ]);
-      const fulfilled = results.filter((result) => result.status === 'fulfilled' && result.value.state === 'CONFIRMED');
+      const fulfilled = results.filter(
+        (result) => result.status === 'fulfilled' && result.value.state === 'CONFIRMED',
+      );
       expect(fulfilled).toHaveLength(1);
       const couponRow = await prisma.coupon.findFirstOrThrow({ where: { code } });
-      const redemptions = await prisma.couponRedemption.count({ where: { couponId: couponRow.id } });
+      const redemptions = await prisma.couponRedemption.count({
+        where: { couponId: couponRow.id },
+      });
       expect(redemptions).toBe(1);
     });
   });

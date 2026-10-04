@@ -26,7 +26,11 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const env = getWebEnv();
   return (
     <Container>
-      <CheckoutFlow locale={locale} csrfCookieName={env.csrfCookieName} csrfHeaderName={env.csrfHeaderName} />
+      <CheckoutFlow
+        locale={locale}
+        csrfCookieName={env.csrfCookieName}
+        csrfHeaderName={env.csrfHeaderName}
+      />
     </Container>
   );
 }

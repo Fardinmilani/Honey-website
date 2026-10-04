@@ -505,7 +505,8 @@ export class InventoryService {
     transaction?: TransactionContext,
   ): Promise<ReservationAcquireResult> {
     const checkoutSessionId = uuid(input.checkoutSessionId, 'checkoutSessionId');
-    const cartId = input.cartId === undefined || input.cartId === null ? null : uuid(input.cartId, 'cartId');
+    const cartId =
+      input.cartId === undefined || input.cartId === null ? null : uuid(input.cartId, 'cartId');
     const lines = aggregateReservationLines(input.lines);
     const now = this.#reservationNow(input.now);
     return this.#inReservationTransaction(transaction, async (currentTransaction) => {
@@ -530,7 +531,8 @@ export class InventoryService {
         );
       }
       const active = prepared.reservations.filter(
-        (reservation) => reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
+        (reservation) =>
+          reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
       );
       if (active.length > 0) {
         if (!this.#matchesRequestedLines(active, lines)) {
@@ -592,7 +594,11 @@ export class InventoryService {
     const reason = boundedString(input.reason, 160, 'reason');
     const now = this.#reservationNow(input.now);
     return this.#inReservationTransaction(transaction, async (currentTransaction) => {
-      const prepared = await this.#prepareCheckoutReservations(currentTransaction, checkoutSessionId, []);
+      const prepared = await this.#prepareCheckoutReservations(
+        currentTransaction,
+        checkoutSessionId,
+        [],
+      );
       const expired = await this.#expireLockedReservations(
         currentTransaction,
         prepared.reservations,
@@ -601,7 +607,8 @@ export class InventoryService {
         now,
       );
       const releasable = prepared.reservations.filter(
-        (reservation) => reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
+        (reservation) =>
+          reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
       );
       const released = await this.#releaseLockedReservations(
         currentTransaction,
@@ -628,10 +635,9 @@ export class InventoryService {
         );
       }
       if (expired.length > 0 || released.length > 0) {
-        await this.#evaluateLowStock(
-          currentTransaction,
-          [...new Set([...expired, ...released].map((reservation) => reservation.variantId))],
-        );
+        await this.#evaluateLowStock(currentTransaction, [
+          ...new Set([...expired, ...released].map((reservation) => reservation.variantId)),
+        ]);
       }
       return {
         released: released.length,
@@ -648,7 +654,11 @@ export class InventoryService {
     const checkoutSessionId = uuid(input.checkoutSessionId, 'checkoutSessionId');
     const now = this.#reservationNow(input.now);
     return this.#inReservationTransaction(transaction, async (currentTransaction) => {
-      const prepared = await this.#prepareCheckoutReservations(currentTransaction, checkoutSessionId, []);
+      const prepared = await this.#prepareCheckoutReservations(
+        currentTransaction,
+        checkoutSessionId,
+        [],
+      );
       const expired = await this.#expireLockedReservations(
         currentTransaction,
         prepared.reservations,
@@ -663,13 +673,13 @@ export class InventoryService {
           expired,
           'inventory.reservation_expired',
         );
-        await this.#evaluateLowStock(
-          currentTransaction,
-          [...new Set(expired.map((reservation) => reservation.variantId))],
-        );
+        await this.#evaluateLowStock(currentTransaction, [
+          ...new Set(expired.map((reservation) => reservation.variantId)),
+        ]);
       }
       const active = prepared.reservations.filter(
-        (reservation) => reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
+        (reservation) =>
+          reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
       );
       if (active.length === 0) return { expiresAt: null, extended: false };
       const extensionRows = active
@@ -679,7 +689,9 @@ export class InventoryService {
         }))
         .filter((reservation) => {
           const current = active.find((candidate) => candidate.id === reservation.id);
-          return current !== undefined && current.expiresAt.getTime() < reservation.expiresAt.getTime();
+          return (
+            current !== undefined && current.expiresAt.getTime() < reservation.expiresAt.getTime()
+          );
         });
       if (extensionRows.length === 0) {
         const expiresAt = earliestExpiry(active);
@@ -689,7 +701,9 @@ export class InventoryService {
       const expiresAt = earliestExpiry(
         active.map((reservation) => {
           const extension = extensionRows.find((candidate) => candidate.id === reservation.id);
-          return extension === undefined ? reservation : { ...reservation, expiresAt: extension.expiresAt };
+          return extension === undefined
+            ? reservation
+            : { ...reservation, expiresAt: extension.expiresAt };
         }),
       );
       return { expiresAt, extended: true };
@@ -728,13 +742,13 @@ export class InventoryService {
           expired,
           'inventory.reservation_expired',
         );
-        await this.#evaluateLowStock(
-          currentTransaction,
-          [...new Set(expired.map((reservation) => reservation.variantId))],
-        );
+        await this.#evaluateLowStock(currentTransaction, [
+          ...new Set(expired.map((reservation) => reservation.variantId)),
+        ]);
       }
       const active = prepared.reservations.filter(
-        (reservation) => reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
+        (reservation) =>
+          reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
       );
       if (!this.#matchesRequestedLines(active, lines)) {
         throw new ConflictAppError({
@@ -756,7 +770,11 @@ export class InventoryService {
     const orderId = uuid(input.orderId, 'orderId');
     const now = this.#reservationNow(input.now);
     return this.#inReservationTransaction(transaction, async (currentTransaction) => {
-      const prepared = await this.#prepareCheckoutReservations(currentTransaction, checkoutSessionId, []);
+      const prepared = await this.#prepareCheckoutReservations(
+        currentTransaction,
+        checkoutSessionId,
+        [],
+      );
       const expired = await this.#expireLockedReservations(
         currentTransaction,
         prepared.reservations,
@@ -773,13 +791,15 @@ export class InventoryService {
         );
       }
       const active = prepared.reservations.filter(
-        (reservation) => reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
+        (reservation) =>
+          reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() > now.getTime(),
       );
       if (active.length === 0) {
         const consumed = prepared.reservations.filter(
           (reservation) => reservation.status === 'CONSUMED' && reservation.orderId === orderId,
         );
-        if (consumed.length > 0) return { allocations: consumed.map(reservationAllocation), replayed: true };
+        if (consumed.length > 0)
+          return { allocations: consumed.map(reservationAllocation), replayed: true };
         throw new ConflictAppError({
           code: expired.length > 0 ? 'RESERVATION_EXPIRED' : 'RESERVATION_NOT_ACTIVE',
         });
@@ -805,10 +825,9 @@ export class InventoryService {
         input.actor,
       );
       await this.#recordReservationConsumedEvents(currentTransaction, input.actor, active, orderId);
-      await this.#evaluateLowStock(
-        currentTransaction,
-        [...new Set(active.map((reservation) => reservation.variantId))],
-      );
+      await this.#evaluateLowStock(currentTransaction, [
+        ...new Set(active.map((reservation) => reservation.variantId)),
+      ]);
       return { allocations: active.map(reservationAllocation), replayed: false };
     });
   }
@@ -910,7 +929,10 @@ export class InventoryService {
     for (const item of items) {
       itemMap.set(remember(item.variantId, item.stockLocationId), item);
     }
-    const ledgerMap = new Map<string, Readonly<{ onHand: number; reserved: number; allocated: number }>>();
+    const ledgerMap = new Map<
+      string,
+      Readonly<{ onHand: number; reserved: number; allocated: number }>
+    >();
     for (const row of ledger) {
       ledgerMap.set(remember(row.variantId, row.stockLocationId), row);
     }
@@ -1044,9 +1066,17 @@ export class InventoryService {
     transaction: TransactionContext,
     checkoutSessionId: string,
     requestedVariantIds: readonly string[],
-  ): Promise<Readonly<{ items: readonly InventoryItemRecord[]; reservations: readonly StockReservationRecord[] }>> {
+  ): Promise<
+    Readonly<{
+      items: readonly InventoryItemRecord[];
+      reservations: readonly StockReservationRecord[];
+    }>
+  > {
     await this.repository.lockReservationCheckout(transaction, checkoutSessionId);
-    const beforeLock = await this.repository.listReservationsForCheckout(transaction, checkoutSessionId);
+    const beforeLock = await this.repository.listReservationsForCheckout(
+      transaction,
+      checkoutSessionId,
+    );
     const variantIds = [
       ...new Set([
         ...requestedVariantIds,
@@ -1170,16 +1200,10 @@ export class InventoryService {
     now: Date,
   ): Promise<readonly StockReservationRecord[]> {
     const expired = reservations.filter(
-      (reservation) => reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() <= now.getTime(),
+      (reservation) =>
+        reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() <= now.getTime(),
     );
-    return this.#releaseLockedReservations(
-      transaction,
-      expired,
-      actor,
-      now,
-      'EXPIRED',
-      'EXPIRED',
-    );
+    return this.#releaseLockedReservations(transaction, expired, actor, now, 'EXPIRED', 'EXPIRED');
   }
 
   async #expireReservationIds(
@@ -1209,7 +1233,13 @@ export class InventoryService {
         reservation.expiresAt.getTime() <= now.getTime() &&
         itemKeys.has(reservationKey(reservation)),
     );
-    if (expired.length !== locked.filter((reservation) => reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() <= now.getTime()).length) {
+    if (
+      expired.length !==
+      locked.filter(
+        (reservation) =>
+          reservation.status === 'ACTIVE' && reservation.expiresAt.getTime() <= now.getTime(),
+      ).length
+    ) {
       throw new ConflictAppError({ code: 'INVENTORY_RESERVATION_DRIFT' });
     }
     const released = await this.#releaseLockedReservations(
@@ -1227,10 +1257,9 @@ export class InventoryService {
         released,
         'inventory.reservation_expired',
       );
-      await this.#evaluateLowStock(
-        transaction,
-        [...new Set(released.map((reservation) => reservation.variantId))],
-      );
+      await this.#evaluateLowStock(transaction, [
+        ...new Set(released.map((reservation) => reservation.variantId)),
+      ]);
     }
     return released;
   }
@@ -1310,17 +1339,11 @@ export class InventoryService {
         { quantity: reservation.quantity, status: 'ACTIVE' },
         { orderId, status: 'CONSUMED' },
       );
-      await this.repository.appendOutbox(
-        transaction,
-        'order',
-        orderId,
-        'inventory.allocated',
-        {
-          variantId: reservation.variantId,
-          stockLocationId: reservation.stockLocationId,
-          quantity: reservation.quantity,
-        },
-      );
+      await this.repository.appendOutbox(transaction, 'order', orderId, 'inventory.allocated', {
+        variantId: reservation.variantId,
+        stockLocationId: reservation.stockLocationId,
+        quantity: reservation.quantity,
+      });
     }
   }
 

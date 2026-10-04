@@ -413,7 +413,8 @@ export class PrismaCheckoutRepository implements CheckoutRepository {
     if (existing === null) return null;
     return {
       requestHash: existing.requestHash,
-      completedOrderNumber: existing.responseStatus === 200 ? parseCompletedOrderNumber(existing.responseBody) : null,
+      completedOrderNumber:
+        existing.responseStatus === 200 ? parseCompletedOrderNumber(existing.responseBody) : null,
     };
   }
 

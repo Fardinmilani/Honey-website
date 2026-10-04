@@ -93,7 +93,16 @@ const STORAGE_START_KEY = 'honey-checkout-start-key';
 const STORAGE_CONFIRM_KEY = 'honey-checkout-confirm-key';
 
 function emptyAddress(): AddressFormValues {
-  return { fullName: '', phone: '', country: '', province: '', city: '', postalCode: '', line1: '', line2: '' };
+  return {
+    fullName: '',
+    phone: '',
+    country: '',
+    province: '',
+    city: '',
+    postalCode: '',
+    line1: '',
+    line2: '',
+  };
 }
 
 function emptyContact(): ContactFormValues {
@@ -190,7 +199,13 @@ function parseShippingQuote(value: unknown): CheckoutShippingQuote | null | unde
   const discount = parseMoney(value['discount']);
   const total = parseMoney(value['total']);
   const expiresAt = stringField(value, 'expiresAt');
-  if (methodCode !== 'STANDARD' || amount === null || discount === null || total === null || expiresAt === null) {
+  if (
+    methodCode !== 'STANDARD' ||
+    amount === null ||
+    discount === null ||
+    total === null ||
+    expiresAt === null
+  ) {
     return undefined;
   }
   return { methodCode, amount, discount, total, expiresAt };
@@ -264,7 +279,9 @@ function parseCheckout(value: unknown): CheckoutProjection | null {
   };
 }
 
-function parseConfirmResult(value: unknown): Readonly<{ checkout: CheckoutProjection; orderNumber: string }> | null {
+function parseConfirmResult(
+  value: unknown,
+): Readonly<{ checkout: CheckoutProjection; orderNumber: string }> | null {
   if (!isRecord(value)) return null;
   const checkout = parseCheckout(value['checkout']);
   const orderNumber = stringField(value, 'orderNumber');
@@ -320,7 +337,12 @@ async function requestCheckout(options: CheckoutRequestOptions): Promise<unknown
   }
   if (options.idempotencyKey !== undefined) headers.set('idempotency-key', options.idempotencyKey);
 
-  const init: RequestInit = { method: options.method, headers, credentials: 'same-origin', cache: 'no-store' };
+  const init: RequestInit = {
+    method: options.method,
+    headers,
+    credentials: 'same-origin',
+    cache: 'no-store',
+  };
   if (options.body !== undefined) {
     headers.set('content-type', 'application/json');
     init.body = JSON.stringify(options.body);
@@ -495,7 +517,9 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
           const startKey = readStorage(STORAGE_START_KEY) ?? newKey();
           writeStorage(STORAGE_START_KEY, startKey);
           const shippingAddress = addressFromValues(contact.shippingAddress);
-          const billingAddress = contact.sameAsShipping ? undefined : addressFromValues(contact.billingAddress);
+          const billingAddress = contact.sameAsShipping
+            ? undefined
+            : addressFromValues(contact.billingAddress);
           const trimmedPhone = contact.phone.trim();
           const body = {
             email: contact.email.trim(),
@@ -596,16 +620,25 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
   const billingValues = contact.billingAddress;
 
   const setShippingField = useCallback((field: keyof AddressFormValues, value: string) => {
-    setContact((current) => ({ ...current, shippingAddress: { ...current.shippingAddress, [field]: value } }));
+    setContact((current) => ({
+      ...current,
+      shippingAddress: { ...current.shippingAddress, [field]: value },
+    }));
   }, []);
 
   const setBillingField = useCallback((field: keyof AddressFormValues, value: string) => {
-    setContact((current) => ({ ...current, billingAddress: { ...current.billingAddress, [field]: value } }));
+    setContact((current) => ({
+      ...current,
+      billingAddress: { ...current.billingAddress, [field]: value },
+    }));
   }, []);
 
   const reservationLabel = useMemo(() => {
     if (checkout?.reservationExpiresAt == null) return t('checkout.reservationUnavailable');
-    const time = formatDate(locale, checkout.reservationExpiresAt, { hour: 'numeric', minute: '2-digit' });
+    const time = formatDate(locale, checkout.reservationExpiresAt, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
     return t('checkout.reservationExpires', { time });
   }, [checkout?.reservationExpiresAt, locale, t]);
 
@@ -645,7 +678,11 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
           {t('checkout.checkoutTitle')}
         </h1>
         <p className={styles['description']}>{t('checkout.checkoutDescription')}</p>
-        <p className={styles['status']} aria-live="polite" role={message === null ? 'status' : 'alert'}>
+        <p
+          className={styles['status']}
+          aria-live="polite"
+          role={message === null ? 'status' : 'alert'}
+        >
           {message ?? ''}
         </p>
         <form className={styles['form']} onSubmit={onContactSubmit}>
@@ -664,7 +701,9 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
                   maxLength={254}
                   autoComplete="email"
                   value={contact.email}
-                  onChange={(event) => setContact((current) => ({ ...current, email: event.target.value }))}
+                  onChange={(event) =>
+                    setContact((current) => ({ ...current, email: event.target.value }))
+                  }
                 />
               </div>
               <div className={styles['field']}>
@@ -678,7 +717,9 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
                   maxLength={40}
                   autoComplete="tel"
                   value={contact.phone}
-                  onChange={(event) => setContact((current) => ({ ...current, phone: event.target.value }))}
+                  onChange={(event) =>
+                    setContact((current) => ({ ...current, phone: event.target.value }))
+                  }
                 />
               </div>
             </div>
@@ -759,14 +800,24 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
   }
 
   const shippingAddress = checkout.shippingAddress;
-  const billingAddress = checkout.sameAsShipping ? checkout.shippingAddress : checkout.billingAddress;
+  const billingAddress = checkout.sameAsShipping
+    ? checkout.shippingAddress
+    : checkout.billingAddress;
 
   return (
-    <section className={styles['checkout']} aria-labelledby="checkout-heading" aria-busy={phase === 'confirming'}>
+    <section
+      className={styles['checkout']}
+      aria-labelledby="checkout-heading"
+      aria-busy={phase === 'confirming'}
+    >
       <h1 id="checkout-heading" className={styles['title']}>
         {t('checkout.reviewHeading')}
       </h1>
-      <p className={styles['status']} aria-live="polite" role={message === null ? 'status' : 'alert'}>
+      <p
+        className={styles['status']}
+        aria-live="polite"
+        role={message === null ? 'status' : 'alert'}
+      >
         {message ?? (phase === 'confirming' ? t('checkout.confirmingOrder') : '')}
       </p>
 
@@ -801,7 +852,12 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
             </div>
           ) : null}
           <div className={`${styles['actions']} ${styles['reviewActions']}`}>
-            <button type="button" className={styles['secondaryLink']} onClick={resetToForm} disabled={isSubmitting}>
+            <button
+              type="button"
+              className={styles['secondaryLink']}
+              onClick={resetToForm}
+              disabled={isSubmitting}
+            >
               {t('checkout.startOver')}
             </button>
           </div>
@@ -815,12 +871,16 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
             <>
               <div className={styles['summaryRow']}>
                 <span className={styles['summaryLabel']}>{t('checkout.subtotal')}</span>
-                <span className={styles['amount']}>{formatMinorMoney(locale, checkout.pricing.subtotal)}</span>
+                <span className={styles['amount']}>
+                  {formatMinorMoney(locale, checkout.pricing.subtotal)}
+                </span>
               </div>
               {checkout.pricing.discount.amountMinor !== '0' ? (
                 <div className={styles['summaryRow']}>
                   <span className={styles['summaryLabel']}>{t('checkout.discount')}</span>
-                  <span className={styles['amount']}>−{formatMinorMoney(locale, checkout.pricing.discount)}</span>
+                  <span className={styles['amount']}>
+                    −{formatMinorMoney(locale, checkout.pricing.discount)}
+                  </span>
                 </div>
               ) : null}
               <div className={styles['summaryRow']}>
@@ -833,11 +893,15 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
               </div>
               <div className={styles['summaryRow']}>
                 <span className={styles['summaryLabel']}>{t('checkout.tax')}</span>
-                <span className={styles['amount']}>{formatMinorMoney(locale, checkout.pricing.tax)}</span>
+                <span className={styles['amount']}>
+                  {formatMinorMoney(locale, checkout.pricing.tax)}
+                </span>
               </div>
               <div className={`${styles['summaryRow']} ${styles['summaryTotal']}`}>
                 <strong>{t('checkout.total')}</strong>
-                <strong className={styles['amount']}>{formatMinorMoney(locale, checkout.pricing.total)}</strong>
+                <strong className={styles['amount']}>
+                  {formatMinorMoney(locale, checkout.pricing.total)}
+                </strong>
               </div>
             </>
           ) : (

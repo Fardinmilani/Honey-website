@@ -75,9 +75,13 @@ test.describe('checkout flow', () => {
     const orderNumber = page.url().split('/').pop();
     expect(orderNumber).toMatch(ORDER_NUMBER_RE);
 
-    await expect(page.getByRole('heading', { name: `Order ${orderNumber}`, level: 1 })).toBeVisible();
     await expect(
-      page.getByText('Your order is awaiting payment. We will not mark it paid until payment is verified.'),
+      page.getByRole('heading', { name: `Order ${orderNumber}`, level: 1 }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        'Your order is awaiting payment. We will not mark it paid until payment is verified.',
+      ),
     ).toBeVisible();
     await expect(page.getByText('UNPAID', { exact: true })).toBeVisible();
     await expect(page.getByText('UNFULFILLED', { exact: true })).toBeVisible();

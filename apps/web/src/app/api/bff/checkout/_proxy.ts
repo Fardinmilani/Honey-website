@@ -153,9 +153,7 @@ function parseAddress(value: unknown): CheckoutAddressInput | null {
 
 function validEmail(value: unknown): value is string {
   return (
-    typeof value === 'string' &&
-    value.length <= 254 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value)
+    typeof value === 'string' && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value)
   );
 }
 
@@ -163,9 +161,7 @@ function validEmail(value: unknown): value is string {
 export async function parseStartCheckout(request: Request): Promise<StartCheckoutInput | null> {
   const body = await requestJson(request);
   if (!isRecord(body)) return null;
-  if (
-    !exactKeys(body, ['email', 'phone', 'shippingAddress', 'billingAddress', 'sameAsShipping'])
-  ) {
+  if (!exactKeys(body, ['email', 'phone', 'shippingAddress', 'billingAddress', 'sameAsShipping'])) {
     return null;
   }
 

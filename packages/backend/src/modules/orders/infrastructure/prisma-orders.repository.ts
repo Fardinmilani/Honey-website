@@ -83,7 +83,8 @@ function clientFor(client: PrismaClient, transaction: TransactionContext | undef
 }
 
 function mapCreated(row: CreatedRow): CreatedPendingOrder {
-  if (row.checkoutSessionId === null) throw new TypeError('New pending order has no checkout session.');
+  if (row.checkoutSessionId === null)
+    throw new TypeError('New pending order has no checkout session.');
   if (
     row.status !== 'PENDING_PAYMENT' ||
     row.paymentStatus !== 'UNPAID' ||
@@ -149,7 +150,10 @@ function orderNumberYear(placedAt: Date): string {
   return String(year).padStart(4, '0');
 }
 
-async function nextOrderNumber(client: ReturnType<typeof asPrismaTransaction>, placedAt: Date): Promise<string> {
+async function nextOrderNumber(
+  client: ReturnType<typeof asPrismaTransaction>,
+  placedAt: Date,
+): Promise<string> {
   const year = orderNumberYear(placedAt);
   const prefix = `HNY-${year}-`;
   await client.$executeRaw(

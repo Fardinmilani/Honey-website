@@ -191,7 +191,11 @@ describe('Phase 13 checkout HTTP security', () => {
       const mismatched = await api.fastify.inject({
         method: 'POST',
         url: '/v1/checkout',
-        headers: { cookie: anonymousCookies(), 'x-csrf-token': 'b'.repeat(32), 'idempotency-key': 'k' },
+        headers: {
+          cookie: anonymousCookies(),
+          'x-csrf-token': 'b'.repeat(32),
+          'idempotency-key': 'k',
+        },
         payload: startPayload(),
       });
       expect(mismatched.statusCode).toBe(403);
@@ -224,7 +228,11 @@ describe('Phase 13 checkout HTTP security', () => {
       expect(response.body).not.toContain('"1"');
       expect(start).not.toHaveBeenCalled();
       expect(recordTamperingAttempt).toHaveBeenCalledWith(
-        expect.objectContaining({ actorUserId: null, anonymousId: anonymousCartId, offendingField: 'grandTotalMinor' }),
+        expect.objectContaining({
+          actorUserId: null,
+          anonymousId: anonymousCartId,
+          offendingField: 'grandTotalMinor',
+        }),
       );
     } finally {
       await api.close();
@@ -279,9 +287,9 @@ describe('Phase 13 checkout HTTP security', () => {
   });
 
   it('requires CSRF before extending a reservation hold; the client sends no body and cannot set the new expiry', async () => {
-    const extend = vi.spyOn(CheckoutService.prototype, 'extend').mockResolvedValue(
-      checkoutProjection({ reservationExpiresAt: '2026-09-25T12:30:00.000Z' }),
-    );
+    const extend = vi
+      .spyOn(CheckoutService.prototype, 'extend')
+      .mockResolvedValue(checkoutProjection({ reservationExpiresAt: '2026-09-25T12:30:00.000Z' }));
     const api = await app();
     try {
       const missingCsrf = await api.fastify.inject({
@@ -400,7 +408,9 @@ describe('Phase 13 checkout HTTP security', () => {
 describe('Phase 13 orders HTTP security', () => {
   it('never lists orders for a guest and only ever lists the authenticated owner’s own orders', async () => {
     const authenticate = vi.spyOn(IdentityService.prototype, 'authenticateSession');
-    const listForUser = vi.spyOn(OrdersService.prototype, 'listForUser').mockResolvedValue([customerOrder()]);
+    const listForUser = vi
+      .spyOn(OrdersService.prototype, 'listForUser')
+      .mockResolvedValue([customerOrder()]);
     const api = await app();
     try {
       const guest = await api.fastify.inject({ method: 'GET', url: '/v1/orders' });
@@ -422,10 +432,13 @@ describe('Phase 13 orders HTTP security', () => {
   });
 
   it('reads one order scoped to the server-derived owner, denies another owner, and never leaks internal fields', async () => {
-    const getOwnedOrder = vi.spyOn(OrdersService.prototype, 'getOwnedOrder').mockImplementation(async (number, owner) => {
-      if ('anonymousId' in owner && owner.anonymousId !== anonymousCartId) throw new NotFoundAppError();
-      return customerOrder({ number });
-    });
+    const getOwnedOrder = vi
+      .spyOn(OrdersService.prototype, 'getOwnedOrder')
+      .mockImplementation(async (number, owner) => {
+        if ('anonymousId' in owner && owner.anonymousId !== anonymousCartId)
+          throw new NotFoundAppError();
+        return customerOrder({ number });
+      });
     const api = await app();
     try {
       const owned = await api.fastify.inject({
@@ -453,7 +466,9 @@ describe('Phase 13 orders HTTP security', () => {
           'taxTotal',
         ].sort(),
       );
-      expect(JSON.stringify(body)).not.toMatch(/stockLocationId|checkoutSessionId|supplier|onHand|availableToSell/iu);
+      expect(JSON.stringify(body)).not.toMatch(
+        /stockLocationId|checkoutSessionId|supplier|onHand|availableToSell/iu,
+      );
 
       const otherOwner = await api.fastify.inject({
         method: 'GET',

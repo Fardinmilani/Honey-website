@@ -36,7 +36,8 @@ export const checkout = {
   confirmOrder: 'ثبت سفارش',
   confirmingOrder: 'در حال ثبت سفارش…',
   orderCreatedHeading: 'سفارش شما ثبت شد',
-  orderCreatedDescription: 'سفارش شما در انتظار پرداخت است. تا زمان تأیید پرداخت، آن را پرداخت‌شده نشان نمی‌دهیم.',
+  orderCreatedDescription:
+    'سفارش شما در انتظار پرداخت است. تا زمان تأیید پرداخت، آن را پرداخت‌شده نشان نمی‌دهیم.',
   viewOrder: 'مشاهده سفارش',
   startOver: 'بازگشت به سبد خرید',
   cartEmpty: 'سبد خرید شما کالای آماده‌ای برای تکمیل سفارش ندارد.',

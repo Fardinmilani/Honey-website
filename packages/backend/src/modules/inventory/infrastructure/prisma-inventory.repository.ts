@@ -654,14 +654,13 @@ export class PrismaInventoryRepository implements InventoryRepository {
 
   async repairCurrentState(
     transaction: TransactionContext,
-    repairs: readonly (
-      InventoryKey & Readonly<{
+    repairs: readonly (InventoryKey &
+      Readonly<{
         onHand?: number;
         incoming?: number;
         reserved?: number;
         allocated?: number;
-      }>
-    )[],
+      }>)[],
     actor: InventoryActorContext,
   ): Promise<void> {
     const client = asPrismaTransaction(transaction);

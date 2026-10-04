@@ -389,14 +389,13 @@ export type InventoryRepository = {
   ledgerStateByKey(): Promise<readonly (InventoryKey & InventoryLedgerState)[]>;
   repairCurrentState(
     transaction: TransactionContext,
-    repairs: readonly (
-      InventoryKey & Readonly<{
+    repairs: readonly (InventoryKey &
+      Readonly<{
         onHand?: number;
         incoming?: number;
         reserved?: number;
         allocated?: number;
-      }>
-    )[],
+      }>)[],
     actor: InventoryActorContext,
   ): Promise<void>;
   listReservationsForCheckout(

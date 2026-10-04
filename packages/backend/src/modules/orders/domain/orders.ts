@@ -81,7 +81,17 @@ export type CustomerOrder = Readonly<{
   phone: string | null;
   localeAtPurchase: string;
   currency: string;
-  status: 'PENDING_PAYMENT' | 'PAID' | 'PROCESSING' | 'PARTIALLY_FULFILLED' | 'FULFILLED' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'FAILED';
+  status:
+    | 'PENDING_PAYMENT'
+    | 'PAID'
+    | 'PROCESSING'
+    | 'PARTIALLY_FULFILLED'
+    | 'FULFILLED'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'REFUNDED'
+    | 'PARTIALLY_REFUNDED'
+    | 'FAILED';
   paymentStatus: 'UNPAID' | 'AUTHORIZED' | 'PAID' | 'PARTIALLY_REFUNDED' | 'REFUNDED' | 'FAILED';
   fulfilmentStatus: 'UNFULFILLED' | 'PARTIAL' | 'FULFILLED';
   subtotalMinor: bigint;

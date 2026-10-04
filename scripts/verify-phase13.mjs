@@ -358,4 +358,6 @@ await access(ordersRoute);
 const rootPackage = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
 assert.equal(typeof rootPackage.scripts['phase13:verify'], 'string');
 
-process.stdout.write('Phase 13 checkout, reservations, and orders structural verification passed.\n');
+process.stdout.write(
+  'Phase 13 checkout, reservations, and orders structural verification passed.\n',
+);
