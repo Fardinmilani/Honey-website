@@ -66,6 +66,14 @@ export interface AuthStatePort {
   getChallenge(tokenHash: string): Promise<PreAuthChallenge | null>;
   consumeChallenge(tokenHash: string): Promise<PreAuthChallenge | null>;
   recordChallengeFailure(tokenHash: string, maxAttempts: number): Promise<boolean>;
+  /**
+   * Marks the given already-authenticated session as having just proved a
+   * factor again ("step-up" / recent authentication — docs/security-model.md).
+   * Distinct from `PreAuthChallenge`: the session already exists, this only
+   * raises its trust level for `ttlMs`.
+   */
+  markStepUp(sessionId: string, ttlMs: number): Promise<void>;
+  hasStepUp(sessionId: string): Promise<boolean>;
 }
 
 export type AuditInput = Readonly<{

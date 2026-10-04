@@ -343,7 +343,10 @@ Governing decision: [ADR-0022](adr/0022-payment-verification-sources.md).
   payment record before any state change. A mismatch does not mark the order
   paid — it records `payment.amount_mismatch` and raises a reconciliation alert.
 - Refunds require `order:refund` plus step-up authentication, are capped at the
-  remaining refundable amount by a database constraint, and are always audited.
+  remaining refundable amount, and are always audited. Official Zarinpal REST
+  refunds are full-only.
+- A declined, cancelled, or expired payment does not release Phase 13 stock
+  allocation. The order stays unpaid and retryable until it is cancelled.
 - Reconciliation polling is mandatory for every adapter, so neither a lost
   webhook nor a customer who closes the tab can strand an order or a customer's
   money.

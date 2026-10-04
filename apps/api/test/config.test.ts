@@ -112,6 +112,13 @@ describe('API configuration', () => {
       CART_ENABLED_CURRENCIES: 'IRR',
       CART_WRITE_RATE_LIMIT_MAX: '120',
       CART_COUPON_RATE_LIMIT_MAX: '20',
+      STEP_UP_TTL_SECONDS: '300',
+      PAYMENT_PROVIDER: 'zarinpal',
+      PAYMENT_CALLBACK_URL: 'https://shop.example/fa/checkout/payment-return',
+      PAYMENT_PROVIDER_REQUEST_TIMEOUT_MS: '8000',
+      PAYMENT_RECONCILIATION_MIN_AGE_SECONDS: '300',
+      ZARINPAL_MERCHANT_ID: '22222222-2222-2222-2222-222222222222',
+      ZARINPAL_MODE: 'production',
     };
     expect(() =>
       loadApiConfig({

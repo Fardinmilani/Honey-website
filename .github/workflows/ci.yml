@@ -261,6 +261,22 @@ jobs:
       - name: Verify Phase 13 checkout, reservations, and orders
         run: pnpm phase13:verify
 
+      - name: Run Phase 14 payment unit and provider contract tests
+        run: >-
+          pnpm --filter @honey/backend test -- --run
+          test/payments.test.ts
+          src/modules/payments/domain/payments.test.ts
+          test/zarinpal-payment-provider.test.ts
+
+      - name: Run Phase 14 PostgreSQL payment concurrency
+        run: pnpm --filter @honey/backend test -- --run test/payments.integration.test.ts
+
+      - name: Run Phase 14 payment HTTP security tests
+        run: pnpm --filter @honey/api test -- --run test/phase14.test.ts
+
+      - name: Verify Phase 14 payments
+        run: pnpm phase14:verify
+
       - name: Prove Hero media never entered object storage
         run: |
           for bucket in honey-media-ci honey-private-ci; do

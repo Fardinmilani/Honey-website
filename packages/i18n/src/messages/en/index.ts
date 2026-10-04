@@ -2,6 +2,7 @@ import type { MessageCatalog } from '../types.js';
 import { accessibility } from './accessibility.js';
 import { catalog } from './catalog.js';
 import { checkout } from './checkout.js';
+import { payments } from './payments.js';
 import { common } from './common.js';
 import { errors } from './errors.js';
 import { home } from './home.js';
@@ -18,6 +19,7 @@ export const enCatalog = {
   errors,
   catalog,
   checkout,
+  payments,
   product,
   search,
   seo,

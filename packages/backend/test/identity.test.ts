@@ -53,6 +53,7 @@ const config: IdentityConfig = {
   preAuthChallengeTtlMs: 5 * 60 * 1_000,
   totpIssuer: 'Honey',
   totpDriftSeconds: 30,
+  stepUpTtlMs: 5 * 60 * 1_000,
   authThrottle: {
     windowMs: 15 * 60 * 1_000,
     maxFailures: 3,
@@ -149,6 +150,7 @@ class FakeAuthState implements AuthStatePort {
   readonly challenges = new Map<string, PreAuthChallenge>();
   readonly failures = new Map<string, number>();
   readonly cleared: string[] = [];
+  readonly steppedUp = new Set<string>();
 
   async checkThrottle(keys: readonly string[]): Promise<number | null> {
     return Promise.resolve(keys.some((key) => (this.failures.get(key) ?? 0) >= 3) ? 30_000 : null);
@@ -193,6 +195,14 @@ class FakeAuthState implements AuthStatePort {
     this.failures.set(key, count);
     if (count >= maxAttempts) this.challenges.delete(tokenHash);
     return Promise.resolve(count >= maxAttempts);
+  }
+
+  async markStepUp(sessionId: string): Promise<void> {
+    this.steppedUp.add(sessionId);
+  }
+
+  async hasStepUp(sessionId: string): Promise<boolean> {
+    return Promise.resolve(this.steppedUp.has(sessionId));
   }
 }
 

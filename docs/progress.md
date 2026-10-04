@@ -22,8 +22,8 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 10 | Storefront Catalog & SEO | ✅ Complete | 2026-08-09 |
 | 11 | Sourcing, Procurement & Inventory | ✅ Complete | 2026-08-10 |
 | 12 | Cart & Pricing | Complete | 2026-09-12 |
-| 13 | Checkout, Reservations & Orders | ✅ Complete (uncommitted — awaiting human review/commit) | 2026-09-25 |
-| 14 | Payments | â¬œ Not started | â€” |
+| 13 | Checkout, Reservations & Orders | ✅ Complete | 2026-09-25 |
+| 14 | Payments | ✅ Complete (uncommitted — awaiting human review/commit) | 2026-10-04 |
 | 15 | Shipping & Fulfilment | â¬œ Not started | â€” |
 | 16 | Background Jobs | â¬œ Not started | â€” |
 | 17 | Admin Console | â¬œ Not started | â€” |
@@ -31,8 +31,67 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 13 — Checkout, Reservations & Orders (**complete 2026-09-25, uncommitted**).
-**Previous phase:** Phase 12 — Cart & Pricing (**complete 2026-09-12**).
+**Current phase:** Phase 15 — Shipping & Fulfilment (**CURRENT but NOT STARTED**).
+**Previous phase:** Phase 14 — Payments (**complete 2026-10-04, uncommitted**).
+
+---
+
+## Phase 14 — Payments
+
+**Completed:** 2026-10-04 · **Status:** Complete, uncommitted (awaiting human review/commit)
+
+Server-authoritative payments with Zarinpal as the first provider. One
+`applyPaymentOutcome` state machine is reached by `verifyReturn`, optional
+webhooks (fake provider only — Zarinpal has none), and mandatory `getStatus`
+reconciliation. A forged `?status=success` cannot mark an order paid. Refunds
+require step-up and cannot exceed the remaining amount. Official Zarinpal REST
+v4 has no webhook and no REST partial refund; those flags stay honest.
+
+See [`docs/payments-development.md`](payments-development.md).
+
+**Unresolved decisions**
+
+- IRR stored vs Toman displayed remains a presentation question; Phase 14 stores
+  integer rials only.
+- Phase 16 must schedule `reconcileEligible` and consume `ProviderEvent`
+  processing. Phase 14 only owns the application-service seams.
+
+**Risks**
+
+- Zarinpal inquiry `PAID` (unverified) must call `verify.json`; treating inquiry
+  alone as capture would mark money that is not yet verified.
+- REST refund is full-only. Do not expose a partial-refund control against
+  Zarinpal.
+- A provider-create timeout marks that local payment `FAILED`. A later start
+  with a new idempotency key can create a new payment for the still-unpaid
+  order (accepted retry policy). The same local payment is not blindly
+  re-created at the provider.
+
+**Release-readiness verification (2026-10-04)**
+
+- `pnpm test` — Turbo **17/17** successful. Root TAP boundaries **22/22**.
+  Backend **197 passed / 1 skipped** (the skip is `DATABASE_URL`-gated platform
+  seam; it passed when `DATABASE_URL` was set). API **64 passed / 1 skipped**
+  (the skip is real-Postgres `/readyz`; it passed when `DATABASE_URL` was set).
+  CI-equivalent: backend **198/0**, API **65/0**. Web unit **40/40**. i18n
+  **29/29**. contracts **3/3**. ui **5/5**. db integration **73 tables, 31
+  enums, 35 rejection proofs**. core/utils/worker **0 tests**.
+- `MEDIA_MINIO_TESTS=true` MinIO suites executed: **6** contract/integration
+  tests including signed-URL expiry and no-Hero-object. Explicit `mc find`
+  Hero scan on `honey-media` / `honey-private` printed no matching keys.
+- `pnpm build` — Turbo **10/10**, wrapper **exit 0**, no leftover Node/turbo
+  processes.
+- `pnpm test:e2e` — **98 passed / 0 failed / 0 skipped**. Payment axe FA/EN
+  executed with **zero** serious/critical violations.
+- Phase 4–14 verifiers — all **exit 0**.
+- OpenAPI generate/check/lint/forbidden — **pass**. Breaking comparison
+  **NOT EXECUTED** (no PR base ref).
+- `docker compose config --quiet` and `pnpm docker:verify` — **pass**.
+- API image `honey-api:phase11` — non-root `node` (uid 1000), no `.env`,
+  payments module mapped, `/readyz` 200 against local PostgreSQL, clean
+  SIGTERM. Production + mock / placeholder merchant / sandbox **fail closed**.
+- Web image `honey-web:phase11` — non-root `node`, Hero 8 files present, no
+  card form, no HSTS on local HTTP, payment-return `private, no-store`.
 
 ---
 

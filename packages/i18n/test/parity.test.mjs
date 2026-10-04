@@ -23,6 +23,7 @@ test('English and Persian catalogs have exact key parity', () => {
       'product',
       'search',
       'checkout',
+      'payments',
       'seo',
     ],
   );

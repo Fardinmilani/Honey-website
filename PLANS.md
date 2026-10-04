@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 13 — Checkout, Reservations & Orders (**complete 2026-09-25, uncommitted — see `docs/progress.md`**)
-**Completed phase:** Phase 12 — Cart & Pricing (**complete 2026-09-12**)
+**Current phase:** Phase 15 — Shipping & Fulfilment (**CURRENT but NOT STARTED**)
+**Completed phase:** Phase 14 — Payments (**complete 2026-10-04, uncommitted — see `docs/progress.md`**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -74,9 +74,9 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 10 | Storefront Catalog | **Complete 2026-08-09** — listing, filtering, PDP, SEO, structured data, sitemaps |
 | 11 | Sourcing, Procurement & Inventory | **Complete 2026-08-10** — suppliers, purchase orders, batches, stock ledger, public bands |
 | 12 | Cart & Pricing | **Complete 2026-09-12** — server-authoritative pricing and private repriced carts |
-| 13 | Checkout, Reservations & Orders | **CURRENT but NOT STARTED** — reservations, checkout transaction, immutable order snapshots |
-| 14 | Payments | Provider abstraction, first provider, server-verified outcomes, reconciliation |
-| 15 | Shipping & Fulfilment | Provider abstraction, rates, shipments, tracking |
+| 13 | Checkout, Reservations & Orders | **Complete 2026-09-25** — reservations, checkout transaction, immutable order snapshots |
+| 14 | Payments | **Complete 2026-10-04** — Zarinpal adapter, `applyPaymentOutcome`, fake provider, reconciliation |
+| 15 | Shipping & Fulfilment | **CURRENT but NOT STARTED** — provider abstraction, rates, shipments, tracking |
 | 16 | Background Jobs | Worker composition root, queues, scheduling, retries, dead letters |
 | 17 | Admin Console | Catalog, inventory, orders, procurement, content administration |
 | 18 | Content, Reviews & Notifications | CMS pages, moderated reviews, transactional messaging |
@@ -130,9 +130,11 @@ not rendered.
 These block or shape later phases and need a human decision. Tracked in
 [`docs/progress.md`](docs/progress.md).
 
-1. **Payment provider** — which Iranian PSP first (Zarinpal / IDPay / direct
-   Shaparak IPG), and is an international provider needed at launch? *Blocks
-   Phase 14.*
+1. **Payment provider** — **resolved 2026-10-04:** first provider is Zarinpal.
+   Official REST v4 covers request, StartPay redirect, verify, inquiry
+   (`getStatus`), and full refund. No webhook and no official REST partial
+   refund — those capabilities stay `false`. No second production provider in
+   Phase 14.
 2. **Currency and display** — IRR stored, Toman displayed? Any second currency
    for the English storefront? *Shapes Phases 12–14; it does not change the
    Phase 13 server-side currency invariant.*

@@ -18,6 +18,7 @@ test('pathname map covers catalog, cart, checkout, and order routes', () => {
     '/categories',
     '/categories/[slug]',
     '/checkout',
+    '/checkout/payment-return',
     '/collections',
     '/collections/[slug]',
     '/orders',
@@ -33,6 +34,7 @@ test('pathname map covers catalog, cart, checkout, and order routes', () => {
   assert.equal(pathnames['/search'].fa, '/jostoju');
   assert.equal(pathnames['/cart'].fa, '/sabad-kharid');
   assert.equal(pathnames['/checkout'].fa, '/takmil-sefaresh');
+  assert.equal(pathnames['/checkout/payment-return'].fa, '/takmil-sefaresh/bazgasht-pardakht');
   assert.equal(pathnames['/orders/[number]'].fa, '/sefareshha/[number]');
 });
 
@@ -42,7 +44,10 @@ test('localizedHref fills dynamic slugs', () => {
   assert.equal(localizedHref('/products', 'en'), '/en/products');
   assert.equal(localizedHref('/cart', 'fa'), '/fa/sabad-kharid');
   assert.equal(localizedHref('/checkout', 'en'), '/en/checkout');
-  assert.equal(localizedHref('/orders/[number]', 'fa', { number: 'HNY-2026-000001' }), '/fa/sefareshha/HNY-2026-000001');
+  assert.equal(
+    localizedHref('/orders/[number]', 'fa', { number: 'HNY-2026-000001' }),
+    '/fa/sefareshha/HNY-2026-000001',
+  );
   assert.equal(
     localizedHref('/products/[slug]', 'fa', { slug: 'asal-konar' }),
     '/fa/mahsoulat/asal-konar',
@@ -74,7 +79,14 @@ test('toFilesystemLocalePath rewrites Persian segments to internal paths', () =>
   assert.equal(toFilesystemLocalePath('/fa/dasteha/asal'), '/fa/categories/asal');
   assert.equal(toFilesystemLocalePath('/fa/jostoju'), '/fa/search');
   assert.equal(toFilesystemLocalePath('/fa/takmil-sefaresh'), '/fa/checkout');
-  assert.equal(toFilesystemLocalePath('/fa/sefareshha/HNY-2026-000001'), '/fa/orders/HNY-2026-000001');
+  assert.equal(
+    toFilesystemLocalePath('/fa/takmil-sefaresh/bazgasht-pardakht'),
+    '/fa/checkout/payment-return',
+  );
+  assert.equal(
+    toFilesystemLocalePath('/fa/sefareshha/HNY-2026-000001'),
+    '/fa/orders/HNY-2026-000001',
+  );
 });
 
 test('filesystemPath uses internal English segments', () => {

@@ -59,6 +59,7 @@ const schema = z
     EMAIL_VERIFICATION_TTL_SECONDS: positiveInteger,
     PASSWORD_RESET_TTL_SECONDS: positiveInteger,
     PREAUTH_CHALLENGE_TTL_SECONDS: positiveInteger,
+    STEP_UP_TTL_SECONDS: positiveInteger.max(1_800),
     TOTP_ISSUER: z.string().min(1).max(64),
     TOTP_ENCRYPTION_KEY_BASE64: z.string().min(1),
     TOTP_DRIFT_SECONDS: z.coerce.number().int().min(0).max(30),
@@ -110,6 +111,13 @@ const schema = z
     CART_COUPON_RATE_LIMIT_MAX: positiveInteger.max(10_000),
     CHECKOUT_STANDARD_SHIPPING_AMOUNT_MINOR: z.string().optional(),
     CHECKOUT_STANDARD_SHIPPING_CURRENCY: z.string().optional(),
+    PAYMENT_PROVIDER: z.enum(['mock', 'zarinpal']),
+    PAYMENT_CALLBACK_URL: z.string().url(),
+    PAYMENT_PROVIDER_REQUEST_TIMEOUT_MS: positiveInteger.max(30_000),
+    PAYMENT_RECONCILIATION_MIN_AGE_SECONDS: positiveInteger.max(86_400),
+    ZARINPAL_MERCHANT_ID: z.string().min(1).max(64),
+    ZARINPAL_MODE: z.enum(['sandbox', 'production']),
+    ZARINPAL_ACCESS_TOKEN: z.string().max(512).optional().default(''),
   })
   .passthrough();
 
@@ -159,6 +167,17 @@ export type ApiConfig = Readonly<{
   checkout: Readonly<{
     standardShipping: StandardShippingQuoteConfiguration;
   }>;
+  payment: Readonly<{
+    provider: 'mock' | 'zarinpal';
+    callbackUrl: string;
+    requestTimeoutMs: number;
+    reconciliationMinAgeMs: number;
+    zarinpal: Readonly<{
+      merchantId: string;
+      mode: 'sandbox' | 'production';
+      accessToken: string | null;
+    }>;
+  }>;
 }>;
 
 function defaultsFor(environment: string | undefined): Readonly<Record<string, string>> {
@@ -194,6 +213,7 @@ function defaultsFor(environment: string | undefined): Readonly<Record<string, s
     EMAIL_VERIFICATION_TTL_SECONDS: '86400',
     PASSWORD_RESET_TTL_SECONDS: '1800',
     PREAUTH_CHALLENGE_TTL_SECONDS: '300',
+    STEP_UP_TTL_SECONDS: '300',
     TOTP_ISSUER: 'Honey',
     TOTP_ENCRYPTION_KEY_BASE64: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
     TOTP_DRIFT_SECONDS: '30',
@@ -247,6 +267,13 @@ function defaultsFor(environment: string | undefined): Readonly<Record<string, s
     // no default, so confirmation cannot turn absent configuration into free shipping.
     CHECKOUT_STANDARD_SHIPPING_AMOUNT_MINOR: '10000',
     CHECKOUT_STANDARD_SHIPPING_CURRENCY: 'IRR',
+    PAYMENT_PROVIDER: 'mock',
+    PAYMENT_CALLBACK_URL: 'http://localhost:3000/fa/checkout/payment-return',
+    PAYMENT_PROVIDER_REQUEST_TIMEOUT_MS: '8000',
+    PAYMENT_RECONCILIATION_MIN_AGE_SECONDS: '300',
+    ZARINPAL_MERCHANT_ID: '00000000-0000-0000-0000-000000000000',
+    ZARINPAL_MODE: 'sandbox',
+    ZARINPAL_ACCESS_TOKEN: '',
   };
 }
 
@@ -374,6 +401,20 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
   ) {
     throw new Error('Staff session limits must remain 8 hours idle and 12 hours absolute.');
   }
+  if (parsed.data.NODE_ENV === 'production') {
+    if (parsed.data.PAYMENT_PROVIDER === 'mock') {
+      throw new Error('Production may not select the mock payment provider.');
+    }
+    if (!parsed.data.PAYMENT_CALLBACK_URL.startsWith('https://')) {
+      throw new Error('Production PAYMENT_CALLBACK_URL must be an HTTPS URL.');
+    }
+    if (
+      parsed.data.ZARINPAL_MERCHANT_ID === '00000000-0000-0000-0000-000000000000' ||
+      parsed.data.ZARINPAL_MODE !== 'production'
+    ) {
+      throw new Error('Production Zarinpal configuration is unsafe.');
+    }
+  }
 
   return {
     nodeEnv: parsed.data.NODE_ENV,
@@ -419,6 +460,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
         verificationTokenTtlMs: parsed.data.EMAIL_VERIFICATION_TTL_SECONDS * 1_000,
         passwordResetTtlMs: parsed.data.PASSWORD_RESET_TTL_SECONDS * 1_000,
         preAuthChallengeTtlMs: parsed.data.PREAUTH_CHALLENGE_TTL_SECONDS * 1_000,
+        stepUpTtlMs: parsed.data.STEP_UP_TTL_SECONDS * 1_000,
         totpIssuer: parsed.data.TOTP_ISSUER,
         totpDriftSeconds: parsed.data.TOTP_DRIFT_SECONDS,
         authThrottle: {
@@ -486,5 +528,17 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
       couponRateLimitMax: parsed.data.CART_COUPON_RATE_LIMIT_MAX,
     },
     checkout: { standardShipping },
+    payment: {
+      provider: parsed.data.PAYMENT_PROVIDER,
+      callbackUrl: parsed.data.PAYMENT_CALLBACK_URL,
+      requestTimeoutMs: parsed.data.PAYMENT_PROVIDER_REQUEST_TIMEOUT_MS,
+      reconciliationMinAgeMs: parsed.data.PAYMENT_RECONCILIATION_MIN_AGE_SECONDS * 1_000,
+      zarinpal: {
+        merchantId: parsed.data.ZARINPAL_MERCHANT_ID,
+        mode: parsed.data.ZARINPAL_MODE,
+        accessToken:
+          parsed.data.ZARINPAL_ACCESS_TOKEN === '' ? null : parsed.data.ZARINPAL_ACCESS_TOKEN,
+      },
+    },
   };
 }

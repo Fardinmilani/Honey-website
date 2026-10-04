@@ -272,12 +272,15 @@ Processing order is fixed and non-negotiable:
 2. Verify the signature and the timestamp window (reject if skew > 5 minutes).
 3. Persist to `provider_event` with a `UNIQUE(provider, event_id)`; a duplicate
    short-circuits to `200`.
-4. Return `200` immediately — before doing any business work.
-5. Enqueue a job; the worker processes it idempotently.
+4. Return `200` after persisting the event.
+5. Phase 14 invokes the idempotent `processProviderEvent` application service
+   (the same seam Phase 16 will later consume from BullMQ). There is no worker
+   consumer in this phase.
 
-Rationale: providers retry aggressively and time out quickly. Acknowledging fast
-and processing asynchronously is the only shape that survives contact with a real
-PSP. Unverified webhooks are logged and dropped, never processed.
+Rationale: providers retry aggressively and time out quickly. Persist first,
+then apply through one state machine. Unverified webhooks are logged and
+dropped, never processed. Zarinpal has no official webhook; the route exists
+for webhook-capable adapters and is proven by the fake provider.
 
 ### 10.2 Customer return — redirect-then-server-verify
 

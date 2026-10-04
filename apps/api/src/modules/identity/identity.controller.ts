@@ -123,6 +123,14 @@ class SessionParamDto {
   sessionId!: string;
 }
 
+class StepUpResponseDto {
+  @ApiProperty({ type: Boolean, example: true })
+  accepted!: true;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  expiresAt!: string;
+}
+
 class AcceptedResponseDto {
   @ApiProperty({ type: Boolean, example: true })
   accepted!: true;
@@ -449,6 +457,33 @@ export class IdentityController {
       requestPrincipal(request),
     );
     return { sessions };
+  }
+
+  @Post('me/step-up')
+  @RequirePermissions()
+  @HttpCode(200)
+  @ApiOperation({
+    operationId: 'requestStepUp',
+    summary: 'Re-verify staff TOTP for a sensitive action',
+    description:
+      "Raises the current staff session's trust level for a short window; consumed by other " +
+      'modules (e.g. refunds) that require recent re-authentication rather than a bare session.',
+  })
+  @ApiOkResponse({ type: StepUpResponseDto })
+  @ApiUnauthorizedResponse({ type: ProblemDetailsDto })
+  @ApiForbiddenResponse({ type: ProblemDetailsDto })
+  @ApiConflictResponse({ type: ProblemDetailsDto })
+  @ApiTooManyRequestsResponse({ type: ProblemDetailsDto })
+  async requestStepUp(
+    @Body() input: TotpConfirmDto,
+    @Req() request: FastifyRequest,
+  ): Promise<StepUpResponseDto> {
+    const result = await this.identity.requestStepUp(
+      requestPrincipal(request),
+      input.code,
+      requestMetadata(request),
+    );
+    return { accepted: true, expiresAt: result.expiresAt.toISOString() };
   }
 
   @Delete('me/sessions/:sessionId')

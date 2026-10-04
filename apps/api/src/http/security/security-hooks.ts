@@ -16,6 +16,24 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const CART_ROUTE_PREFIX = '/v1/cart';
 const CHECKOUT_ROUTE_PREFIX = '/v1/checkout';
 const ORDER_ROUTE_PREFIX = '/v1/orders';
+const PAYMENT_ROUTE_PREFIX = '/v1/payments';
+const ADMIN_PAYMENT_ROUTE_PREFIX = '/v1/admin/payments';
+const CARD_FIELD_TOKENS = [
+  'cardnumber',
+  'cardpan',
+  'pan',
+  'cvv',
+  'cvc',
+  'cid',
+  'pin',
+  'cardholder',
+  'expiry',
+  'expmonth',
+  'expyear',
+  'magneticstripe',
+  'track1',
+  'track2',
+];
 const WATCHED_CART_FIELD_TOKENS = [
   'price',
   'amount',
@@ -81,6 +99,34 @@ function isCheckoutWrite(request: FastifyRequest): boolean {
   return isCheckoutPath(request) && !SAFE_METHODS.has(request.method.toUpperCase());
 }
 
+function isPaymentPath(request: FastifyRequest): boolean {
+  const path = pathOf(request);
+  return path === PAYMENT_ROUTE_PREFIX || path.startsWith(`${PAYMENT_ROUTE_PREFIX}/`);
+}
+
+/**
+ * Deliberately excludes `/webhooks/payments/*` — that route is
+ * server-to-server (no browser, no cookies) and must never require CSRF.
+ */
+function isAdminPaymentWrite(request: FastifyRequest): boolean {
+  const path = pathOf(request);
+  return (
+    (path === ADMIN_PAYMENT_ROUTE_PREFIX || path.startsWith(`${ADMIN_PAYMENT_ROUTE_PREFIX}/`)) &&
+    !SAFE_METHODS.has(request.method.toUpperCase())
+  );
+}
+
+function isPaymentWrite(request: FastifyRequest): boolean {
+  return (
+    (isPaymentPath(request) || isAdminPaymentWrite(request)) &&
+    !SAFE_METHODS.has(request.method.toUpperCase())
+  );
+}
+
+function isPaymentAllowedField(normalized: string): boolean {
+  return normalized === 'ordernumber' || normalized === 'reason' || normalized === 'amountminor';
+}
+
 function isCheckoutAllowedShippingField(normalized: string): boolean {
   return (
     normalized === 'shippingaddress' ||
@@ -111,7 +157,7 @@ async function cartTamperingActorUserId(
   }
 }
 
-function watchedField(body: unknown, checkout: boolean): string | null {
+function watchedField(body: unknown, mode: 'cart' | 'checkout' | 'payment'): string | null {
   const pending: unknown[] = [body];
   const visited = new WeakSet<object>();
   let objectsScanned = 0;
@@ -129,8 +175,23 @@ function watchedField(body: unknown, checkout: boolean): string | null {
     }
     for (const [key, value] of Object.entries(current)) {
       const normalized = key.replace(/[_-]/gu, '').toLowerCase();
+      if (mode === 'payment') {
+        if (isPaymentAllowedField(normalized)) {
+          pending.push(value);
+          continue;
+        }
+        if (
+          CARD_FIELD_TOKENS.some((token) => normalized.includes(token)) ||
+          WATCHED_CART_FIELD_TOKENS.some((token) => normalized.includes(token))
+        ) {
+          return key;
+        }
+        pending.push(value);
+        continue;
+      }
       const forbidden = WATCHED_CART_FIELD_TOKENS.some((token) => normalized.includes(token));
-      if (forbidden && !(checkout && isCheckoutAllowedShippingField(normalized))) return key;
+      if (forbidden && !(mode === 'checkout' && isCheckoutAllowedShippingField(normalized)))
+        return key;
       pending.push(value);
     }
   }
@@ -160,6 +221,10 @@ export function registerSecurityHooks(
     config.cart.writeRateLimitMax,
     config.rateLimit.windowMs,
   );
+  const paymentWriteRateLimit = new InMemoryRateLimitStore(
+    config.cart.writeRateLimitMax,
+    config.rateLimit.windowMs,
+  );
   fastify.addHook('onRequest', (request, _reply, done) => {
     requestContext.run({ requestId: request.id }, done);
   });
@@ -170,9 +235,18 @@ export function registerSecurityHooks(
     const result = await rateLimitStore.consume(request.ip, Date.now());
     setRateHeaders(reply, result);
     if (!result.allowed) throw rateLimitError(result);
-    if (!isCartWrite(request) && !isCheckoutWrite(request)) return;
-    const scope = isCheckoutWrite(request) ? 'checkout' : 'cart';
-    const scopedResult = await (isCheckoutWrite(request) ? checkoutWriteRateLimit : cartWriteRateLimit).consume(
+    if (!isCartWrite(request) && !isCheckoutWrite(request) && !isPaymentWrite(request)) return;
+    const scope = isCheckoutWrite(request)
+      ? 'checkout'
+      : isPaymentWrite(request)
+        ? 'payment'
+        : 'cart';
+    const scopedLimiter = isCheckoutWrite(request)
+      ? checkoutWriteRateLimit
+      : isPaymentWrite(request)
+        ? paymentWriteRateLimit
+        : cartWriteRateLimit;
+    const scopedResult = await scopedLimiter.consume(
       `${scope}:${rateKey(request, config)}`,
       Date.now(),
     );
@@ -189,8 +263,13 @@ export function registerSecurityHooks(
   });
 
   fastify.addHook('preValidation', async (request) => {
-    if (!isCartWrite(request) && !isCheckoutWrite(request)) return;
-    const offendingField = watchedField(request.body, isCheckoutWrite(request));
+    if (!isCartWrite(request) && !isCheckoutWrite(request) && !isPaymentWrite(request)) return;
+    const mode = isPaymentWrite(request)
+      ? 'payment'
+      : isCheckoutWrite(request)
+        ? 'checkout'
+        : 'cart';
+    const offendingField = watchedField(request.body, mode);
     if (offendingField === null) return;
     const anonymousId = request.cookies[config.cart.cookie.name];
     if (cartTamperingRecorder !== undefined) {
@@ -209,9 +288,11 @@ export function registerSecurityHooks(
     throw new ValidationAppError([
       {
         path: offendingField,
-        code: isCheckoutWrite(request)
-          ? 'CHECKOUT_MONEY_FIELD_FORBIDDEN'
-          : 'CART_MONEY_FIELD_FORBIDDEN',
+        code: isPaymentWrite(request)
+          ? 'PAYMENT_CARD_OR_MONEY_FIELD_FORBIDDEN'
+          : isCheckoutWrite(request)
+            ? 'CHECKOUT_MONEY_FIELD_FORBIDDEN'
+            : 'CART_MONEY_FIELD_FORBIDDEN',
       },
     ]);
   });
@@ -225,7 +306,10 @@ export function registerSecurityHooks(
       headerToken: headerValue(request, config.csrf.headerName),
       exempt:
         OPERATIONAL_PATHS.has(path) ||
-        (!hasSessionCookie && !isCartWrite(request) && !isCheckoutWrite(request)),
+        (!hasSessionCookie &&
+          !isCartWrite(request) &&
+          !isCheckoutWrite(request) &&
+          !isPaymentWrite(request)),
     });
   });
 
@@ -236,6 +320,7 @@ export function registerSecurityHooks(
       path.startsWith('/v1/admin/') ||
       isCartPath(request) ||
       isCheckoutPath(request) ||
+      isPaymentPath(request) ||
       path === ORDER_ROUTE_PREFIX ||
       path.startsWith(`${ORDER_ROUTE_PREFIX}/`)
     ) {

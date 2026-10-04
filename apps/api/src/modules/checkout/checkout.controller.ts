@@ -245,7 +245,12 @@ export class CheckoutController {
   @Post()
   @Public()
   @HttpCode(200)
-  @ApiOperation({ operationId: 'startCheckout', summary: 'Start an owner-scoped checkout' })
+  @ApiOperation({
+    operationId: 'startCheckout',
+    summary: 'Start an owner-scoped checkout',
+    description:
+      'Creates a checkout from the server-derived cart owner. The client may send contact and address selections only; money and owner fields are rejected.',
+  })
   @ApiHeader({ name: 'Idempotency-Key', required: true })
   @ApiOkResponse({ type: CheckoutResponseDto })
   @ApiUnprocessableEntityResponse({ type: ProblemDetailsDto })
@@ -264,7 +269,10 @@ export class CheckoutController {
         email: body.email,
         phone: body.phone ?? null,
         shippingAddress: address(body.shippingAddress),
-        billingAddress: body.billingAddress === null || body.billingAddress === undefined ? null : address(body.billingAddress),
+        billingAddress:
+          body.billingAddress === null || body.billingAddress === undefined
+            ? null
+            : address(body.billingAddress),
         sameAsShipping: body.sameAsShipping,
       },
       header,
@@ -275,7 +283,11 @@ export class CheckoutController {
 
   @Get(':id')
   @Public()
-  @ApiOperation({ operationId: 'getCheckout', summary: 'Read the current owner checkout' })
+  @ApiOperation({
+    operationId: 'getCheckout',
+    summary: 'Read the current owner checkout',
+    description: 'Returns the caller-owned checkout. Another owner receives 404.',
+  })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: CheckoutResponseDto })
   @ApiNotFoundResponse({ type: ProblemDetailsDto })
@@ -284,7 +296,10 @@ export class CheckoutController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<CheckoutProjection> {
-    return this.#respond(reply, await this.checkout.get(await this.#context(request, reply), params.id));
+    return this.#respond(
+      reply,
+      await this.checkout.get(await this.#context(request, reply), params.id),
+    );
   }
 
   @Post(':id/extend')
@@ -293,6 +308,8 @@ export class CheckoutController {
   @ApiOperation({
     operationId: 'extendCheckoutReservation',
     summary: 'Extend an active checkout reservation hold once, up to the 30-minute maximum',
+    description:
+      'The server computes the new expiry. The client sends no body and cannot set the hold length.',
   })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: CheckoutResponseDto })
@@ -302,13 +319,21 @@ export class CheckoutController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<CheckoutProjection> {
-    return this.#respond(reply, await this.checkout.extend(await this.#context(request, reply), params.id));
+    return this.#respond(
+      reply,
+      await this.checkout.extend(await this.#context(request, reply), params.id),
+    );
   }
 
   @Post(':id/confirm')
   @Public()
   @HttpCode(200)
-  @ApiOperation({ operationId: 'confirmCheckout', summary: 'Create one pending-payment order' })
+  @ApiOperation({
+    operationId: 'confirmCheckout',
+    summary: 'Create one pending-payment order',
+    description:
+      'Creates exactly one UNPAID order from the locked checkout snapshot. Replays with the same Idempotency-Key return the same order.',
+  })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiHeader({ name: 'Idempotency-Key', required: true })
   @ApiOkResponse({ type: ConfirmCheckoutResponseDto })
@@ -322,7 +347,11 @@ export class CheckoutController {
     if (header === undefined) {
       throw new ValidationAppError([{ path: 'idempotencyKey', code: 'IDEMPOTENCY_KEY_REQUIRED' }]);
     }
-    const result = await this.checkout.confirm(await this.#context(request, reply), params.id, header);
+    const result = await this.checkout.confirm(
+      await this.#context(request, reply),
+      params.id,
+      header,
+    );
     if (result.state === 'PRICE_CHANGED') throw new ConflictAppError({ code: 'PRICE_CHANGED' });
     if (result.replayed) reply.header('Idempotency-Replayed', 'true');
     return this.#respond(reply, { checkout: result.checkout, orderNumber: result.orderNumber });
@@ -370,7 +399,8 @@ export class CheckoutController {
         if (candidate === undefined || candidate.length === 0) continue;
         if (this.config.catalog.enabledLocales.includes(candidate)) return candidate;
         const language = candidate.split('-')[0];
-        if (language !== undefined && this.config.catalog.enabledLocales.includes(language)) return language;
+        if (language !== undefined && this.config.catalog.enabledLocales.includes(language))
+          return language;
       }
     }
     return this.config.catalog.defaultLocale;
@@ -409,7 +439,11 @@ export class OrdersController {
 
   @Get()
   @Public()
-  @ApiOperation({ operationId: 'listMyOrders', summary: 'List current customer account orders' })
+  @ApiOperation({
+    operationId: 'listMyOrders',
+    summary: 'List current customer account orders',
+    description: 'Guests receive 404. Authenticated customers receive only their own orders.',
+  })
   @ApiOkResponse({ type: [CustomerOrderResponseDto] })
   async list(
     @Req() request: FastifyRequest,
@@ -418,12 +452,20 @@ export class OrdersController {
     const context = await this.#context(request);
     if (context.userId === null) throw new NotFoundAppError();
     const orders = await this.orders.listForUser(context.userId);
-    return this.#respond(reply, orders.map((order) => safeOrder(order, context.locale)));
+    return this.#respond(
+      reply,
+      orders.map((order) => safeOrder(order, context.locale)),
+    );
   }
 
   @Get(':number')
   @Public()
-  @ApiOperation({ operationId: 'getMyOrder', summary: 'Read one owner-scoped order' })
+  @ApiOperation({
+    operationId: 'getMyOrder',
+    summary: 'Read one owner-scoped order',
+    description:
+      'Returns one owner-scoped order. Another owner or a guessed order number receives 404.',
+  })
   @ApiParam({ name: 'number', type: String, example: 'HNY-2026-000123' })
   @ApiOkResponse({ type: CustomerOrderResponseDto })
   @ApiNotFoundResponse({ type: ProblemDetailsDto })
@@ -433,11 +475,17 @@ export class OrdersController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<ReturnType<typeof safeOrder>> {
     const context = await this.#context(request);
-    const owner = context.userId === null ? { anonymousId: context.anonymousId } : { userId: context.userId };
-    return this.#respond(reply, safeOrder(await this.orders.getOwnedOrder(params.number, owner), context.locale));
+    const owner =
+      context.userId === null ? { anonymousId: context.anonymousId } : { userId: context.userId };
+    return this.#respond(
+      reply,
+      safeOrder(await this.orders.getOwnedOrder(params.number, owner), context.locale),
+    );
   }
 
-  async #context(request: FastifyRequest): Promise<Readonly<{ userId: string | null; anonymousId: string; locale: string }>> {
+  async #context(
+    request: FastifyRequest,
+  ): Promise<Readonly<{ userId: string | null; anonymousId: string; locale: string }>> {
     const cookieValue = request.cookies[this.config.cart.cookie.name];
     const anonymousId = isUuid(cookieValue) ? cookieValue : randomUUID();
     const token = request.cookies[this.config.sessionCookie.name];
@@ -451,7 +499,9 @@ export class OrdersController {
     }
     const header = request.headers['accept-language'];
     const locale =
-      typeof header === 'string' && header.toLowerCase().startsWith('en') ? 'en' : this.config.catalog.defaultLocale;
+      typeof header === 'string' && header.toLowerCase().startsWith('en')
+        ? 'en'
+        : this.config.catalog.defaultLocale;
     return { userId, anonymousId, locale };
   }
 
@@ -463,7 +513,10 @@ export class OrdersController {
 }
 
 function isUuid(value: string | undefined): value is string {
-  return value !== undefined && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
+  return (
+    value !== undefined &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

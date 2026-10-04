@@ -129,6 +129,8 @@ export type IdentityConfig = Readonly<{
   preAuthChallengeTtlMs: number;
   totpIssuer: string;
   totpDriftSeconds: number;
+  /** How long a staff "step-up" (recent re-authentication) stays valid for a session. */
+  stepUpTtlMs: number;
   authThrottle: Readonly<{
     windowMs: number;
     maxFailures: number;

@@ -835,6 +835,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/payments/{paymentId}/refunds': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Refund a paid payment (requires a recent step-up)
+     * @description Rejects with a conflict unless the staff session has recently re-verified its TOTP via POST /v1/me/step-up. The server, not the caller, computes the refundable cap.
+     */
+    post: operations['requestPaymentRefund'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/pricing/coupons': {
     parameters: {
       query?: never;
@@ -1708,7 +1728,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Start an owner-scoped checkout */
+    /**
+     * Start an owner-scoped checkout
+     * @description Creates a checkout from the server-derived cart owner. The client may send contact and address selections only; money and owner fields are rejected.
+     */
     post: operations['startCheckout'];
     delete?: never;
     options?: never;
@@ -1723,7 +1746,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Read the current owner checkout */
+    /**
+     * Read the current owner checkout
+     * @description Returns the caller-owned checkout. Another owner receives 404.
+     */
     get: operations['getCheckout'];
     put?: never;
     post?: never;
@@ -1742,7 +1768,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Create one pending-payment order */
+    /**
+     * Create one pending-payment order
+     * @description Creates exactly one UNPAID order from the locked checkout snapshot. Replays with the same Idempotency-Key return the same order.
+     */
     post: operations['confirmCheckout'];
     delete?: never;
     options?: never;
@@ -1759,7 +1788,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Extend an active checkout reservation hold once, up to the 30-minute maximum */
+    /**
+     * Extend an active checkout reservation hold once, up to the 30-minute maximum
+     * @description The server computes the new expiry. The client sends no body and cannot set the hold length.
+     */
     post: operations['extendCheckoutReservation'];
     delete?: never;
     options?: never;
@@ -1827,6 +1859,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/step-up': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Re-verify staff TOTP for a sensitive action
+     * @description Raises the current staff session's trust level for a short window; consumed by other modules (e.g. refunds) that require recent re-authentication rather than a bare session.
+     */
+    post: operations['requestStepUp'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/orders': {
     parameters: {
       query?: never;
@@ -1834,7 +1886,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List current customer account orders */
+    /**
+     * List current customer account orders
+     * @description Guests receive 404. Authenticated customers receive only their own orders.
+     */
     get: operations['listMyOrders'];
     put?: never;
     post?: never;
@@ -1851,10 +1906,93 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Read one owner-scoped order */
+    /**
+     * Read one owner-scoped order
+     * @description Returns one owner-scoped order. Another owner or a guessed order number receives 404.
+     */
     get: operations['getMyOrder'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/payments': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start (or resume) payment for an order
+     * @description Creates or resumes a payment from the server-owned order total. The client may send only the order number and an Idempotency-Key; money and card fields are rejected.
+     */
+    post: operations['startPayment'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/payments/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read one owner-scoped payment
+     * @description Returns the caller-owned payment projection. Another owner receives 404. Responses are private and must not be stored.
+     */
+    get: operations['getPayment'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/payments/{id}/return': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Verify the provider outcome after the customer returns from the gateway
+     * @description The browser only signals "check now" — every field it carries in the query string is ignored; the server re-verifies its own stored provider reference (ADR-0022).
+     */
+    post: operations['verifyPaymentReturn'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/webhooks/payments/{provider}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Receive a signed provider webhook event
+     * @description Accepts the exact raw body for signature verification. CSRF is not used; invalid signatures are persisted and ignored.
+     */
+    post: operations['receivePaymentWebhook'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2120,6 +2258,30 @@ export interface components {
       limit: number;
       nextCursor: string | null;
     };
+    PaymentResponseDto: {
+      amount: components['schemas']['MoneyDto'];
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      /** @example HNY-2026-000123 */
+      orderNumber: string;
+      /** Format: date-time */
+      paidAt: string | null;
+      provider: string;
+      redirectUrl: string | null;
+      /** @enum {string} */
+      status:
+        | 'CREATED'
+        | 'PENDING'
+        | 'AUTHORIZED'
+        | 'PAID'
+        | 'FAILED'
+        | 'CANCELLED'
+        | 'EXPIRED'
+        | 'REFUNDED'
+        | 'PARTIALLY_REFUNDED';
+    };
     PrivateMediaUrlDto: {
       /** Format: date-time */
       expiresAt: string;
@@ -2249,6 +2411,20 @@ export interface components {
        */
       status: 'ready';
     };
+    RefundResponseDto: {
+      amount: components['schemas']['MoneyDto'];
+      /** Format: date-time */
+      completedAt: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      paymentId: string;
+      reason: string;
+      /** @enum {string} */
+      status: 'REQUESTED' | 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    };
     SafeUserDto: {
       displayName: string | null;
       /** Format: email */
@@ -2313,6 +2489,12 @@ export interface components {
     };
     SessionsResponseDto: {
       sessions: components['schemas']['SessionDto'][];
+    };
+    StepUpResponseDto: {
+      /** @example true */
+      accepted: boolean;
+      /** Format: date-time */
+      expiresAt: string;
     };
     TaxRateResponseDto: {
       code: string;
@@ -3427,6 +3609,51 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  requestPaymentRefund: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        paymentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RefundResponseDto'];
         };
       };
       404: {
@@ -4847,6 +5074,57 @@ export interface operations {
       };
     };
   };
+  requestStepUp: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StepUpResponseDto'];
+        };
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
   listMyOrders: {
     parameters: {
       query?: never;
@@ -4892,6 +5170,129 @@ export interface operations {
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
         };
+      };
+    };
+  };
+  startPayment: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PaymentResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  getPayment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PaymentResponseDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  verifyPaymentReturn: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PaymentResponseDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  receivePaymentWebhook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        provider: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Accepted; processing is idempotent and re-runnable. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

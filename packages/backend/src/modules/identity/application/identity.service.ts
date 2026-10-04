@@ -311,6 +311,59 @@ export class IdentityService {
     }
   }
 
+  /**
+   * Staff-only "step-up" (recent re-authentication) for a sensitive
+   * operation such as a refund — docs/security-model.md. Re-verifies the
+   * staff member's existing TOTP factor and raises the current session's
+   * trust level for a short, configured window; it does not create a new
+   * session or challenge.
+   */
+  async requestStepUp(
+    principal: AuthenticatedPrincipal,
+    code: string,
+    metadata: RequestMetadata,
+  ): Promise<Readonly<{ expiresAt: Date }>> {
+    if (principal.kind !== 'STAFF') throw new ForbiddenAppError();
+    const user = await this.dependencies.repository.findAuthenticationUserById(principal.userId);
+    if (user === null || !user.isStaff || user.status !== 'ACTIVE') {
+      throw new UnauthenticatedAppError();
+    }
+    const credential = user.totpCredential;
+    if (credential === null) throw new ConflictAppError({ code: 'TOTP_NOT_ENROLLED' });
+    const now = this.dependencies.clock.now();
+    const verification = await this.dependencies.totp.verify(
+      this.dependencies.cipher.decrypt(credential.encryptedSecret),
+      code,
+      now,
+      this.dependencies.config.totpDriftSeconds,
+      credential.lastAcceptedStep,
+    );
+    if (!verification.valid) {
+      await this.dependencies.repository.appendAudit(
+        audit('identity.step_up_failed', 'user', user.id, metadata, user.id),
+      );
+      throw new UnauthenticatedAppError({ code: 'AUTHENTICATION_FAILED' });
+    }
+    const accepted = await this.dependencies.repository.transaction((transaction) =>
+      transaction.acceptTotpStep(credential.id, verification.step, now),
+    );
+    if (!accepted) throw new UnauthenticatedAppError({ code: 'AUTHENTICATION_FAILED' });
+    await this.dependencies.authState.markStepUp(
+      principal.sessionId,
+      this.dependencies.config.stepUpTtlMs,
+    );
+    await this.dependencies.repository.appendAudit(
+      audit('identity.step_up_verified', 'user', user.id, metadata, user.id),
+    );
+    return { expiresAt: new Date(now.getTime() + this.dependencies.config.stepUpTtlMs) };
+  }
+
+  /** Narrow capability consumed by other modules through `StepUpPort` (docs/module-boundaries.md §1). */
+  async requireStepUp(sessionId: string): Promise<void> {
+    const stepped = await this.dependencies.authState.hasStepUp(sessionId);
+    if (!stepped) throw new ForbiddenAppError({ code: 'STEP_UP_REQUIRED' });
+  }
+
   async grantRole(
     principal: AuthenticatedPrincipal,
     targetUserId: string,

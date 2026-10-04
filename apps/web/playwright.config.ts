@@ -95,6 +95,8 @@ export default defineConfig({
             // Catalog e2e (especially Phase 11 availability + crawlability) exceeds
             // the production anonymous cap of 300/min when two workers SSR in parallel.
             API_RATE_LIMIT_MAX: process.env['E2E_API_RATE_LIMIT_MAX'] ?? '10000',
+            PAYMENT_PROVIDER: 'mock',
+            PAYMENT_CALLBACK_URL: `http://127.0.0.1:${port}/en/checkout/payment-return`,
           },
         },
         {

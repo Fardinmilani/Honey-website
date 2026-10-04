@@ -6,6 +6,7 @@ export * from './modules/identity/index.js';
 export * from './modules/inventory/index.js';
 export * from './modules/media/index.js';
 export * from './modules/orders/index.js';
+export * from './modules/payments/index.js';
 export * from './modules/procurement/index.js';
 export * from './modules/pricing/index.js';
 export * from './modules/sourcing/index.js';

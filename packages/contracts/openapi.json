@@ -426,6 +426,42 @@
         "required": ["nextCursor", "hasMore", "limit"],
         "type": "object"
       },
+      "PaymentResponseDto": {
+        "properties": {
+          "amount": { "$ref": "#/components/schemas/MoneyDto" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "orderNumber": { "example": "HNY-2026-000123", "type": "string" },
+          "paidAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "provider": { "type": "string" },
+          "redirectUrl": { "nullable": true, "type": "string" },
+          "status": {
+            "enum": [
+              "CREATED",
+              "PENDING",
+              "AUTHORIZED",
+              "PAID",
+              "FAILED",
+              "CANCELLED",
+              "EXPIRED",
+              "REFUNDED",
+              "PARTIALLY_REFUNDED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orderNumber",
+          "status",
+          "provider",
+          "amount",
+          "redirectUrl",
+          "createdAt",
+          "paidAt"
+        ],
+        "type": "object"
+      },
       "PrivateMediaUrlDto": {
         "properties": {
           "expiresAt": { "format": "date-time", "type": "string" },
@@ -645,6 +681,22 @@
         "required": ["status"],
         "type": "object"
       },
+      "RefundResponseDto": {
+        "properties": {
+          "amount": { "$ref": "#/components/schemas/MoneyDto" },
+          "completedAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "paymentId": { "format": "uuid", "type": "string" },
+          "reason": { "type": "string" },
+          "status": {
+            "enum": ["REQUESTED", "PENDING", "COMPLETED", "FAILED", "CANCELLED"],
+            "type": "string"
+          }
+        },
+        "required": ["id", "paymentId", "amount", "reason", "status", "createdAt", "completedAt"],
+        "type": "object"
+      },
       "SafeUserDto": {
         "properties": {
           "displayName": { "nullable": true, "type": "string" },
@@ -742,6 +794,14 @@
           "sessions": { "items": { "$ref": "#/components/schemas/SessionDto" }, "type": "array" }
         },
         "required": ["sessions"],
+        "type": "object"
+      },
+      "StepUpResponseDto": {
+        "properties": {
+          "accepted": { "example": true, "type": "boolean" },
+          "expiresAt": { "format": "date-time", "type": "string" }
+        },
+        "required": ["accepted", "expiresAt"],
         "type": "object"
       },
       "TaxRateResponseDto": {
@@ -1920,6 +1980,49 @@
         "tags": ["Media"]
       }
     },
+    "/v1/admin/payments/{paymentId}/refunds": {
+      "post": {
+        "description": "Rejects with a conflict unless the staff session has recently re-verified its TOTP via POST /v1/me/step-up. The server, not the caller, computes the refundable cap.",
+        "operationId": "requestPaymentRefund",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/RefundResponseDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Refund a paid payment (requires a recent step-up)",
+        "tags": ["Payments"]
+      }
+    },
     "/v1/admin/pricing/coupons": {
       "get": {
         "description": "List internal coupon records.",
@@ -2959,6 +3062,7 @@
     },
     "/v1/checkout": {
       "post": {
+        "description": "Creates a checkout from the server-derived cart owner. The client may send contact and address selections only; money and owner fields are rejected.",
         "operationId": "startCheckout",
         "parameters": [
           {
@@ -2990,6 +3094,7 @@
     },
     "/v1/checkout/{id}": {
       "get": {
+        "description": "Returns the caller-owned checkout. Another owner receives 404.",
         "operationId": "getCheckout",
         "parameters": [
           {
@@ -3021,6 +3126,7 @@
     },
     "/v1/checkout/{id}/confirm": {
       "post": {
+        "description": "Creates exactly one UNPAID order from the locked checkout snapshot. Replays with the same Idempotency-Key return the same order.",
         "operationId": "confirmCheckout",
         "parameters": [
           {
@@ -3058,6 +3164,7 @@
     },
     "/v1/checkout/{id}/extend": {
       "post": {
+        "description": "The server computes the new expiry. The client sends no body and cannot set the hold length.",
         "operationId": "extendCheckoutReservation",
         "parameters": [
           {
@@ -3187,8 +3294,51 @@
         "tags": ["Identity"]
       }
     },
+    "/v1/me/step-up": {
+      "post": {
+        "description": "Raises the current staff session's trust level for a short window; consumed by other modules (e.g. refunds) that require recent re-authentication rather than a bare session.",
+        "operationId": "requestStepUp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/StepUpResponseDto" } }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Re-verify staff TOTP for a sensitive action",
+        "tags": ["Identity"]
+      }
+    },
     "/v1/orders": {
       "get": {
+        "description": "Guests receive 404. Authenticated customers receive only their own orders.",
         "operationId": "listMyOrders",
         "parameters": [],
         "responses": {
@@ -3210,6 +3360,7 @@
     },
     "/v1/orders/{number}": {
       "get": {
+        "description": "Returns one owner-scoped order. Another owner or a guessed order number receives 404.",
         "operationId": "getMyOrder",
         "parameters": [
           {
@@ -3238,6 +3389,133 @@
         "summary": "Read one owner-scoped order",
         "tags": ["Orders"]
       }
+    },
+    "/v1/payments": {
+      "post": {
+        "description": "Creates or resumes a payment from the server-owned order total. The client may send only the order number and an Idempotency-Key; money and card fields are rejected.",
+        "operationId": "startPayment",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Start (or resume) payment for an order",
+        "tags": ["Payments"]
+      }
+    },
+    "/v1/payments/{id}": {
+      "get": {
+        "description": "Returns the caller-owned payment projection. Another owner receives 404. Responses are private and must not be stored.",
+        "operationId": "getPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Read one owner-scoped payment",
+        "tags": ["Payments"]
+      }
+    },
+    "/v1/payments/{id}/return": {
+      "post": {
+        "description": "The browser only signals \"check now\" — every field it carries in the query string is ignored; the server re-verifies its own stored provider reference (ADR-0022).",
+        "operationId": "verifyPaymentReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Verify the provider outcome after the customer returns from the gateway",
+        "tags": ["Payments"]
+      }
+    },
+    "/webhooks/payments/{provider}": {
+      "post": {
+        "description": "Accepts the exact raw body for signature verification. CSRF is not used; invalid signatures are persisted and ignored.",
+        "operationId": "receivePaymentWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": { "example": "mock", "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Accepted; processing is idempotent and re-runnable." }
+        },
+        "summary": "Receive a signed provider webhook event",
+        "tags": ["Payments"]
+      }
     }
   },
   "servers": [],
@@ -3260,6 +3538,15 @@
       "name": "Catalog Admin"
     },
     { "description": "Private server-priced customer cart operations.", "name": "Cart" },
+    {
+      "description": "Owner-scoped checkout start, read, reservation extend, and confirm.",
+      "name": "Checkout"
+    },
+    { "description": "Owner-scoped customer order list and detail.", "name": "Orders" },
+    {
+      "description": "Owner-scoped payment start, read, and return verification; staff refunds; provider webhooks.",
+      "name": "Payments"
+    },
     {
       "description": "Permission-protected price, coupon, and tax-rule management APIs.",
       "name": "Pricing Admin"

@@ -49,6 +49,10 @@ export const pathnames = {
     fa: '/takmil-sefaresh',
     en: '/checkout',
   },
+  '/checkout/payment-return': {
+    fa: '/takmil-sefaresh/bazgasht-pardakht',
+    en: '/checkout/payment-return',
+  },
   '/orders': {
     fa: '/sefareshha',
     en: '/orders',

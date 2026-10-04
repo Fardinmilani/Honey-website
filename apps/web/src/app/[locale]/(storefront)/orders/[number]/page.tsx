@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { OrderDetail } from '@/components/orders/order-detail';
+import { getWebEnv } from '@/lib/env';
 
 const ORDER_NUMBER_RE = /^HNY-\d{4}-\d{6}$/u;
 
@@ -24,9 +25,15 @@ export default async function OrderPage({ params }: OrderPageProps) {
     notFound();
   }
 
+  const env = getWebEnv();
   return (
     <Container>
-      <OrderDetail locale={locale} orderNumber={number} />
+      <OrderDetail
+        locale={locale}
+        orderNumber={number}
+        csrfCookieName={env.csrfCookieName}
+        csrfHeaderName={env.csrfHeaderName}
+      />
     </Container>
   );
 }

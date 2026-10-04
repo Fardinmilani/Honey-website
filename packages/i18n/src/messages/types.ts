@@ -197,6 +197,23 @@ export type CheckoutMessages = {
   readonly browseProducts: string;
 };
 
+export type PaymentsMessages = {
+  readonly payNow: string;
+  readonly paying: string;
+  readonly redirecting: string;
+  readonly resultTitle: string;
+  readonly pending: string;
+  readonly paid: string;
+  readonly failed: string;
+  readonly cancelled: string;
+  readonly expired: string;
+  readonly retry: string;
+  readonly providerUnavailable: string;
+  readonly genericError: string;
+  readonly returnToOrder: string;
+  readonly statusLabel: string;
+};
+
 export type SeoMessages = {
   readonly homeTitle: string;
   readonly homeDescription: string;
@@ -221,6 +238,7 @@ export type MessageNamespaces = {
   readonly product: ProductMessages;
   readonly search: SearchMessages;
   readonly checkout: CheckoutMessages;
+  readonly payments: PaymentsMessages;
   readonly seo: SeoMessages;
 };
 
@@ -238,6 +256,7 @@ export const messageNamespaces = [
   'product',
   'search',
   'checkout',
+  'payments',
   'seo',
 ] as const satisfies readonly MessageNamespace[];
 

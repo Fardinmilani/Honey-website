@@ -48,6 +48,11 @@ export async function createApiApplication(
     logger: false,
     forceCloseConnections: 'idle',
   });
+  const originalRegisterParser = adapter.registerParserMiddleware.bind(adapter);
+  adapter.registerParserMiddleware = () => {
+    originalRegisterParser();
+    installRawWebhookJsonParser(adapter.getInstance());
+  };
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.register({
       config: options.config,
@@ -107,4 +112,42 @@ export async function createApiApplication(
   );
   registerRequestLogging(fastify, logger);
   return app;
+}
+
+function installRawWebhookJsonParser(instance: {
+  removeContentTypeParser: (type: string) => void;
+  addContentTypeParser: (
+    type: string,
+    options: Readonly<{ parseAs: 'buffer' }>,
+    parser: (
+      request: Readonly<{ url?: string }>,
+      body: Buffer | string,
+      done: (error: Error | null, value?: unknown) => void,
+    ) => void,
+  ) => void;
+}): void {
+  instance.removeContentTypeParser('application/json');
+  instance.addContentTypeParser(
+    'application/json',
+    { parseAs: 'buffer' },
+    (request, body, done) => {
+      const rawUrl = request.url ?? '';
+      const path = rawUrl.startsWith('/')
+        ? (rawUrl.split('?')[0] ?? '/')
+        : new URL(rawUrl, 'http://127.0.0.1').pathname;
+      if (path.startsWith('/webhooks/payments')) {
+        done(
+          null,
+          Buffer.isBuffer(body) ? body : Buffer.from(typeof body === 'string' ? body : ''),
+        );
+        return;
+      }
+      try {
+        const text = Buffer.isBuffer(body) ? body.toString('utf8') : String(body);
+        done(null, text === '' ? {} : (JSON.parse(text) as unknown));
+      } catch (error) {
+        done(error instanceof Error ? error : new Error('Invalid JSON'), undefined);
+      }
+    },
+  );
 }

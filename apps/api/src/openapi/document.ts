@@ -30,6 +30,12 @@ export async function createOpenApiDocument(app: NestFastifyApplication): Promis
     .addTag('Catalog', 'Public localized products, categories, collections, and search.')
     .addTag('Catalog Admin', 'Permission-protected catalog authoring and publication workflows.')
     .addTag('Cart', 'Private server-priced customer cart operations.')
+    .addTag('Checkout', 'Owner-scoped checkout start, read, reservation extend, and confirm.')
+    .addTag('Orders', 'Owner-scoped customer order list and detail.')
+    .addTag(
+      'Payments',
+      'Owner-scoped payment start, read, and return verification; staff refunds; provider webhooks.',
+    )
     .addTag('Pricing Admin', 'Permission-protected price, coupon, and tax-rule management APIs.')
     .addTag('Sourcing Admin', 'Staff-only apiaries, harvest batches, and batch allocation.')
     .addTag('Procurement Admin', 'Staff-only suppliers, purchase orders, and goods receipts.')

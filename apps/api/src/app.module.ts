@@ -13,6 +13,7 @@ import {
   PricingModule,
   CheckoutModule,
   OrdersModule,
+  PaymentsModule,
   type DatabaseHealthPort,
 } from '@honey/backend';
 import type { GracefulShutdown } from './bootstrap/graceful-shutdown.js';
@@ -30,6 +31,11 @@ import { AdminInventoryController } from './modules/inventory/inventory.controll
 import { CartController } from './modules/cart/cart.controller.js';
 import { AdminPricingController } from './modules/pricing/pricing.controller.js';
 import { CheckoutController, OrdersController } from './modules/checkout/checkout.controller.js';
+import {
+  AdminPaymentsController,
+  PaymentsController,
+  PaymentWebhooksController,
+} from './modules/payments/payments.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
@@ -58,6 +64,9 @@ export class AppModule {
           AdminPricingController,
           CheckoutController,
           OrdersController,
+          PaymentsController,
+          AdminPaymentsController,
+          PaymentWebhooksController,
           ValidationProbeController,
         ]
       : [
@@ -73,6 +82,9 @@ export class AppModule {
           AdminPricingController,
           CheckoutController,
           OrdersController,
+          PaymentsController,
+          AdminPaymentsController,
+          PaymentWebhooksController,
         ];
   }
 
@@ -110,6 +122,15 @@ export class AppModule {
       mediaModule,
     });
     const ordersModule = OrdersModule.register({ databaseUrl: options.config.databaseUrl });
+    const identityModule = IdentityModule.register({
+      config: options.config.identity.config,
+      databaseUrl: options.config.databaseUrl,
+      redisUrl: options.config.redisUrl,
+      totpEncryptionKey: options.config.identity.totpEncryptionKey,
+      breachedPasswordEndpoint: options.config.identity.breachedPasswordEndpoint,
+      breachedPasswordTimeoutMs: options.config.identity.breachedPasswordTimeoutMs,
+      smtp: options.config.identity.smtp,
+    });
     const checkoutModule = CheckoutModule.register({
       databaseUrl: options.config.databaseUrl,
       standardShipping: options.config.checkout.standardShipping,
@@ -119,19 +140,21 @@ export class AppModule {
       ordersModule,
       platformModule,
     });
+    const paymentsModule = PaymentsModule.register({
+      databaseUrl: options.config.databaseUrl,
+      defaultProvider: options.config.payment.provider,
+      callbackUrl: options.config.payment.callbackUrl,
+      requestTimeoutMs: options.config.payment.requestTimeoutMs,
+      reconciliationMinAgeMs: options.config.payment.reconciliationMinAgeMs,
+      zarinpal: options.config.payment.zarinpal,
+      identityModule,
+      platformModule,
+    });
     return {
       module: AppModule,
       imports: [
         platformModule,
-        IdentityModule.register({
-          config: options.config.identity.config,
-          databaseUrl: options.config.databaseUrl,
-          redisUrl: options.config.redisUrl,
-          totpEncryptionKey: options.config.identity.totpEncryptionKey,
-          breachedPasswordEndpoint: options.config.identity.breachedPasswordEndpoint,
-          breachedPasswordTimeoutMs: options.config.identity.breachedPasswordTimeoutMs,
-          smtp: options.config.identity.smtp,
-        }),
+        identityModule,
         inventoryModule,
         pricingModule,
         SourcingModule.register({
@@ -153,6 +176,7 @@ export class AppModule {
         cartModule,
         ordersModule,
         checkoutModule,
+        paymentsModule,
       ],
       controllers: [...AppModule.controllers(options.enableTestRoutes === true)],
       providers: [

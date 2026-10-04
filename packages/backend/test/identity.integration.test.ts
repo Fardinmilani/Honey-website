@@ -45,6 +45,7 @@ const config: IdentityConfig = {
   preAuthChallengeTtlMs: 5 * 60 * 1_000,
   totpIssuer: 'Honey integration',
   totpDriftSeconds: 30,
+  stepUpTtlMs: 5 * 60 * 1_000,
   authThrottle: {
     windowMs: 15 * 60 * 1_000,
     maxFailures: 10,

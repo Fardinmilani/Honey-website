@@ -1,6 +1,12 @@
 'use client';
 
-import { createTranslator, formatDate, formatMinorMoney, localizedHref, type Locale } from '@honey/i18n';
+import {
+  createTranslator,
+  formatDate,
+  formatMinorMoney,
+  localizedHref,
+  type Locale,
+} from '@honey/i18n';
 import NextLink from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -51,6 +57,8 @@ type CustomerOrder = Readonly<{
 type OrderDetailProps = Readonly<{
   locale: Locale;
   orderNumber: string;
+  csrfCookieName: string;
+  csrfHeaderName: string;
 }>;
 
 class OrderRequestError extends Error {
@@ -248,12 +256,68 @@ async function requestOrder(orderNumber: string, locale: Locale): Promise<Custom
   return order;
 }
 
-export function OrderDetail({ locale, orderNumber }: OrderDetailProps) {
+function readCookieValue(name: string): string | undefined {
+  const cookie = document.cookie.split(';').map((item) => item.trim());
+  const prefix = `${name}=`;
+  const matching = cookie.find((item) => item.startsWith(prefix));
+  if (matching === undefined) return undefined;
+  const raw = matching.slice(prefix.length);
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+export function OrderDetail({
+  locale,
+  orderNumber,
+  csrfCookieName,
+  csrfHeaderName,
+}: OrderDetailProps) {
   const t = createTranslator(locale);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   const productsHref = localizedHref('/products', locale);
+
+  async function startPayment(): Promise<void> {
+    setPaying(true);
+    setPayError(null);
+    const headers = new Headers({
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'x-honey-locale': locale,
+      'idempotency-key': crypto.randomUUID().replaceAll('-', '') + 'paystart',
+    });
+    const csrf = readCookieValue(csrfCookieName);
+    if (csrf !== undefined && csrf !== '') headers.set(csrfHeaderName, csrf);
+    try {
+      const response = await fetch('/api/bff/payments', {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify({ orderNumber }),
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isRecord(body) || typeof body['redirectUrl'] !== 'string') {
+        setPayError(
+          isRecord(body) && body['code'] === 'PAYMENT_PROVIDER_UNAVAILABLE'
+            ? t('payments.providerUnavailable')
+            : t('payments.genericError'),
+        );
+        setPaying(false);
+        return;
+      }
+      window.location.assign(body['redirectUrl']);
+    } catch {
+      setPayError(t('payments.genericError'));
+      setPaying(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -330,6 +394,29 @@ export function OrderDetail({ locale, orderNumber }: OrderDetailProps) {
               </p>
             </div>
           </div>
+          {order.status === 'PENDING_PAYMENT' && order.paymentStatus === 'UNPAID' ? (
+            <div className={styles['payActions']}>
+              <button
+                type="button"
+                className={styles['payButton']}
+                disabled={paying}
+                onClick={() => {
+                  void startPayment();
+                }}
+              >
+                {paying ? t('payments.paying') : t('payments.payNow')}
+              </button>
+              {payError !== null ? (
+                <p className={styles['payStatus']} role="alert">
+                  {payError}
+                </p>
+              ) : paying ? (
+                <p className={styles['payStatus']} role="status">
+                  {t('payments.redirecting')}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {order.shippingAddress !== null ? (
@@ -341,7 +428,8 @@ export function OrderDetail({ locale, orderNumber }: OrderDetailProps) {
               {order.shippingAddress.line1}
               {order.shippingAddress.line2 !== null ? <>, {order.shippingAddress.line2}</> : null}
               <br />
-              {order.shippingAddress.city}, {order.shippingAddress.province} {order.shippingAddress.postalCode}
+              {order.shippingAddress.city}, {order.shippingAddress.province}{' '}
+              {order.shippingAddress.postalCode}
               <br />
               {order.shippingAddress.country} · {order.shippingAddress.phone}
             </p>
@@ -381,12 +469,16 @@ export function OrderDetail({ locale, orderNumber }: OrderDetailProps) {
           {order.discountTotal.amountMinor !== '0' ? (
             <div className={styles['summaryRow']}>
               <span>{t('checkout.discount')}</span>
-              <span className={styles['amount']}>−{formatMinorMoney(locale, order.discountTotal)}</span>
+              <span className={styles['amount']}>
+                −{formatMinorMoney(locale, order.discountTotal)}
+              </span>
             </div>
           ) : null}
           <div className={styles['summaryRow']}>
             <span>{t('checkout.shipping')}</span>
-            <span className={styles['amount']}>{formatMinorMoney(locale, order.shippingTotal)}</span>
+            <span className={styles['amount']}>
+              {formatMinorMoney(locale, order.shippingTotal)}
+            </span>
           </div>
           <div className={styles['summaryRow']}>
             <span>{t('checkout.tax')}</span>
@@ -394,7 +486,9 @@ export function OrderDetail({ locale, orderNumber }: OrderDetailProps) {
           </div>
           <div className={`${styles['summaryRow']} ${styles['summaryTotal']}`}>
             <strong>{t('checkout.total')}</strong>
-            <strong className={styles['amount']}>{formatMinorMoney(locale, order.grandTotal)}</strong>
+            <strong className={styles['amount']}>
+              {formatMinorMoney(locale, order.grandTotal)}
+            </strong>
           </div>
         </div>
       </div>

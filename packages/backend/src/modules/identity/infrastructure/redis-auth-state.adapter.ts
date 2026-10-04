@@ -173,6 +173,10 @@ export class RedisAuthStateAdapter implements AuthStatePort {
     return `identity:challenge:${tokenHash}`;
   }
 
+  #stepUpKey(sessionId: string): string {
+    return `identity:stepup:${sha256(sessionId)}`;
+  }
+
   async checkThrottle(keys: readonly string[], now: Date): Promise<number | null> {
     await this.#ready();
     let longest = 0;
@@ -245,6 +249,16 @@ export class RedisAuthStateAdapter implements AuthStatePort {
       arguments: [String(maxAttempts)],
     });
     return numberResult(value) === 1;
+  }
+
+  async markStepUp(sessionId: string, ttlMs: number): Promise<void> {
+    await this.#ready();
+    await this.#client.set(this.#stepUpKey(sessionId), '1', { PX: ttlMs });
+  }
+
+  async hasStepUp(sessionId: string): Promise<boolean> {
+    await this.#ready();
+    return (await this.#client.exists(this.#stepUpKey(sessionId))) === 1;
   }
 
   async close(): Promise<void> {
