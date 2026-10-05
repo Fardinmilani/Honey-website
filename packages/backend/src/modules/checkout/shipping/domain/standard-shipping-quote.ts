@@ -32,16 +32,19 @@ export type StoredShippingQuote = Readonly<{
   estimatedDaysMax: number;
   expiresAt: Date;
   createdAt: Date;
+  contextFingerprint?: string | null;
+  methodName?: string | null;
+  providerCode?: string | null;
 }>;
 
 export type StandardShippingQuote = Readonly<{
   id: string;
   checkoutSessionId: string;
-  methodCode: typeof STANDARD_SHIPPING_METHOD_CODE;
+  methodCode: string;
   amountMinor: bigint;
   currency: string;
-  estimatedDaysMin: typeof STANDARD_SHIPPING_ESTIMATED_DAYS_MIN;
-  estimatedDaysMax: typeof STANDARD_SHIPPING_ESTIMATED_DAYS_MAX;
+  estimatedDaysMin: number;
+  estimatedDaysMax: number;
   expiresAt: Date;
   createdAt: Date;
 }>;
@@ -49,6 +52,9 @@ export type StandardShippingQuote = Readonly<{
 export type StandardShippingQuoteDraft = StandardShippingQuote &
   Readonly<{
     actorUserId: string | null;
+    contextFingerprint?: string;
+    methodName?: string;
+    providerCode?: string;
   }>;
 
 export type StandardShippingCharge = Readonly<{
@@ -98,9 +104,6 @@ export function calculateStandardShippingCharge(
   quote: Pick<StandardShippingQuote, 'amountMinor' | 'currency' | 'methodCode'>,
   freeShippingApplies: boolean,
 ): StandardShippingCharge {
-  if (quote.methodCode !== STANDARD_SHIPPING_METHOD_CODE) {
-    throw new TypeError('Only the STANDARD checkout quote can be charged in Phase 13.');
-  }
   if (typeof freeShippingApplies !== 'boolean') {
     throw new TypeError('freeShippingApplies must be a server-derived boolean.');
   }

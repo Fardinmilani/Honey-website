@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 15 — Shipping & Fulfilment (**CURRENT but NOT STARTED**)
-**Completed phase:** Phase 14 — Payments (**complete 2026-10-04, uncommitted — see `docs/progress.md`**)
+**Current phase:** Phase 16 — Background Jobs (**CURRENT but NOT STARTED**)
+**Completed phase:** Phase 15 — Shipping & Fulfilment (**complete 2026-10-05; uncommitted for human review**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -76,8 +76,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 12 | Cart & Pricing | **Complete 2026-09-12** — server-authoritative pricing and private repriced carts |
 | 13 | Checkout, Reservations & Orders | **Complete 2026-09-25** — reservations, checkout transaction, immutable order snapshots |
 | 14 | Payments | **Complete 2026-10-04** — Zarinpal adapter, `applyPaymentOutcome`, fake provider, reconciliation |
-| 15 | Shipping & Fulfilment | **CURRENT but NOT STARTED** — provider abstraction, rates, shipments, tracking |
-| 16 | Background Jobs | Worker composition root, queues, scheduling, retries, dead letters |
+| 15 | Shipping & Fulfilment | **Complete 2026-10-05** — manual-flat provider, zones and rates, fulfilment, physical stock movement, tracking |
+| 16 | Background Jobs | **CURRENT but NOT STARTED** — worker composition root, queues, scheduling, retries, dead letters |
 | 17 | Admin Console | Catalog, inventory, orders, procurement, content administration |
 | 18 | Content, Reviews & Notifications | CMS pages, moderated reviews, transactional messaging |
 | 19 | Observability & Performance | Tracing, metrics, caching layers, Core Web Vitals budget |
@@ -138,9 +138,11 @@ These block or shape later phases and need a human decision. Tracked in
 2. **Currency and display** — IRR stored, Toman displayed? Any second currency
    for the English storefront? *Shapes Phases 12–14; it does not change the
    Phase 13 server-side currency invariant.*
-3. **Shipping carriers** — flat-rate and manual only at launch, or an integrated
-   carrier from day one? *Blocks Phase 15.* Phase 13 has only the minimal,
-   checkout-owned `STANDARD` quote seam in [ADR-0038](docs/adr/0038-phase13-minimal-shipping-quote-boundary.md).
+3. **Shipping carriers** — **resolved 2026-10-04:** use the accepted
+   `manual-flat` launch adapter and server-owned zone, weight, and subtotal rates
+   in Phase 15. A live carrier API and labels remain out of scope
+   ([ADR-0014](docs/adr/0014-shipping-provider-abstraction.md),
+   [ADR-0038](docs/adr/0038-phase13-minimal-shipping-quote-boundary.md)).
 4. **Tax/VAT** — final production VAT applicability, rate, and inclusive/exclusive
    policy. *Does not block Phase 13:* confirmation uses the existing `TaxRate`
    engine for an authoritative destination, accepts an explicitly configured

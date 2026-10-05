@@ -37,6 +37,7 @@ function checkoutProjection(overrides: Partial<CheckoutProjection> = {}): Checko
     billingAddress: null,
     sameAsShipping: true,
     shippingQuote: null,
+    shippingQuotes: [],
     reservationExpiresAt: '2026-09-25T12:15:00.000Z',
     pricing: null,
     ...overrides,
@@ -79,6 +80,7 @@ function customerOrder(overrides: Partial<CustomerOrder> = {}): CustomerOrder {
     shippingAddressSnapshot: { country: 'US' },
     billingAddressSnapshot: { country: 'US' },
     placedAt: new Date('2026-09-25T12:00:00.000Z'),
+    shipments: [],
     lines: [
       {
         productNameSnapshot: { en: 'Phase thirteen honey' },
@@ -459,6 +461,7 @@ describe('Phase 13 orders HTTP security', () => {
           'number',
           'paymentStatus',
           'placedAt',
+          'shipments',
           'shippingAddress',
           'shippingTotal',
           'status',

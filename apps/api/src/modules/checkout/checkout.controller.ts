@@ -129,6 +129,12 @@ class CheckoutParamDto {
   id!: string;
 }
 
+class ShippingSelectionDto {
+  @ApiProperty({ type: String, format: 'uuid' })
+  @IsUUID()
+  quoteId!: string;
+}
+
 class OrderParamDto {
   @ApiProperty({ type: String, example: 'HNY-2026-000123' })
   @IsString()
@@ -142,6 +148,28 @@ class MoneyDto {
 
   @ApiProperty({ type: String, example: 'IRR' })
   currency!: string;
+}
+
+class CustomerShipmentResponseDto {
+  @ApiProperty({ type: String, format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({
+    enum: ['PENDING', 'LABEL_CREATED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'RETURNED'],
+  })
+  status!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  trackingNumber!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  trackingUrl!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  shippedAt!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  deliveredAt!: string | null;
 }
 
 class CheckoutResponseDto {
@@ -172,6 +200,9 @@ class CustomerOrderResponseDto {
 
   @ApiProperty({ type: MoneyDto })
   grandTotal!: MoneyDto;
+
+  @ApiPropertyOptional({ type: [CustomerShipmentResponseDto] })
+  shipments?: CustomerShipmentResponseDto[];
 }
 
 type ControllerContext = Readonly<{
@@ -219,6 +250,15 @@ function safeOrder(order: CustomerOrder, locale: string) {
     grandTotal: money(order.grandTotalMinor, order.currency),
     placedAt: order.placedAt.toISOString(),
     shippingAddress: order.shippingAddressSnapshot,
+    shipments: order.shipments.map((shipment) => ({
+      id: shipment.id,
+      status: shipment.status,
+      trackingNumber: shipment.trackingNumber,
+      trackingUrl: shipment.trackingUrl,
+      shippedAt: shipment.shippedAt?.toISOString() ?? null,
+      deliveredAt: shipment.deliveredAt?.toISOString() ?? null,
+      lines: shipment.lines.map((line) => ({ quantity: line.quantity })),
+    })),
     lines: order.lines.map((line) => ({
       productName: localName(line.productNameSnapshot, locale),
       variantName: localName(line.variantNameSnapshot, locale),
@@ -322,6 +362,34 @@ export class CheckoutController {
     return this.#respond(
       reply,
       await this.checkout.extend(await this.#context(request, reply), params.id),
+    );
+  }
+
+  @Post(':id/shipping-selection')
+  @Public()
+  @HttpCode(200)
+  @ApiOperation({
+    operationId: 'selectCheckoutShippingQuote',
+    summary: 'Select a server-owned shipping quote for this checkout',
+    description:
+      'Only an owned quote identifier is accepted. The server validates the destination, method, rate, and checkout pricing before selection.',
+  })
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @ApiOkResponse({ type: CheckoutResponseDto })
+  @ApiConflictResponse({ type: ProblemDetailsDto })
+  async selectShipping(
+    @Param() params: CheckoutParamDto,
+    @Body() body: ShippingSelectionDto,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<CheckoutProjection> {
+    return this.#respond(
+      reply,
+      await this.checkout.selectShippingQuote(
+        await this.#context(request, reply),
+        params.id,
+        body.quoteId,
+      ),
     );
   }
 

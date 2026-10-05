@@ -9,12 +9,18 @@ import { CartService } from '../cart/index.js';
 import { InventoryService } from '../inventory/index.js';
 import { OrdersService } from '../orders/index.js';
 import { PricingService } from '../pricing/index.js';
+import {
+  ManualFlatShippingProvider,
+  PrismaShippingConfigurationRepository,
+  ShippingService,
+} from '../shipping/index.js';
 import { TRANSACTION_RUNNER } from '../../platform/domain/tokens.js';
 import type { TransactionRunner } from '../../platform/domain/transaction.js';
 import { CheckoutService } from './application/checkout.service.js';
 import type { CheckoutRepository } from './domain/checkout.js';
 import { PrismaCheckoutRepository } from './infrastructure/prisma-checkout.repository.js';
 import { StandardShippingQuoteService } from './shipping/application/standard-shipping-quote.service.js';
+import { ConfiguredCheckoutShippingQuoteService } from './shipping/application/configured-checkout-shipping-quote.service.js';
 import type { StandardShippingQuoteConfiguration } from './shipping/domain/standard-shipping-quote.js';
 import type { CheckoutShippingQuoteRepository } from './shipping/domain/checkout-shipping-quote.port.js';
 import { PrismaCheckoutShippingQuoteRepository } from './shipping/infrastructure/prisma-checkout-shipping-quote.repository.js';
@@ -57,7 +63,16 @@ export class CheckoutModule {
     if (repository === undefined || shippingRepository === undefined) {
       throw new Error('Checkout module configuration failed.');
     }
-    const shipping = new StandardShippingQuoteService(shippingRepository, options.standardShipping);
+    const shippingConfiguration = new PrismaShippingConfigurationRepository(options.databaseUrl);
+    const shippingRates = new ShippingService(
+      shippingConfiguration,
+      new ManualFlatShippingProvider(),
+    );
+    const shipping = new ConfiguredCheckoutShippingQuoteService(
+      shippingRepository,
+      shippingRates,
+      new StandardShippingQuoteService(shippingRepository, options.standardShipping),
+    );
     const providers: Provider[] = [
       {
         provide: CheckoutService,
@@ -74,7 +89,11 @@ export class CheckoutModule {
       {
         provide: CheckoutShutdownLifecycle,
         useValue: new CheckoutShutdownLifecycle(async () => {
-          await Promise.all([ownedRepository?.close(), ownedShippingRepository?.close()]);
+          await Promise.all([
+            ownedRepository?.close(),
+            ownedShippingRepository?.close(),
+            shippingRates.close(),
+          ]);
         }),
       },
     ];

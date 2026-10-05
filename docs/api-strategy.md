@@ -202,6 +202,7 @@ harmless.
 | `variantId`, `quantity` | unit price, currency, tax rate, line total |
 | `couponCode` | eligibility, discount amount, stacking rules |
 | `shippingMethodCode`, address | shipping cost, method availability |
+| selected server quote ID | quote amount, expiry, destination and checkout match |
 | — | stock availability and reservation validity |
 | — | subtotal, discounts, tax, grand total, rounding |
 | — | payment state (provider-verified only) |
@@ -212,6 +213,15 @@ Request schemas **do not contain** `price`, `total`, `discountAmount`,
 properties are rejected, sending one produces a `422` — and because these
 specific names are on a watchlist, it also emits a `security.tampering_attempt`
 audit event with the request id and principal.
+
+Phase 15 retains the Phase 13 checkout quote route and lets the API present
+server-computed methods for the current validated destination. A changed or
+expired quote is recomputed at confirmation. If the payable result changes, the
+API returns `PRICE_CHANGED` for customer review and creates no order. Staff
+shipment writes require an explicit permission and idempotency key; customer
+order/tracking reads use the same resource-owner checks as order detail. Public
+DTOs exclude stock locations, consumed reservation IDs, raw provider payloads,
+and staff notes.
 
 ---
 

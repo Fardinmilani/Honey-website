@@ -32,6 +32,8 @@ export async function createOpenApiDocument(app: NestFastifyApplication): Promis
     .addTag('Cart', 'Private server-priced customer cart operations.')
     .addTag('Checkout', 'Owner-scoped checkout start, read, reservation extend, and confirm.')
     .addTag('Orders', 'Owner-scoped customer order list and detail.')
+    .addTag('Shipping', 'Staff-only shipping zone, method, and rate configuration.')
+    .addTag('Fulfilment', 'Staff-only shipment preparation, dispatch, delivery, and cancellation.')
     .addTag(
       'Payments',
       'Owner-scoped payment start, read, and return verification; staff refunds; provider webhooks.',

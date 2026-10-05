@@ -128,6 +128,15 @@ export type ReservationAccountingChange = Readonly<{
   note: string | null;
 }>;
 
+export type AllocatedStockMovement = Readonly<{
+  variantId: string;
+  stockLocationId: string;
+  quantity: number;
+  reason: 'FULFILMENT' | 'ALLOCATION_RELEASE';
+  refType: 'shipment' | 'order';
+  refId: string;
+}>;
+
 export type InventoryLedgerState = Readonly<{
   onHand: number;
   reserved: number;
@@ -312,6 +321,16 @@ export function reduceInventoryLedgerState(
       allocated: current.allocated + entry.delta,
     };
   }
+  if (entry.reason === 'FULFILMENT') {
+    return {
+      ...current,
+      onHand: current.onHand + entry.delta,
+      allocated: current.allocated + entry.delta,
+    };
+  }
+  if (entry.reason === 'ALLOCATION_RELEASE') {
+    return { ...current, allocated: current.allocated + entry.delta };
+  }
   return { ...current, onHand: current.onHand + entry.delta };
 }
 
@@ -373,6 +392,11 @@ export type InventoryRepository = {
     movements: readonly StockMovement[],
     actor: InventoryActorContext,
   ): Promise<readonly InventoryItemRecord[]>;
+  applyAllocatedMovements(
+    transaction: TransactionContext,
+    movements: readonly AllocatedStockMovement[],
+    actor: InventoryActorContext,
+  ): Promise<readonly InventoryItemRecord[]>;
   setPlanning(
     variantId: string,
     stockLocationId: string,
@@ -401,6 +425,10 @@ export type InventoryRepository = {
   listReservationsForCheckout(
     transaction: TransactionContext,
     checkoutSessionId: string,
+  ): Promise<readonly StockReservationRecord[]>;
+  listConsumedReservationsForOrder(
+    transaction: TransactionContext,
+    orderId: string,
   ): Promise<readonly StockReservationRecord[]>;
   lockReservationsForCheckout(
     transaction: TransactionContext,

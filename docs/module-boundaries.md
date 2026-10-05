@@ -66,7 +66,8 @@ application services" and "no app imports another app" are both true.
 | `checkout` | Checkout sessions, addresses, quotes, confirm transaction | `checkout_session`, `address`, `shipping_quote` | `inventory` | `/v1/checkout/*` |
 | `orders` | Orders, snapshots, status machine, returns | `order`, `order_line`, `order_status_history`, `order_note`, `return_request` | `orders` | `/v1/orders/*` |
 | `payments` | Payments, attempts, refunds, provider adapters, webhooks | `payment*`, `refund`, `provider_event` | `payments` | `/v1/payments/*`, `/webhooks/payments/:provider` |
-| `shipping` | Zones, methods, rates, shipments, tracking | `shipping_*`, `shipment*`, `tracking_event` | `orders` | `/v1/shipping/methods`, `/webhooks/shipping/:provider` |
+| `shipping` | Zones, methods, rates, provider quotes | `shipping_zone`, `shipping_method*`, `shipping_rate` | — | `/v1/shipping/methods` |
+| `fulfilment` | Shipments, source allocations, tracking and dispatch lifecycle | `shipment*`, `tracking_event` | `orders` | staff fulfilment and owner-scoped order detail |
 | `content` | Pages, articles, FAQ | `page*`, `article*`, `faq_item*` | `cache` | `/v1/content/*` |
 | `reviews` | Product reviews and moderation | `product_review` | `email` | `/v1/products/:id/reviews` |
 | `notifications` | Templates, deliveries, newsletter | `notification_*`, `newsletter_subscription` | `email`, `sms` | `/v1/newsletter` |
@@ -118,6 +119,12 @@ media application service. Catalog code does not query `media_asset` or
   │ procurement │──▶│ sourcing │
   └─────────────┘   └──────────┘
 ```
+
+Phase 15 adds `fulfilment` as the shipment lifecycle orchestrator. It calls the
+`orders`, `inventory`, and `shipping` public services through their barrels and
+passes one transaction handle to the owning writers. The diagram's `shipping`
+node remains the quote/provider boundary; shipment tables belong to
+`fulfilment`.
 
 **Forbidden edges — permanently:**
 

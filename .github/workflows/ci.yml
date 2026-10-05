@@ -16,7 +16,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    'timeout-minutes': 45,
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16.14-alpine3.23
@@ -276,6 +276,24 @@ jobs:
 
       - name: Verify Phase 14 payments
         run: pnpm phase14:verify
+
+      - name: Run Phase 15 manual rate and checkout quote unit tests
+        run: >-
+          pnpm --filter @honey/backend test -- --run
+          src/modules/shipping/domain/manual-flat-rates.test.ts
+          src/modules/checkout/shipping/application/configured-checkout-shipping-quote.service.test.ts
+
+      - name: Run Phase 15 PostgreSQL fulfilment concurrency and ledger tests
+        run: pnpm --filter @honey/backend test -- --run test/phase15.fulfilment.integration.test.ts
+
+      - name: Run Phase 15 direct SMTP and durable replay integration
+        run: pnpm --filter @honey/backend test -- --run test/phase15.smtp.integration.test.ts
+
+      - name: Run Phase 15 shipping and fulfilment HTTP security tests
+        run: pnpm --filter @honey/api test -- --run test/phase15.test.ts
+
+      - name: Verify Phase 15 shipping and fulfilment
+        run: pnpm phase15:verify
 
       - name: Prove Hero media never entered object storage
         run: |

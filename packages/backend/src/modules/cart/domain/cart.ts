@@ -72,6 +72,7 @@ export type CheckoutCartLineRecord = Readonly<{
     productId: string;
     sku: string;
     netWeightGrams: number;
+    weightGramsShipping: number;
     jarSizeLabelKey: string;
     packagingTypeKey: string;
     published: boolean;

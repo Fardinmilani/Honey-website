@@ -4,6 +4,7 @@ import type {
   CreatePendingOrderInput,
   CreatedPendingOrder,
   CustomerOrder,
+  FulfilmentOrder,
   OrderOwner,
   OrdersRepository,
 } from '../domain/orders.js';
@@ -66,6 +67,30 @@ export class OrdersService {
       identifier(checkoutSessionIdInput, 'checkoutSessionId'),
       transaction,
     );
+  }
+
+  lockForFulfilment(
+    orderIdInput: string,
+    transaction: TransactionContext,
+  ): Promise<FulfilmentOrder | null> {
+    return this.repository.lockForFulfilment(identifier(orderIdInput, 'orderId'), transaction);
+  }
+
+  updateFulfilmentState(
+    order: FulfilmentOrder,
+    fulfilmentStatus: 'PARTIAL' | 'FULFILLED',
+    actorUserId: string,
+    transaction: TransactionContext,
+  ): Promise<void> {
+    return this.repository.updateFulfilmentState(order, fulfilmentStatus, actorUserId, transaction);
+  }
+
+  cancelBeforeShipment(
+    order: FulfilmentOrder,
+    actorUserId: string,
+    transaction: TransactionContext,
+  ): Promise<void> {
+    return this.repository.cancelBeforeShipment(order, actorUserId, transaction);
   }
 
   #validateCreate(input: CreatePendingOrderInput): void {

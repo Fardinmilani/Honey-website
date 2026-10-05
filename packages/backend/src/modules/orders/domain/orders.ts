@@ -75,6 +75,34 @@ export type CustomerOrderLine = Readonly<{
   lineTotalMinor: bigint;
 }>;
 
+export type CustomerShipment = Readonly<{
+  id: string;
+  status: 'PENDING' | 'LABEL_CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'RETURNED';
+  provider: string;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  shippedAt: Date | null;
+  deliveredAt: Date | null;
+  lines: readonly Readonly<{ quantity: number }>[];
+}>;
+
+export type FulfilmentOrderLine = Readonly<{
+  id: string;
+  variantId: string | null;
+  quantity: number;
+}>;
+
+export type FulfilmentOrder = Readonly<{
+  id: string;
+  number: string;
+  email: string;
+  localeAtPurchase: string;
+  status: CustomerOrder['status'];
+  paymentStatus: CustomerOrder['paymentStatus'];
+  fulfilmentStatus: CustomerOrder['fulfilmentStatus'];
+  lines: readonly FulfilmentOrderLine[];
+}>;
+
 export type CustomerOrder = Readonly<{
   number: string;
   email: string;
@@ -105,6 +133,7 @@ export type CustomerOrder = Readonly<{
   billingAddressSnapshot: JsonValue;
   placedAt: Date;
   lines: readonly CustomerOrderLine[];
+  shipments: readonly CustomerShipment[];
 }>;
 
 export interface OrdersRepository {
@@ -118,5 +147,20 @@ export interface OrdersRepository {
     checkoutSessionId: string,
     transaction: TransactionContext,
   ): Promise<CreatedPendingOrder | null>;
+  lockForFulfilment(
+    orderId: string,
+    transaction: TransactionContext,
+  ): Promise<FulfilmentOrder | null>;
+  updateFulfilmentState(
+    order: FulfilmentOrder,
+    fulfilmentStatus: 'PARTIAL' | 'FULFILLED',
+    actorUserId: string,
+    transaction: TransactionContext,
+  ): Promise<void>;
+  cancelBeforeShipment(
+    order: FulfilmentOrder,
+    actorUserId: string,
+    transaction: TransactionContext,
+  ): Promise<void>;
   close(): Promise<void>;
 }

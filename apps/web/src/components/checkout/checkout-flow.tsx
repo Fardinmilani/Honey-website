@@ -41,7 +41,9 @@ type CheckoutPricing = Readonly<{
 }>;
 
 type CheckoutShippingQuote = Readonly<{
-  methodCode: 'STANDARD';
+  id: string;
+  methodCode: string;
+  name: string;
   amount: Money;
   discount: Money;
   total: Money;
@@ -57,6 +59,7 @@ type CheckoutProjection = Readonly<{
   billingAddress: CheckoutAddress | null;
   sameAsShipping: boolean;
   shippingQuote: CheckoutShippingQuote | null;
+  shippingQuotes: readonly CheckoutShippingQuote[];
   reservationExpiresAt: string | null;
   pricing: CheckoutPricing | null;
 }>;
@@ -194,13 +197,17 @@ function parseAddress(value: unknown): CheckoutAddress | null | undefined {
 function parseShippingQuote(value: unknown): CheckoutShippingQuote | null | undefined {
   if (value === null) return null;
   if (!isRecord(value)) return undefined;
-  const methodCode = value['methodCode'];
+  const id = stringField(value, 'id');
+  const methodCode = stringField(value, 'methodCode');
+  const name = stringField(value, 'name');
   const amount = parseMoney(value['amount']);
   const discount = parseMoney(value['discount']);
   const total = parseMoney(value['total']);
   const expiresAt = stringField(value, 'expiresAt');
   if (
-    methodCode !== 'STANDARD' ||
+    id === null ||
+    methodCode === null ||
+    name === null ||
     amount === null ||
     discount === null ||
     total === null ||
@@ -208,7 +215,18 @@ function parseShippingQuote(value: unknown): CheckoutShippingQuote | null | unde
   ) {
     return undefined;
   }
-  return { methodCode, amount, discount, total, expiresAt };
+  return { id, methodCode, name, amount, discount, total, expiresAt };
+}
+
+function parseShippingQuotes(value: unknown): readonly CheckoutShippingQuote[] | null {
+  if (!Array.isArray(value)) return null;
+  const quotes: CheckoutShippingQuote[] = [];
+  for (const item of value) {
+    const quote = parseShippingQuote(item);
+    if (quote === null || quote === undefined) return null;
+    quotes.push(quote);
+  }
+  return quotes;
 }
 
 function parsePricing(value: unknown): CheckoutPricing | null | undefined {
@@ -243,6 +261,7 @@ function parseCheckout(value: unknown): CheckoutProjection | null {
   const billingAddress = parseAddress(value['billingAddress']);
   const sameAsShipping = value['sameAsShipping'];
   const shippingQuote = parseShippingQuote(value['shippingQuote']);
+  const shippingQuotes = parseShippingQuotes(value['shippingQuotes']);
   const reservationExpiresAtRaw = value['reservationExpiresAt'];
   const pricing = parsePricing(value['pricing']);
 
@@ -259,6 +278,7 @@ function parseCheckout(value: unknown): CheckoutProjection | null {
     billingAddress === undefined ||
     typeof sameAsShipping !== 'boolean' ||
     shippingQuote === undefined ||
+    shippingQuotes === null ||
     (reservationExpiresAtRaw !== null && !isString(reservationExpiresAtRaw)) ||
     pricing === undefined
   ) {
@@ -274,6 +294,7 @@ function parseCheckout(value: unknown): CheckoutProjection | null {
     billingAddress,
     sameAsShipping,
     shippingQuote,
+    shippingQuotes,
     reservationExpiresAt: reservationExpiresAtRaw === null ? null : reservationExpiresAtRaw,
     pricing,
   };
@@ -427,6 +448,10 @@ function requestErrorMessageKey(error: unknown): CheckoutMessageKey {
     return 'reservationExpired';
   }
   if (error.code === 'PRICE_CHANGED') return 'priceChanged';
+  if (error.code === 'SHIPPING_NOT_AVAILABLE' || error.code === 'SHIPPING_METHOD_INVALID')
+    return 'shippingUnavailable';
+  if (error.code === 'SHIPPING_QUOTE_EXPIRED' || error.code === 'SHIPPING_QUOTE_CHANGED')
+    return 'shippingQuoteChanged';
   if (error.code === 'VALIDATION_FAILED') return 'invalidForm';
   return 'requestError';
 }
@@ -615,6 +640,35 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
       }
     })();
   }, [checkout, csrfCookieName, csrfHeaderName, locale, resetToForm, router, t]);
+
+  const onShippingSelection = useCallback(
+    (quoteId: string) => {
+      if (checkout === null || checkout.shippingQuote?.id === quoteId) return;
+      setMessage(null);
+      setIsSubmitting(true);
+      void (async () => {
+        try {
+          const selected = parseCheckout(
+            await requestCheckout({
+              path: `/api/bff/checkout/${encodeURIComponent(checkout.id)}/shipping-selection`,
+              method: 'POST',
+              locale,
+              csrfCookieName,
+              csrfHeaderName,
+              body: { quoteId },
+            }),
+          );
+          if (selected === null) throw new CheckoutRequestError(502, null);
+          setCheckout(selected);
+        } catch (error) {
+          setMessage(t(`checkout.${requestErrorMessageKey(error)}`));
+        } finally {
+          setIsSubmitting(false);
+        }
+      })();
+    },
+    [checkout, csrfCookieName, csrfHeaderName, locale, t],
+  );
 
   const shippingValues = contact.shippingAddress;
   const billingValues = contact.billingAddress;
@@ -851,6 +905,35 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
               </p>
             </div>
           ) : null}
+          <fieldset className={styles['fieldset']}>
+            <legend className={styles['fieldsetTitle']}>
+              {t('checkout.shippingMethodsHeading')}
+            </legend>
+            {checkout.shippingQuotes.length === 0 ? (
+              <p role="alert">{t('checkout.shippingUnavailable')}</p>
+            ) : (
+              <div className={styles['shippingMethods']}>
+                {checkout.shippingQuotes.map((quote) => (
+                  <label className={styles['shippingMethod']} key={quote.id}>
+                    <input
+                      type="radio"
+                      name="shipping-quote"
+                      value={quote.id}
+                      checked={checkout.shippingQuote?.id === quote.id}
+                      disabled={isSubmitting}
+                      onChange={() => onShippingSelection(quote.id)}
+                    />
+                    <span>
+                      {quote.methodCode === 'STANDARD' && quote.name === 'STANDARD'
+                        ? t('checkout.standardShippingMethod')
+                        : quote.name}
+                    </span>
+                    <span>{formatMinorMoney(locale, quote.total)}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
           <div className={`${styles['actions']} ${styles['reviewActions']}`}>
             <button
               type="button"
@@ -912,7 +995,9 @@ export function CheckoutFlow({ locale, csrfCookieName, csrfHeaderName }: Checkou
             <button
               type="button"
               className={styles['primaryButton']}
-              disabled={isSubmitting || checkout.pricing === null}
+              disabled={
+                isSubmitting || checkout.pricing === null || checkout.shippingQuote === null
+              }
               onClick={onConfirm}
             >
               {phase === 'confirming' ? t('checkout.confirmingOrder') : t('checkout.confirmOrder')}

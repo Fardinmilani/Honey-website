@@ -78,6 +78,7 @@ type CheckoutLineRow = Readonly<{
     status: string;
     deletedAt: Date | null;
     netWeightGrams: number;
+    weightGramsShipping: number;
     jarSizeLabelKey: string;
     packagingTypeKey: string;
     translations: readonly Readonly<{ locale: string; name: string }>[];
@@ -140,6 +141,7 @@ const checkoutLineInclude = {
       status: true,
       deletedAt: true,
       netWeightGrams: true,
+      weightGramsShipping: true,
       jarSizeLabelKey: true,
       packagingTypeKey: true,
       translations: {
@@ -268,6 +270,7 @@ function mapCheckoutLine(row: CheckoutLineRow): CheckoutCartLineRecord {
       productId: row.variant.product.id,
       sku: row.variant.sku,
       netWeightGrams: row.variant.netWeightGrams,
+      weightGramsShipping: row.variant.weightGramsShipping,
       jarSizeLabelKey: row.variant.jarSizeLabelKey,
       packagingTypeKey: row.variant.packagingTypeKey,
       published:

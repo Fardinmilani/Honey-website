@@ -119,6 +119,7 @@ enum StockLedgerReason {
   RESERVATION
   RESERVATION_RELEASE
   ALLOCATION
+  ALLOCATION_RELEASE
   FULFILMENT
   RETURN
   ADJUSTMENT
@@ -1077,24 +1078,25 @@ model StockLedgerEntry {
 }
 
 model StockReservation {
-  id                String            @id @db.Uuid
-  variantId         String            @map("variant_id") @db.Uuid
-  stockLocationId   String            @map("stock_location_id") @db.Uuid
-  quantity          Int
-  cartId            String?           @map("cart_id") @db.Uuid
-  checkoutSessionId String?           @map("checkout_session_id") @db.Uuid
-  orderId           String?           @map("order_id") @db.Uuid
-  status            ReservationStatus @default(ACTIVE)
-  expiresAt         DateTime          @map("expires_at") @db.Timestamptz(3)
-  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
-  consumedAt        DateTime?         @map("consumed_at") @db.Timestamptz(3)
-  releasedAt        DateTime?         @map("released_at") @db.Timestamptz(3)
-  releaseReason     String?           @map("release_reason")
-  variant           ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  stockLocation     StockLocation     @relation(fields: [stockLocationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  cart              Cart?             @relation(fields: [cartId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  checkoutSession   CheckoutSession?  @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  order             Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  id                      String                   @id @db.Uuid
+  variantId               String                   @map("variant_id") @db.Uuid
+  stockLocationId         String                   @map("stock_location_id") @db.Uuid
+  quantity                Int
+  cartId                  String?                  @map("cart_id") @db.Uuid
+  checkoutSessionId       String?                  @map("checkout_session_id") @db.Uuid
+  orderId                 String?                  @map("order_id") @db.Uuid
+  status                  ReservationStatus        @default(ACTIVE)
+  expiresAt               DateTime                 @map("expires_at") @db.Timestamptz(3)
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  consumedAt              DateTime?                @map("consumed_at") @db.Timestamptz(3)
+  releasedAt              DateTime?                @map("released_at") @db.Timestamptz(3)
+  releaseReason           String?                  @map("release_reason")
+  variant                 ProductVariant           @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stockLocation           StockLocation            @relation(fields: [stockLocationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cart                    Cart?                    @relation(fields: [cartId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  checkoutSession         CheckoutSession?         @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  order                   Order?                   @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  shipmentLineAllocations ShipmentLineAllocation[]
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   createdBy String?  @map("created_by") @db.Uuid
@@ -1650,35 +1652,40 @@ model ShippingQuote {
 }
 
 model Shipment {
-  id             String          @id @db.Uuid
-  orderId        String          @map("order_id") @db.Uuid
-  provider       String
-  status         ShipmentStatus  @default(PENDING)
-  trackingNumber String?         @map("tracking_number")
-  trackingUrl    String?         @map("tracking_url")
-  shippedAt      DateTime?       @map("shipped_at") @db.Timestamptz(3)
-  deliveredAt    DateTime?       @map("delivered_at") @db.Timestamptz(3)
-  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  order          Order           @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  lines          ShipmentLine[]
-  trackingEvents TrackingEvent[]
+  id              String                    @id @db.Uuid
+  orderId         String                    @map("order_id") @db.Uuid
+  idempotencyKey  String?                   @map("idempotency_key")
+  requestHash     String?                   @map("request_hash")
+  provider        String
+  status          ShipmentStatus            @default(PENDING)
+  trackingNumber  String?                   @map("tracking_number")
+  trackingUrl     String?                   @map("tracking_url")
+  shippedAt       DateTime?                 @map("shipped_at") @db.Timestamptz(3)
+  deliveredAt     DateTime?                 @map("delivered_at") @db.Timestamptz(3)
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  order           Order                     @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines           ShipmentLine[]
+  trackingEvents  TrackingEvent[]
+  emailDeliveries FulfilmentEmailDelivery[]
 
   createdBy String? @map("created_by") @db.Uuid
   updatedBy String? @map("updated_by") @db.Uuid
 
+  @@unique([orderId, idempotencyKey])
   @@index([orderId])
   @@index([trackingNumber])
   @@map("shipment")
 }
 
 model ShipmentLine {
-  id          String    @id @db.Uuid
-  shipmentId  String    @map("shipment_id") @db.Uuid
-  orderLineId String    @map("order_line_id") @db.Uuid
+  id          String                   @id @db.Uuid
+  shipmentId  String                   @map("shipment_id") @db.Uuid
+  orderLineId String                   @map("order_line_id") @db.Uuid
   quantity    Int
-  shipment    Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  orderLine   OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  shipment    Shipment                 @relation(fields: [shipmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  orderLine   OrderLine                @relation(fields: [orderLineId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  allocations ShipmentLineAllocation[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -1688,6 +1695,20 @@ model ShipmentLine {
   @@unique([shipmentId, orderLineId])
   @@index([orderLineId])
   @@map("shipment_line")
+}
+
+model ShipmentLineAllocation {
+  id                 String           @id @db.Uuid
+  shipmentLineId     String           @map("shipment_line_id") @db.Uuid
+  stockReservationId String           @map("stock_reservation_id") @db.Uuid
+  quantity           Int
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  shipmentLine       ShipmentLine     @relation(fields: [shipmentLineId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stockReservation   StockReservation @relation(fields: [stockReservationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([shipmentLineId, stockReservationId])
+  @@index([stockReservationId])
+  @@map("shipment_line_allocation")
 }
 
 model TrackingEvent {
@@ -1706,6 +1727,21 @@ model TrackingEvent {
 
   @@index([shipmentId])
   @@map("tracking_event")
+}
+
+model FulfilmentEmailDelivery {
+  id           String    @id @db.Uuid
+  shipmentId   String    @map("shipment_id") @db.Uuid
+  eventType    String    @map("event_type")
+  sentAt       DateTime? @map("sent_at") @db.Timestamptz(3)
+  leaseUntil   DateTime? @map("lease_until") @db.Timestamptz(3)
+  attemptCount Int       @default(0) @map("attempt_count")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  shipment     Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([shipmentId, eventType])
+  @@map("fulfilment_email_delivery")
 }
 
 model Page {

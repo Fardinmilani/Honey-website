@@ -58,6 +58,8 @@ that costs, and what was rejected.
 | [0036](0036-split-location-checkout-reservations.md) | Checkout reservations split safely across sellable locations | Accepted |
 | [0037](0037-reason-aware-inventory-ledger.md) | Reservation and allocation ledger entries use reason-aware balance projection | Accepted |
 | [0038](0038-phase13-minimal-shipping-quote-boundary.md) | Minimal checkout-owned `STANDARD` quote enables Phase 13 without pulling in Phase 15 | Accepted |
+| [0039](0039-phase15-physical-fulfilment-and-allocation-release.md) | Physical dispatch consumes allocated stock; pre-dispatch cancellation releases allocation | Accepted |
+| [0040](0040-shipment-line-allocation-provenance.md) | Shipment lines preserve exact consumed-reservation stock sources | Accepted |
 
 ### Supersession chain
 

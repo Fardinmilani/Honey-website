@@ -63,6 +63,11 @@
         "required": ["next", "user", "expiresAt", "csrfToken"],
         "type": "object"
       },
+      "CancelFulfilmentOrderResponseDto": {
+        "properties": { "cancelled": { "example": true, "type": "boolean" } },
+        "required": ["cancelled"],
+        "type": "object"
+      },
       "CartAdjustmentDto": {
         "properties": {
           "code": { "enum": ["QUANTITY_CLAMPED"], "type": "string" },
@@ -282,9 +287,28 @@
         "properties": {
           "grandTotal": { "$ref": "#/components/schemas/MoneyDto" },
           "number": { "example": "HNY-2026-000123", "type": "string" },
+          "shipments": {
+            "items": { "$ref": "#/components/schemas/CustomerShipmentResponseDto" },
+            "type": "array"
+          },
           "status": { "type": "string" }
         },
         "required": ["number", "status", "grandTotal"],
+        "type": "object"
+      },
+      "CustomerShipmentResponseDto": {
+        "properties": {
+          "deliveredAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "shippedAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "status": {
+            "enum": ["PENDING", "LABEL_CREATED", "IN_TRANSIT", "DELIVERED", "FAILED", "RETURNED"],
+            "type": "string"
+          },
+          "trackingNumber": { "nullable": true, "type": "string" },
+          "trackingUrl": { "nullable": true, "type": "string" }
+        },
+        "required": ["id", "status", "trackingNumber", "trackingUrl", "shippedAt", "deliveredAt"],
         "type": "object"
       },
       "DirectUploadDto": {
@@ -794,6 +818,20 @@
           "sessions": { "items": { "$ref": "#/components/schemas/SessionDto" }, "type": "array" }
         },
         "required": ["sessions"],
+        "type": "object"
+      },
+      "ShipmentResponseDto": {
+        "properties": {
+          "id": { "format": "uuid", "type": "string" },
+          "orderId": { "format": "uuid", "type": "string" },
+          "status": {
+            "enum": ["PENDING", "LABEL_CREATED", "IN_TRANSIT", "DELIVERED", "FAILED", "RETURNED"],
+            "type": "string"
+          },
+          "trackingNumber": { "nullable": true, "type": "string" },
+          "trackingUrl": { "nullable": true, "type": "string" }
+        },
+        "required": ["id", "orderId", "status", "trackingNumber", "trackingUrl"],
         "type": "object"
       },
       "StepUpResponseDto": {
@@ -1571,6 +1609,176 @@
         "tags": ["Catalog Admin"]
       }
     },
+    "/v1/admin/fulfilment/orders/{orderId}": {
+      "get": {
+        "description": "Returns order lines and shipment state to staff with order:read permission.",
+        "operationId": "getFulfilmentOrder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Order lines and shipments for staff fulfilment." },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read staff fulfilment details",
+        "tags": ["Fulfilment"]
+      }
+    },
+    "/v1/admin/fulfilment/orders/{orderId}/cancel": {
+      "post": {
+        "description": "Cancels an order before any shipment draft exists and releases its allocated stock.",
+        "operationId": "cancelUnshippedFulfilmentOrder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CancelFulfilmentOrderResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Cancel an unshipped order and release its allocation",
+        "tags": ["Fulfilment"]
+      }
+    },
+    "/v1/admin/fulfilment/orders/{orderId}/shipments": {
+      "post": {
+        "description": "Creates one idempotent shipment draft for paid, allocated order lines.",
+        "operationId": "createFulfilmentShipment",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ShipmentResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Prepare a shipment draft without moving physical stock",
+        "tags": ["Fulfilment"]
+      }
+    },
+    "/v1/admin/fulfilment/shipments/{shipmentId}/deliver": {
+      "post": {
+        "description": "Records delivery for a shipment already in transit without moving stock again.",
+        "operationId": "deliverFulfilmentShipment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipmentId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ShipmentResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Record manual delivery",
+        "tags": ["Fulfilment"]
+      }
+    },
+    "/v1/admin/fulfilment/shipments/{shipmentId}/dispatch": {
+      "post": {
+        "description": "Atomically moves allocated stock out of inventory and marks the shipment in transit.",
+        "operationId": "dispatchFulfilmentShipment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipmentId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ShipmentResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Confirm physical dispatch and consume allocated stock once",
+        "tags": ["Fulfilment"]
+      }
+    },
     "/v1/admin/inventory/adjustments": {
       "post": {
         "description": "Apply a privileged inventory adjustment.",
@@ -2319,6 +2527,95 @@
         "security": [{ "sessionCookie": [] }],
         "summary": "Update a supplier",
         "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/shipping/configuration": {
+      "get": {
+        "description": "Returns configured shipping zones, methods, translations, and rate rules for staff.",
+        "operationId": "listShippingConfiguration",
+        "parameters": [],
+        "responses": { "200": { "description": "Zones, methods, translations, and rates." } },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read shipping configuration",
+        "tags": ["Shipping"]
+      }
+    },
+    "/v1/admin/shipping/methods/{id}": {
+      "put": {
+        "description": "Creates or replaces one localized manual shipping method.",
+        "operationId": "upsertShippingMethod",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Saved method ID." },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Configure a shipping method",
+        "tags": ["Shipping"]
+      }
+    },
+    "/v1/admin/shipping/rates/{id}": {
+      "put": {
+        "description": "Creates or replaces one integer-minor-unit manual rate rule.",
+        "operationId": "upsertShippingRate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Saved rate ID." },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Configure a shipping rate",
+        "tags": ["Shipping"]
+      }
+    },
+    "/v1/admin/shipping/zones/{id}": {
+      "put": {
+        "description": "Creates or replaces one server-owned destination zone.",
+        "operationId": "upsertShippingZone",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Saved zone ID." },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Configure a shipping zone",
+        "tags": ["Shipping"]
       }
     },
     "/v1/admin/sourcing/allocations": {
@@ -3194,6 +3491,38 @@
         "tags": ["Checkout"]
       }
     },
+    "/v1/checkout/{id}/shipping-selection": {
+      "post": {
+        "description": "Only an owned quote identifier is accepted. The server validates the destination, method, rate, and checkout pricing before selection.",
+        "operationId": "selectCheckoutShippingQuote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CheckoutResponseDto" }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Select a server-owned shipping quote for this checkout",
+        "tags": ["Checkout"]
+      }
+    },
     "/v1/me": {
       "get": {
         "description": "Returns only the safe account and effective authorization summary for the current principal.",
@@ -3543,6 +3872,14 @@
       "name": "Checkout"
     },
     { "description": "Owner-scoped customer order list and detail.", "name": "Orders" },
+    {
+      "description": "Staff-only shipping zone, method, and rate configuration.",
+      "name": "Shipping"
+    },
+    {
+      "description": "Staff-only shipment preparation, dispatch, delivery, and cancellation.",
+      "name": "Fulfilment"
+    },
     {
       "description": "Owner-scoped payment start, read, and return verification; staff refunds; provider webhooks.",
       "name": "Payments"

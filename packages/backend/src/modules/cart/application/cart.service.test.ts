@@ -171,6 +171,7 @@ class MemoryRepository implements CartRepository {
         productId: line.product.productId,
         sku: line.variantId,
         netWeightGrams: line.product.netWeightGrams,
+        weightGramsShipping: line.product.netWeightGrams,
         jarSizeLabelKey: 'jar',
         packagingTypeKey: 'glass',
         published: line.product.published,

@@ -15,7 +15,11 @@ import type { CartService, CartRequestContext, CheckoutCartLineRecord } from '..
 import type { InventoryService, InventoryActorContext } from '../../inventory/index.js';
 import type { OrdersService } from '../../orders/index.js';
 import type { PricingService, CheckoutPricingResult } from '../../pricing/index.js';
-import type { CheckoutShippingQuotePort } from '../shipping/domain/checkout-shipping-quote.port.js';
+import type {
+  CheckoutShippingOption,
+  CheckoutShippingQuotePort,
+  SelectCheckoutShippingQuoteInput,
+} from '../shipping/domain/checkout-shipping-quote.port.js';
 import type {
   StandardShippingCharge,
   StandardShippingQuote,
@@ -54,7 +58,9 @@ export type CheckoutPricingProjection = Readonly<{
 }>;
 
 export type CheckoutShippingProjection = Readonly<{
-  methodCode: 'STANDARD';
+  id: string;
+  methodCode: string;
+  name: string;
   amount: CheckoutMoney;
   discount: CheckoutMoney;
   total: CheckoutMoney;
@@ -70,6 +76,7 @@ export type CheckoutProjection = Readonly<{
   billingAddress: CheckoutAddress | null;
   sameAsShipping: boolean;
   shippingQuote: CheckoutShippingProjection | null;
+  shippingQuotes: readonly CheckoutShippingProjection[];
   reservationExpiresAt: string | null;
   pricing: CheckoutPricingProjection | null;
 }>;
@@ -97,6 +104,7 @@ type SnapshotBuild = Readonly<{
   fingerprint: string;
   projection: CheckoutPricingProjection;
   shipping: CheckoutShippingProjection;
+  shippingQuotes: readonly CheckoutShippingProjection[];
   grandTotalMinor: bigint;
 }>;
 
@@ -214,6 +222,7 @@ function pricingFromSnapshot(value: JsonValue | null): {
   fingerprint: string;
   pricing: CheckoutPricingProjection;
   shipping: CheckoutShippingProjection;
+  shippingQuotes: readonly CheckoutShippingProjection[];
 } | null {
   if (!isJsonObject(value)) return null;
   const fingerprint = jsonString(value['fingerprint']);
@@ -239,7 +248,7 @@ function pricingFromSnapshot(value: JsonValue | null): {
     merchandiseTotal === null ||
     tax === null ||
     total === null ||
-    methodCode !== 'STANDARD' ||
+    methodCode === null ||
     amount === null ||
     shippingDiscount === null ||
     shippingTotal === null ||
@@ -247,16 +256,54 @@ function pricingFromSnapshot(value: JsonValue | null): {
   ) {
     return null;
   }
+  const shipping: CheckoutShippingProjection = {
+    id: jsonString(shippingValue['id']) ?? '',
+    methodCode,
+    name: jsonString(shippingValue['name']) ?? methodCode,
+    amount,
+    discount: shippingDiscount,
+    total: shippingTotal,
+    expiresAt,
+  };
+  const shippingOptionsValue = value['shippingQuotes'];
+  const shippingQuotes = Array.isArray(shippingOptionsValue)
+    ? shippingOptionsValue
+        .map((entry): CheckoutShippingProjection | null => {
+          if (!isJsonObject(entry)) return null;
+          const id = jsonString(entry['id']);
+          const code = jsonString(entry['methodCode']);
+          const name = jsonString(entry['name']);
+          const optionAmount = moneyFromJson(entry['amount']);
+          const optionDiscount = moneyFromJson(entry['discount']);
+          const optionTotal = moneyFromJson(entry['total']);
+          const optionExpiry = jsonString(entry['expiresAt']);
+          if (
+            id === null ||
+            code === null ||
+            name === null ||
+            optionAmount === null ||
+            optionDiscount === null ||
+            optionTotal === null ||
+            optionExpiry === null
+          )
+            return null;
+          return {
+            id,
+            methodCode: code,
+            name,
+            amount: optionAmount,
+            discount: optionDiscount,
+            total: optionTotal,
+            expiresAt: optionExpiry,
+          };
+        })
+        .filter((entry): entry is CheckoutShippingProjection => entry !== null)
+    : [shipping];
   return {
     fingerprint,
     pricing: { currency, subtotal, discount, merchandiseTotal, tax, total },
-    shipping: {
-      methodCode: 'STANDARD',
-      amount,
-      discount: shippingDiscount,
-      total: shippingTotal,
-      expiresAt,
-    },
+    shipping,
+    shippingQuotes,
   };
 }
 
@@ -398,15 +445,25 @@ export class CheckoutService {
           },
           transaction,
         );
-        const selected = await this.shipping.selectForCheckout({
-          checkoutSessionId: session.id,
-          checkoutCurrency: lockedCart.cart.currency,
-          expiresAt: reservation.expiresAt,
-          actorUserId: context.userId,
-          freeShippingApplies: this.#freeShipping(priced),
-          transaction,
-        });
-        const snapshot = this.#snapshot(priced, selected.quote, selected.charge, hash);
+        const selected = await this.shipping.selectForCheckout(
+          this.#shippingInput(
+            session,
+            lockedCart.lines,
+            lockedCart.cart,
+            priced,
+            reservation.expiresAt,
+            context.userId,
+            transaction,
+          ),
+        );
+        const snapshot = this.#snapshot(
+          priced,
+          selected.quote,
+          selected.charge,
+          hash,
+          selected.name ?? selected.quote.methodCode,
+          selected.options,
+        );
         const updated = await this.repository.updatePricingSnapshot(
           session.id,
           {
@@ -619,19 +676,24 @@ export class CheckoutService {
         transaction,
         now,
       );
-      const requoted = await this.shipping.revalidateForConfirmation({
-        checkoutSessionId: session.id,
-        checkoutCurrency: lockedCart.cart.currency,
-        expiresAt: session.reservationExpiresAt,
-        actorUserId: context.userId,
-        freeShippingApplies: this.#freeShipping(priced),
-        transaction,
-      });
+      const requoted = await this.shipping.revalidateForConfirmation(
+        this.#shippingInput(
+          session,
+          lockedCart.lines,
+          lockedCart.cart,
+          priced,
+          session.reservationExpiresAt,
+          context.userId,
+          transaction,
+        ),
+      );
       const snapshot = this.#snapshot(
         priced,
         requoted.quote,
         requoted.charge,
         this.#initiationHash(session),
+        requoted.name ?? requoted.quote.methodCode,
+        requoted.options,
       );
       const previous = pricingFromSnapshot(session.pricingSnapshot);
       if (previous === null || previous.fingerprint !== snapshot.fingerprint) {
@@ -705,6 +767,9 @@ export class CheckoutService {
           couponCodeSnapshot: priced.coupon?.code ?? null,
           shippingMethodSnapshot: {
             code: requoted.quote.methodCode,
+            name: requoted.name ?? requoted.quote.methodCode,
+            providerCode: requoted.providerCode ?? 'manual-flat',
+            quoteId: requoted.quote.id,
             quotedAmountMinor: requoted.quote.amountMinor.toString(),
             discountMinor: requoted.charge.discountMinor.toString(),
             totalMinor: requoted.charge.totalMinor.toString(),
@@ -786,6 +851,113 @@ export class CheckoutService {
         };
   }
 
+  async selectShippingQuote(
+    contextInput: CheckoutRequestContext,
+    checkoutIdInput: string,
+    quoteIdInput: string,
+  ): Promise<CheckoutProjection> {
+    const context = this.#context(contextInput);
+    const checkoutId = uuid(checkoutIdInput, 'checkoutId');
+    const quoteId = uuid(quoteIdInput, 'quoteId');
+    return this.transactions.run(async (transaction) => {
+      const session = await this.repository.lockOwnedSession(
+        checkoutId,
+        ownerFor(context),
+        transaction,
+      );
+      if (session === null) throw new NotFoundAppError();
+      if (session.status !== 'OPEN' || session.reservationExpiresAt === null) {
+        throw new ConflictAppError({ code: 'CHECKOUT_NOT_CONFIRMABLE' });
+      }
+      if (session.reservationExpiresAt.getTime() <= Date.now()) {
+        throw new ConflictAppError({ code: 'RESERVATION_EXPIRED' });
+      }
+      const lockedCart = await this.cart.lockCheckoutCart(context, transaction);
+      if (lockedCart.cart.id !== session.cartId) {
+        throw new ConflictAppError({ code: 'CHECKOUT_CART_CHANGED' });
+      }
+      const priced = await this.#price(
+        lockedCart.lines,
+        lockedCart.cart,
+        session,
+        context,
+        transaction,
+        new Date(),
+      );
+      if (this.shipping.selectById === undefined) {
+        throw new DependencyUnavailableAppError({
+          code: 'CHECKOUT_SHIPPING_CONFIGURATION_UNAVAILABLE',
+          retryable: false,
+        });
+      }
+      const selected = await this.shipping.selectById({
+        ...this.#shippingInput(
+          session,
+          lockedCart.lines,
+          lockedCart.cart,
+          priced,
+          session.reservationExpiresAt,
+          context.userId,
+          transaction,
+        ),
+        quoteId,
+      });
+      const snapshot = this.#snapshot(
+        priced,
+        selected.quote,
+        selected.charge,
+        this.#initiationHash(session),
+        selected.name ?? selected.quote.methodCode,
+        selected.options,
+      );
+      const updated = await this.repository.updatePricingSnapshot(
+        session.id,
+        {
+          reservationExpiresAt: session.reservationExpiresAt,
+          pricingSnapshot: snapshot.value,
+          actorUserId: context.userId,
+        },
+        transaction,
+      );
+      return this.#projection(updated);
+    });
+  }
+
+  #shippingInput(
+    session: CheckoutSessionRecord,
+    lines: readonly CheckoutCartLineRecord[],
+    cart: Readonly<{ currency: string; locale: string }>,
+    priced: CheckoutPricingResult,
+    expiresAt: Date,
+    actorUserId: string | null,
+    transaction: TransactionContext,
+  ): SelectCheckoutShippingQuoteInput {
+    const address = session.shippingAddress;
+    if (address === null) throw new ConflictAppError({ code: 'CHECKOUT_ADDRESS_MISSING' });
+    const weightGrams = lines.reduce(
+      (sum, line) => sum + line.product.weightGramsShipping * line.quantity,
+      0,
+    );
+    if (!Number.isSafeInteger(weightGrams) || weightGrams < 0) {
+      throw new DependencyUnavailableAppError({
+        code: 'CHECKOUT_SHIPPING_CONFIGURATION_UNAVAILABLE',
+        retryable: false,
+      });
+    }
+    return {
+      checkoutSessionId: session.id,
+      checkoutCurrency: cart.currency,
+      expiresAt,
+      actorUserId,
+      freeShippingApplies: this.#freeShipping(priced),
+      destination: { country: address.country, province: address.province },
+      locale: cart.locale,
+      merchandiseSubtotalMinor: priced.subtotalMinor,
+      weightGrams,
+      transaction,
+    };
+  }
+
   async #price(
     lines: readonly CheckoutCartLineRecord[],
     cart: Readonly<{ currency: string; couponCode: string | null }>,
@@ -833,6 +1005,8 @@ export class CheckoutService {
     quote: StandardShippingQuote,
     charge: StandardShippingCharge,
     initiationRequestHash: string,
+    methodName: string,
+    options: readonly CheckoutShippingOption[] | undefined,
   ): SnapshotBuild {
     if (priced.tax.state !== 'RESOLVED')
       throw new Error('Resolved tax is required for a checkout snapshot.');
@@ -849,12 +1023,26 @@ export class CheckoutService {
       total: serializeMoney(grandTotalMinor, priced.currency),
     };
     const shipping: CheckoutShippingProjection = {
-      methodCode: 'STANDARD',
+      id: quote.id,
+      methodCode: quote.methodCode,
+      name: methodName,
       amount: serializeMoney(charge.quotedAmountMinor, charge.currency),
       discount: serializeMoney(charge.discountMinor, charge.currency),
       total: serializeMoney(charge.totalMinor, charge.currency),
       expiresAt: quote.expiresAt.toISOString(),
     };
+    const shippingQuotes: readonly CheckoutShippingProjection[] =
+      options === undefined
+        ? [shipping]
+        : options.map((option) => ({
+            id: option.quote.id,
+            methodCode: option.quote.methodCode,
+            name: option.name,
+            amount: serializeMoney(option.charge.quotedAmountMinor, option.charge.currency),
+            discount: serializeMoney(option.charge.discountMinor, option.charge.currency),
+            total: serializeMoney(option.charge.totalMinor, option.charge.currency),
+            expiresAt: option.quote.expiresAt.toISOString(),
+          }));
     const fingerprint = createHash('sha256')
       .update(
         JSON.stringify({
@@ -873,6 +1061,7 @@ export class CheckoutService {
           taxCode: priced.tax.rate.code,
           taxRateBps: priced.tax.rate.rateBps,
           taxInclusive: priced.tax.rate.isInclusive,
+          shippingMethodCode: quote.methodCode,
           shippingAmountMinor: charge.quotedAmountMinor.toString(),
           shippingDiscountMinor: charge.discountMinor.toString(),
           shippingTotalMinor: charge.totalMinor.toString(),
@@ -885,6 +1074,7 @@ export class CheckoutService {
       fingerprint,
       projection,
       shipping,
+      shippingQuotes,
       grandTotalMinor,
       value: {
         version: 1,
@@ -899,12 +1089,23 @@ export class CheckoutService {
           total: projection.total,
         },
         shipping: {
+          id: shipping.id,
           methodCode: shipping.methodCode,
+          name: shipping.name,
           amount: shipping.amount,
           discount: shipping.discount,
           total: shipping.total,
           expiresAt: shipping.expiresAt,
         },
+        shippingQuotes: shippingQuotes.map((option) => ({
+          id: option.id,
+          methodCode: option.methodCode,
+          name: option.name,
+          amount: option.amount,
+          discount: option.discount,
+          total: option.total,
+          expiresAt: option.expiresAt,
+        })),
       },
     };
   }
@@ -920,6 +1121,7 @@ export class CheckoutService {
       billingAddress: session.billingAddress,
       sameAsShipping: session.sameAsShipping,
       shippingQuote: snapshot?.shipping ?? null,
+      shippingQuotes: snapshot?.shippingQuotes ?? [],
       reservationExpiresAt:
         session.reservationExpiresAt === null ? null : session.reservationExpiresAt.toISOString(),
       pricing: snapshot?.pricing ?? null,

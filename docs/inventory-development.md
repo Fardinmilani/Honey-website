@@ -109,6 +109,19 @@ availability. No multi-warehouse routing.
 Incoming is not sellable. Reservations are still zero until Phase 13; the
 formula already subtracts them.
 
+### Phase 15 fulfilment extension
+
+Phase 13 reservations and allocation retain their reason-aware, non-physical
+ledger projection. Phase 15 adds `FULFILMENT -q` only at staff-confirmed physical
+dispatch: `onHand` and `allocated` each decrease by `q`; `reserved` does not
+change. Cancellation is allowed only before a shipment draft exists and appends
+`ALLOCATION_RELEASE -q`, decreasing `allocated` without moving `onHand` or
+`reserved`. All entries are append-only and reconciliation projects balances by
+reason ([ADR-0039](adr/0039-phase15-physical-fulfilment-and-allocation-release.md)).
+Shipment line allocations retain the consumed reservation behind each quantity,
+so a split-location order is dispatched from its true stock locations
+([ADR-0040](adr/0040-shipment-line-allocation-provenance.md)).
+
 ### Public availability bands
 
 [ADR-0032](adr/0032-availability-band-threshold.md):

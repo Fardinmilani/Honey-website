@@ -33,10 +33,11 @@ type CheckoutProxyOptions = Readonly<{
     | `/v1/checkout/${string}`
     | `/v1/checkout/${string}/confirm`
     | `/v1/checkout/${string}/extend`
+    | `/v1/checkout/${string}/shipping-selection`
     | '/v1/orders'
     | `/v1/orders/${string}`;
   method: 'GET' | 'POST';
-  body?: StartCheckoutInput;
+  body?: StartCheckoutInput | Readonly<{ quoteId: string }>;
   idempotencyKey?: string;
 }>;
 
@@ -206,6 +207,16 @@ export async function parseStartCheckout(request: Request): Promise<StartCheckou
         ...(safeBillingAddress === undefined ? {} : { billingAddress: safeBillingAddress }),
         sameAsShipping,
       };
+}
+
+/** Accept only a quote identifier; the API owns all shipping money and availability. */
+export async function parseShippingSelection(
+  request: Request,
+): Promise<Readonly<{ quoteId: string }> | null> {
+  const body = await requestJson(request);
+  if (!isRecord(body) || !exactKeys(body, ['quoteId'])) return null;
+  const quoteId = body['quoteId'];
+  return typeof quoteId === 'string' && UUID_RE.test(quoteId) ? { quoteId } : null;
 }
 
 export function parseIdempotencyKey(request: Request): string | null {

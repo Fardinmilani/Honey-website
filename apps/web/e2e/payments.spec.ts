@@ -122,7 +122,7 @@ test.describe('payments flow', () => {
 
     await page.goto(`/en/orders/${orderNumber}`);
     await expect(page.getByText('PAID', { exact: true })).toBeVisible();
-    await expect(page.getByText('UNFULFILLED', { exact: true })).toBeVisible();
+    await expect(page.getByText('Preparing', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Pay now' })).toHaveCount(0);
   });
 

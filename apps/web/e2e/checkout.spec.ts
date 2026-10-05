@@ -84,7 +84,7 @@ test.describe('checkout flow', () => {
       ),
     ).toBeVisible();
     await expect(page.getByText('UNPAID', { exact: true })).toBeVisible();
-    await expect(page.getByText('UNFULFILLED', { exact: true })).toBeVisible();
+    await expect(page.getByText('Not shipped', { exact: true })).toBeVisible();
     await expectNoInternalCommerceDetails(page);
 
     // The order confirmation is never a fake "paid" state.

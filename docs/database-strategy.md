@@ -131,6 +131,18 @@ only `reserved`; `RESERVATION_RELEASE -q` lowers only `reserved`; and
 unchanged. Reconciliation computes all three balances by reason. A zero-delta
 reservation workaround is invalid.
 
+Phase 15 extends that projection: `FULFILMENT -q` lowers both `on_hand` and
+`allocated` at physical dispatch; `ALLOCATION_RELEASE -q` lowers only
+`allocated` when an order is cancelled before any shipment draft or dispatch.
+The new reason is added in a forward migration, never by changing an applied
+migration. `ShipmentLineAllocation` connects each shipment-line quantity to a
+consumed reservation, preserving its actual stock location. Its quantity is
+positive, the `(shipment_line_id, stock_reservation_id)` pair is unique, and the
+fulfilment transaction prevents allocations across shipments from exceeding the
+consumed quantity
+([ADR-0039](adr/0039-phase15-physical-fulfilment-and-allocation-release.md),
+[ADR-0040](adr/0040-shipment-line-allocation-provenance.md)).
+
 **Checkout pricing snapshot.** Phase 13 stores a nullable, server-generated
 `checkout_session.pricing_snapshot` JSONB projection with its opaque
 fingerprint. It is created at checkout initiation and refreshed only when a

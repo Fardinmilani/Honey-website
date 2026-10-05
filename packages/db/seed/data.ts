@@ -946,12 +946,13 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     where: { id: seedIds.shippingMethod },
     create: {
       id: seedIds.shippingMethod,
-      code: 'manual-flat',
+      code: 'STANDARD',
       zoneId: seedIds.shippingZone,
       provider: 'manual-flat',
       ...commonAudit,
     },
     update: {
+      code: 'STANDARD',
       zoneId: seedIds.shippingZone,
       provider: 'manual-flat',
       isActive: true,

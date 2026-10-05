@@ -14,6 +14,9 @@ import {
   CheckoutModule,
   OrdersModule,
   PaymentsModule,
+  FulfilmentModule,
+  ShippingModule,
+  SmtpFulfilmentNotificationAdapter,
   type DatabaseHealthPort,
 } from '@honey/backend';
 import type { GracefulShutdown } from './bootstrap/graceful-shutdown.js';
@@ -36,6 +39,8 @@ import {
   PaymentsController,
   PaymentWebhooksController,
 } from './modules/payments/payments.controller.js';
+import { AdminFulfilmentController } from './modules/fulfilment/fulfilment.controller.js';
+import { AdminShippingController } from './modules/shipping/shipping.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
@@ -67,6 +72,8 @@ export class AppModule {
           PaymentsController,
           AdminPaymentsController,
           PaymentWebhooksController,
+          AdminFulfilmentController,
+          AdminShippingController,
           ValidationProbeController,
         ]
       : [
@@ -85,6 +92,8 @@ export class AppModule {
           PaymentsController,
           AdminPaymentsController,
           PaymentWebhooksController,
+          AdminFulfilmentController,
+          AdminShippingController,
         ];
   }
 
@@ -150,6 +159,17 @@ export class AppModule {
       identityModule,
       platformModule,
     });
+    const fulfilmentModule = FulfilmentModule.register({
+      databaseUrl: options.config.databaseUrl,
+      ordersModule,
+      inventoryModule,
+      platformModule,
+      notification: new SmtpFulfilmentNotificationAdapter(
+        options.config.databaseUrl,
+        options.config.identity.smtp,
+      ),
+    });
+    const shippingModule = ShippingModule.register({ databaseUrl: options.config.databaseUrl });
     return {
       module: AppModule,
       imports: [
@@ -177,6 +197,8 @@ export class AppModule {
         ordersModule,
         checkoutModule,
         paymentsModule,
+        fulfilmentModule,
+        shippingModule,
       ],
       controllers: [...AppModule.controllers(options.enableTestRoutes === true)],
       providers: [

@@ -33,7 +33,8 @@ not a schema dump; the authoritative schema arrives in Phase 4 as Prisma models.
 | Checkout | Checkout sessions, addresses, shipping quotes | Yes |
 | Orders | Orders, order lines, snapshots, status history, returns | Yes (own orders) |
 | Payments | Payments, attempts, transactions, refunds, provider events | Status only |
-| Shipping | Zones, methods, rates, shipments, tracking | Yes |
+| Shipping | Provider port, zones, methods, rates | Quoted options only |
+| Fulfilment | Shipments, shipment lines and source allocations, tracking events | Own-order projection only |
 | Content | Pages, articles, FAQ, media library | Yes |
 | Reviews | Product reviews and moderation | Yes (approved only) |
 | Notifications | Templates, deliveries, subscriptions | Indirect |
@@ -210,7 +211,7 @@ InventoryItem                                    ← current state, one row per 
 
 StockLedgerEntry                                 ← append-only, the audit truth
   id · variantId · stockLocationId · delta(signed; reason selects its balance)
-  reason(RECEIPT|RESERVATION|RESERVATION_RELEASE|ALLOCATION|FULFILMENT|
+  reason(RECEIPT|RESERVATION|RESERVATION_RELEASE|ALLOCATION|ALLOCATION_RELEASE|FULFILMENT|
          RETURN|ADJUSTMENT|WRITE_OFF|TRANSFER_IN|TRANSFER_OUT|CORRECTION)
   refType · refId · note · actorUserId · createdAt
   ── never updated, never deleted ──
@@ -230,12 +231,16 @@ availableToSell(variant) = Σ over sellable locations of
 |---|---:|---|
 | `RECEIPT`, `RETURN`, `ADJUSTMENT`, `WRITE_OFF`, `TRANSFER_IN`, `TRANSFER_OUT`, `CORRECTION` | signed physical movement | `onHand += delta` |
 | `FULFILMENT` | `-q` | `onHand += delta`; `allocated += delta` |
+| `ALLOCATION_RELEASE` | `-q` | `allocated += delta`; `onHand` and `reserved` are unchanged |
 | `RESERVATION` | `+q` | `reserved += q`; `onHand` and `allocated` are unchanged |
 | `RESERVATION_RELEASE` | `-q` | `reserved += delta`; `onHand` and `allocated` are unchanged |
 | `ALLOCATION` | `+q` | `reserved -= q`; `allocated += q`; `onHand` is unchanged |
 
 The reservation, release, and allocation entries above are the Phase 13
-contract in [ADR-0037](adr/0037-reason-aware-inventory-ledger.md). A release is
+contract in [ADR-0037](adr/0037-reason-aware-inventory-ledger.md).
+`FULFILMENT` and `ALLOCATION_RELEASE` are the Phase 15 physical-dispatch and
+pre-dispatch cancellation rules
+([ADR-0039](adr/0039-phase15-physical-fulfilment-and-allocation-release.md)). A release is
 therefore a real non-zero ledger entry, not a forbidden zero-delta workaround.
 The reconciliation projection is reason-aware and recomputes `onHand`,
 `reserved`, and `allocated`; the ledger always wins.
@@ -590,6 +595,7 @@ Shipment         id · orderId · provider · status(PENDING|LABEL_CREATED|
                     IN_TRANSIT|DELIVERED|FAILED|RETURNED)
                  trackingNumber · trackingUrl · shippedAt · deliveredAt
 ShipmentLine     shipmentId · orderLineId · quantity
+ShipmentLineAllocation  shipmentLineId · stockReservationId · quantity
 TrackingEvent    shipmentId · status · description · occurredAt · rawPayload
 ```
 
@@ -602,6 +608,16 @@ one adapter — nothing else
 Shipping cost is always the server's quote. A client-supplied shipping total is
 rejected. Quotes expire; an expired quote is re-quoted inside the checkout
 transaction and the customer is shown the change before confirming.
+
+Draft shipments do not move stock. Authorized staff confirmation of physical
+handover moves a shipment to `IN_TRANSIT`, consumes its quantities from the
+specific consumed reservations in `ShipmentLineAllocation`, and appends
+`FULFILMENT -q` ledger entries in the same transaction. Partial dispatch derives
+`PARTIAL` fulfilment and `PARTIALLY_FULFILLED` order status. Delivery changes
+tracking only. An order may be cancelled before it has any shipment draft or
+physical movement; `ALLOCATION_RELEASE -q` releases its allocated stock without
+changing `onHand`. Shipment location provenance is internal only
+([ADR-0040](adr/0040-shipment-line-allocation-provenance.md)).
 
 ---
 

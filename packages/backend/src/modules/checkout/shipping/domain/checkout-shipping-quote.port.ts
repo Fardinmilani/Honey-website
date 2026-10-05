@@ -15,12 +15,26 @@ export type SelectCheckoutShippingQuoteInput = Readonly<{
   actorUserId: string | null;
   /** Derived only after server-side coupon revalidation. */
   freeShippingApplies: boolean;
+  destination?: Readonly<{ country: string; province: string }>;
+  locale?: string;
+  merchandiseSubtotalMinor?: bigint;
+  weightGrams?: number;
   transaction: TransactionContext;
+}>;
+
+export type CheckoutShippingOption = Readonly<{
+  quote: StandardShippingQuote;
+  name: string;
+  providerCode: string;
+  charge: StandardShippingCharge;
 }>;
 
 export type SelectedCheckoutShippingQuote = Readonly<{
   quote: StandardShippingQuote;
   charge: StandardShippingCharge;
+  options?: readonly CheckoutShippingOption[];
+  name?: string;
+  providerCode?: string;
 }>;
 
 export type RevalidateCheckoutShippingQuoteInput = SelectCheckoutShippingQuoteInput;
@@ -30,6 +44,9 @@ export type CheckoutShippingQuoteRevalidation =
       state: 'CURRENT';
       quote: StandardShippingQuote;
       charge: StandardShippingCharge;
+      options?: readonly CheckoutShippingOption[];
+      name?: string;
+      providerCode?: string;
     }>
   | Readonly<{
       state: 'REQUOTED';
@@ -37,6 +54,9 @@ export type CheckoutShippingQuoteRevalidation =
       previousQuote: StoredShippingQuote | null;
       charge: StandardShippingCharge;
       requiresReconfirmation: boolean;
+      options?: readonly CheckoutShippingOption[];
+      name?: string;
+      providerCode?: string;
     }>;
 
 /**
@@ -50,6 +70,9 @@ export interface CheckoutShippingQuotePort {
   revalidateForConfirmation(
     input: RevalidateCheckoutShippingQuoteInput,
   ): Promise<CheckoutShippingQuoteRevalidation>;
+  selectById?(
+    input: SelectCheckoutShippingQuoteInput & Readonly<{ quoteId: string }>,
+  ): Promise<SelectedCheckoutShippingQuote>;
 }
 
 export interface CheckoutShippingQuoteRepository {
@@ -61,5 +84,27 @@ export interface CheckoutShippingQuoteRepository {
     checkoutSessionId: string,
     transaction: TransactionContext,
   ): Promise<StoredShippingQuote | null>;
+  createOptionsAndSelect?(
+    quotes: readonly StandardShippingQuoteDraft[],
+    selectedQuoteId: string,
+    transaction: TransactionContext,
+  ): Promise<readonly StoredShippingQuote[]>;
+  findForCheckout?(
+    checkoutSessionId: string,
+    quoteId: string,
+    transaction: TransactionContext,
+  ): Promise<StoredShippingQuote | null>;
+  listCurrentForCheckout?(
+    checkoutSessionId: string,
+    contextFingerprint: string,
+    now: Date,
+    transaction: TransactionContext,
+  ): Promise<readonly StoredShippingQuote[]>;
+  selectExisting?(
+    checkoutSessionId: string,
+    quoteId: string,
+    actorUserId: string | null,
+    transaction: TransactionContext,
+  ): Promise<void>;
   close(): Promise<void>;
 }

@@ -6,23 +6,20 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 12 delivers server-authoritative pricing and a private, repriced cart:
-current price windows, coupons, deterministic discount allocation, tax-rule
-resolution, anonymous/user cart ownership, availability clamping, and durable
-idempotent line additions. Storefront cards and product pages show only current
-public prices; valid products expose a structured-data `Offer`; Add to Cart and
-the localized cart work in Persian and English. Prices, totals, discounts, tax,
-and stock are never trusted from the browser or persisted on cart lines.
-
-Checkout, reservations, orders, payments, shipping, and a customer checkout
-entry point remain out of scope until Phase 13 and later.
+Phase 15 adds server-owned shipping zones, methods, and rates to checkout,
+followed by staff-managed shipments and physical stock movement at dispatch.
+Customers can select a quoted method and see shipment status and tracking in
+Persian and English. The launch provider is the manual flat-rate adapter; no
+live carrier is connected. Checkout, reservations, orders, and payments from
+Phases 13 and 14 remain the foundation for this flow. Prices, shipping totals,
+stock, and payment state are never trusted from the browser.
 
 The existing Hero media under `apps/web/public/media/hero/` remains protected,
 byte-identical, and outside object storage.
 
-See [`docs/cart-pricing-development.md`](docs/cart-pricing-development.md),
-[`docs/inventory-development.md`](docs/inventory-development.md), and
-[`docs/web-development.md`](docs/web-development.md).
+See [`docs/shipping-fulfilment-development.md`](docs/shipping-fulfilment-development.md),
+[`docs/payments-development.md`](docs/payments-development.md), and
+[`docs/cart-pricing-development.md`](docs/cart-pricing-development.md).
 
 ## Requirements
 

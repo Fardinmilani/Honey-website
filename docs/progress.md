@@ -23,22 +23,245 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 11 | Sourcing, Procurement & Inventory | ✅ Complete | 2026-08-10 |
 | 12 | Cart & Pricing | Complete | 2026-09-12 |
 | 13 | Checkout, Reservations & Orders | ✅ Complete | 2026-09-25 |
-| 14 | Payments | ✅ Complete (uncommitted — awaiting human review/commit) | 2026-10-04 |
-| 15 | Shipping & Fulfilment | â¬œ Not started | â€” |
-| 16 | Background Jobs | â¬œ Not started | â€” |
+| 14 | Payments | ✅ Complete; committed as `66e1fe3` | 2026-10-04 |
+| 15 | Shipping & Fulfilment | ✅ Complete; uncommitted for human review | 2026-10-05 |
+| 16 | Background Jobs | CURRENT but NOT STARTED | — |
 | 17 | Admin Console | â¬œ Not started | â€” |
 | 18 | Content, Reviews & Notifications | â¬œ Not started | â€” |
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 15 — Shipping & Fulfilment (**CURRENT but NOT STARTED**).
-**Previous phase:** Phase 14 — Payments (**complete 2026-10-04, uncommitted**).
+**Current phase:** Phase 16 — Background Jobs (**CURRENT but NOT STARTED**).
+**Previous phase:** Phase 15 — Shipping & Fulfilment (**complete 2026-10-05; uncommitted for human review**).
+
+## Phase 15 — Shipping & Fulfilment
+
+**Completed:** 2026-10-05 · **Status:** Complete; changes remain unstaged and
+uncommitted for human review. Phase 16 is recorded as current for planning only;
+no Phase 16 implementation was started.
+
+The Phase 13 checkout quote now resolves server-configured zones, translated
+`STANDARD` methods, integer weight/subtotal rates, expiry, selection, and
+confirmation re-quote through the Phase 15 shipping module. The accepted launch
+provider is `manual-flat` ([ADR-0014](adr/0014-shipping-provider-abstraction.md));
+the seed binds method code `STANDARD` to provider code `manual-flat`. The client
+selects an identifier, never a shipping amount. A `FREE_SHIPPING` coupon uses
+the authoritative quote. Permission-gated staff APIs configure zones, methods,
+and rates. Customer checkout and owner-scoped order detail expose localized
+selection and tracking.
+
+Paid, allocated orders can create partial shipment drafts. Authorized staff
+dispatch is the physical stock-out boundary: `FULFILMENT -q` changes
+`onHand -= q` and `allocated -= q`, leaving `reserved` unchanged. A draft,
+payment success, and delivery event do not move stock. Pre-dispatch cancellation
+uses `ALLOCATION_RELEASE -q` without changing `onHand`
+([ADR-0039](adr/0039-phase15-physical-fulfilment-and-allocation-release.md)).
+Shipment-line source rows preserve the actual Phase 13 reservation/location
+allocation for split-location orders
+([ADR-0040](adr/0040-shipment-line-allocation-provenance.md)). Dispatch, ledger,
+status, audit, and outbox commit atomically under deterministic lock order and
+durable idempotency. Localized direct SMTP shipment notifications are sent after
+commit with a durable delivery claim; authorized replay retries failed sends.
+The full boundary is documented in
+[shipping-fulfilment-development.md](shipping-fulfilment-development.md).
+
+### Files created
+
+```text
+apps/api/src/modules/fulfilment/fulfilment.controller.ts
+apps/api/src/modules/shipping/shipping.controller.ts
+apps/api/test/phase15.test.ts
+apps/web/e2e/shipping-fulfilment.spec.ts
+apps/web/src/app/api/bff/checkout/[checkoutId]/shipping-selection/route.ts
+docs/adr/0039-phase15-physical-fulfilment-and-allocation-release.md
+docs/adr/0040-shipment-line-allocation-provenance.md
+docs/shipping-fulfilment-development.md
+packages/backend/src/modules/checkout/shipping/application/configured-checkout-shipping-quote.service.test.ts
+packages/backend/src/modules/checkout/shipping/application/configured-checkout-shipping-quote.service.ts
+packages/backend/src/modules/fulfilment/application/fulfilment.service.ts
+packages/backend/src/modules/fulfilment/domain/fulfilment.ts
+packages/backend/src/modules/fulfilment/fulfilment.module.ts
+packages/backend/src/modules/fulfilment/index.ts
+packages/backend/src/modules/fulfilment/infrastructure/prisma-fulfilment.repository.ts
+packages/backend/src/modules/fulfilment/infrastructure/smtp-fulfilment-notification.adapter.ts
+packages/backend/src/modules/shipping/application/shipping-settings.service.test.ts
+packages/backend/src/modules/shipping/application/shipping-settings.service.ts
+packages/backend/src/modules/shipping/application/shipping.service.ts
+packages/backend/src/modules/shipping/domain/manual-flat-rates.test.ts
+packages/backend/src/modules/shipping/domain/manual-flat-rates.ts
+packages/backend/src/modules/shipping/domain/shipping-settings.ts
+packages/backend/src/modules/shipping/domain/shipping.ts
+packages/backend/src/modules/shipping/index.ts
+packages/backend/src/modules/shipping/infrastructure/manual-flat-shipping.provider.ts
+packages/backend/src/modules/shipping/infrastructure/prisma-shipping-configuration.repository.ts
+packages/backend/src/modules/shipping/infrastructure/prisma-shipping-settings.repository.ts
+packages/backend/src/modules/shipping/module.meta.ts
+packages/backend/src/modules/shipping/shipping.module.ts
+packages/backend/test/phase15.fulfilment.integration.test.ts
+packages/backend/test/phase15.smtp.integration.test.ts
+packages/db/prisma/migrations/20261004150000_phase15_fulfilment/migration.sql
+scripts/verify-phase15.mjs
+```
+
+### Files modified
+
+```text
+.github/workflows/ci.yml
+.env.example
+PLANS.md
+README.md
+apps/api/src/app.module.ts
+apps/api/src/modules/checkout/checkout.controller.ts
+apps/api/src/openapi/document.ts
+apps/api/test/phase13.test.ts
+apps/web/e2e/checkout.spec.ts
+apps/web/e2e/payments.spec.ts
+apps/web/src/app/api/bff/checkout/_proxy.ts
+apps/web/src/components/checkout/checkout-flow.tsx
+apps/web/src/components/checkout/checkout.module.css
+apps/web/src/components/orders/order-detail.tsx
+docs/adr/README.md
+docs/api-strategy.md
+docs/database-strategy.md
+docs/domain-model.md
+docs/inventory-development.md
+docs/module-boundaries.md
+docs/progress.md
+docs/security-model.md
+package.json
+packages/backend/src/index.ts
+packages/backend/src/modules/cart/application/cart.service.test.ts
+packages/backend/src/modules/cart/domain/cart.ts
+packages/backend/src/modules/cart/infrastructure/prisma-cart.repository.ts
+packages/backend/src/modules/checkout/application/checkout.service.ts
+packages/backend/src/modules/checkout/checkout.module.ts
+packages/backend/src/modules/checkout/shipping/domain/checkout-shipping-quote.port.ts
+packages/backend/src/modules/checkout/shipping/domain/standard-shipping-quote.ts
+packages/backend/src/modules/checkout/shipping/index.ts
+packages/backend/src/modules/checkout/shipping/infrastructure/prisma-checkout-shipping-quote.repository.ts
+packages/backend/src/modules/inventory/application/inventory.service.ts
+packages/backend/src/modules/inventory/domain/inventory.ts
+packages/backend/src/modules/inventory/infrastructure/prisma-inventory.repository.ts
+packages/backend/src/modules/orders/application/orders.service.ts
+packages/backend/src/modules/orders/domain/orders.ts
+packages/backend/src/modules/orders/infrastructure/prisma-orders.repository.ts
+packages/contracts/openapi.json
+packages/contracts/src/generated/api.ts
+packages/db/prisma/schema.prisma
+packages/db/seed/data.ts
+packages/i18n/src/messages/en/checkout.ts
+packages/i18n/src/messages/fa/checkout.ts
+packages/i18n/src/messages/types.ts
+```
+
+No dependency was added, and `pnpm-lock.yaml` was not changed. The only new
+migration is the forward Phase 15 migration; applied migrations were not edited.
+
+### Decisions made
+
+- Use the accepted provider-neutral port and configured `manual-flat` launch
+  adapter; a live carrier and labels await a separate selection
+  ([ADR-0014](adr/0014-shipping-provider-abstraction.md)).
+- Extend the Phase 13 server quote and re-quote boundary without a second
+  checkout pricing path
+  ([ADR-0038](adr/0038-phase13-minimal-shipping-quote-boundary.md)).
+- Consume physical and allocated stock together at staff-confirmed dispatch;
+  release unshipped allocation using its own ledger reason
+  ([ADR-0039](adr/0039-phase15-physical-fulfilment-and-allocation-release.md)).
+- Persist each shipment line's consumed-reservation source so partial and
+  split-location dispatch uses the correct stock location
+  ([ADR-0040](adr/0040-shipment-line-allocation-provenance.md)).
+- Deliver Phase 15 shipment emails directly after commit using the existing
+  SMTP adapter and durable send state. The general queue and notification
+  template runtimes remain assigned to Phases 16 and 18 respectively
+  ([shipping-fulfilment-development.md](shipping-fulfilment-development.md)).
+
+### Unresolved decisions
+
+- None blocks Phase 15. A live carrier and production shipping policy require
+  a future business choice before either is configured for launch; the
+  `manual-flat` adapter itself is the accepted Phase 15 path.
+- Method codes are globally unique and each method belongs to one zone. The
+  launch `STANDARD` method can serve its configured zone only; a second zone
+  with a distinct `STANDARD` rate needs a future method-code/rate-policy
+  decision before geographic expansion.
+- The existing local `honey_local` database contains an inventory reservation
+  drift row (`reserved = 0` despite two active reservations). Its data repair
+  requires owner review. Phase 15 verification used fresh disposable databases
+  on the Docker PostgreSQL service; no existing local data was changed to hide
+  the drift.
+
+### Risks
+
+- Manual tracking accuracy and timing depend on authorized staff. No live
+  carrier confirms delivery automatically.
+- Missing, overlapping, expired, or ambiguous shipping configuration must fail
+  closed, so an invalid production configuration can block checkout.
+- A distinct rate for `STANDARD` in another zone cannot be configured with the
+  current globally unique method code. The accepted launch setup uses one
+  configured zone.
+- SMTP failure leaves the committed shipment state intact and requires an
+  authorized replay. A crash after SMTP accepts mail but before `sentAt` is
+  recorded can produce a duplicate email on replay.
+- The local `honey_local` drift causes catalog requests to return
+  `INVENTORY_RESERVATION_DRIFT` until that local data is reconciled; isolated
+  Phase 15 test databases do not share the drift.
+
+### Acceptance checklist
+
+- [x] Server owns the shipping amount, method availability, and destination
+  match; client-supplied money is rejected.
+- [x] Expired or changed quotes are re-quoted at confirmation and require price
+  review before order creation.
+- [x] Partial dispatch moves order fulfilment state to
+  `PARTIALLY_FULFILLED` and consumes only the dispatched allocation.
+- [x] Draft and payment do not decrement physical stock; duplicate and
+  concurrent dispatch cannot decrement twice.
+- [x] Customer tracking is owner-scoped; staff settings and fulfilment commands
+  enforce explicit API permissions.
+- [x] Live carrier APIs, labels, returns logistics, Phase 16 workers, and Phase
+  17 staff UI are absent.
+- [x] Hero media is unchanged; secrets, dependencies, and historical
+  migrations were not introduced or changed.
+- [x] Changes remain unstaged and uncommitted for human review.
+
+### Verification results
+
+- `pnpm db:format`, `pnpm db:validate`, `pnpm db:generate`,
+  `pnpm db:migrate`, `pnpm db:migrate:status`, and `pnpm db:test` passed against
+  Docker PostgreSQL. Migration status reports nine migrations up to date. The
+  integration test proved 75 tables, 31 enums, 35 PostgreSQL constraint
+  rejections, and stable seed reruns.
+- Final `pnpm lint` passed 10/10 workspaces, `pnpm typecheck` passed 17/17,
+  `pnpm test` passed 17/17, and `pnpm build` passed 10/10. The test run
+  included 22 boundary tests, 224 backend tests (5 skipped), 68 API tests
+  (1 skipped), and 40 web tests; database integration passed. An earlier
+  concurrent run hit the SMTP test teardown timeout under verification load;
+  the teardown allowance was raised to match its setup allowance, the targeted
+  SMTP suite passed 3/3, and the final full run passed.
+- `pnpm test:e2e` passed 101/101 against a fresh Docker PostgreSQL test
+  database, including both locales and the Phase 15 flows.
+  `pnpm test:e2e:performance` passed 4/4 against the same isolated database.
+- `pnpm phase4:verify` through `pnpm phase15:verify` passed, including the final
+  Phase 15 rerun. OpenAPI generation/check, lint/forbidden checks, and
+  `node packages/contracts/scripts/check-breaking.mjs --base-ref HEAD` passed.
+  `pnpm boundaries`, `pnpm stylelint`, `pnpm i18n:validate`,
+  `pnpm --filter @honey/web validate:hardcoded-copy`,
+  `pnpm docker:verify`, and `docker compose config --quiet` passed. Docker
+  PostgreSQL, Redis, MinIO, and Mailpit were healthy.
+- `pnpm api:docker:build` and `pnpm web:docker:build` passed. A temporary API
+  container connected to Docker services was healthy: `/readyz` and catalog
+  returned 200; unauthenticated staff settings returned 401. The temporary
+  container was stopped.
+- `git status --porcelain apps/web/public/media/hero` and
+  `git diff --stat HEAD -- apps/web/public/media/hero` were empty. All eight
+  Hero blob hashes matched `HEAD`; the MinIO Hero scan found no replacements.
 
 ---
 
 ## Phase 14 — Payments
 
-**Completed:** 2026-10-04 · **Status:** Complete, uncommitted (awaiting human review/commit)
+**Completed:** 2026-10-04 · **Status:** Complete; committed as `66e1fe3`
 
 Server-authoritative payments with Zarinpal as the first provider. One
 `applyPaymentOutcome` state machine is reached by `verifyReturn`, optional
@@ -2189,7 +2412,7 @@ Business decisions needed before the phases they block. Also listed in
 |---|---|---|---|
 | 1 | Which payment provider first (Zarinpal / IDPay / direct Shaparak IPG)? Is an international provider needed at launch? | Phase 14 | Before Phase 14 implementation |
 | 2 | Currency display: store IRR, show Toman on the Persian storefront? A second currency for English? The current explicit-IRR behavior has no conversion fallback. | Production currency presentation / Phases 12–14 | Before production currency rollout |
-| 3 | Full production shipping/carrier design: flat-rate and manual only at launch, or an integrated carrier? The Phase 13 `STANDARD` quote seam fails closed without valid server data and does not decide Phase 15 shipping operations. | Phase 15 | Before Phase 15 |
+| ~~3~~ | ~~Full production shipping/carrier design~~ | — | **Resolved 2026-10-04:** `manual-flat` launch adapter, server-owned zones and rates; no live carrier or label integration in Phase 15 ([ADR-0014](adr/0014-shipping-provider-abstraction.md)). |
 | 4 | Final production VAT applicability, rate, and inclusive/exclusive policy. Phase 13 uses an authoritative destination `TaxRate`; an explicit configured zero is valid and missing required configuration fails closed. | Production order activation / legal launch | Before accepting production orders |
 | ~~5~~ | ~~Guest checkout allowed, or account required?~~ | â€” | **Resolved 2026-09-12:** guest checkout is allowed with anonymous server-derived ownership and opaque high-entropy guest access; no account or fake user is created. |
 | 6 | Legal entity, statutory invoice format, and fields. The Phase 13 `HNY-YYYY-######` reference is not an invoice number. | Statutory invoicing / legal launch | Before issuing statutory invoices |

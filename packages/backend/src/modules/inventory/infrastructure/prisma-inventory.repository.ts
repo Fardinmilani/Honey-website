@@ -11,6 +11,7 @@ import type { TransactionContext } from '../../../platform/domain/transaction.js
 import {
   compareInventoryKeys,
   reduceInventoryLedgerState,
+  type AllocatedStockMovement,
   type InventoryActorContext,
   type InventoryLedgerState,
   type InventoryItemRecord,
@@ -517,6 +518,57 @@ export class PrismaInventoryRepository implements InventoryRepository {
     return results;
   }
 
+  async applyAllocatedMovements(
+    transaction: TransactionContext,
+    movements: readonly AllocatedStockMovement[],
+    actor: InventoryActorContext,
+  ): Promise<readonly InventoryItemRecord[]> {
+    const client = asPrismaTransaction(transaction);
+    const results: InventoryItemRecord[] = [];
+    for (const movement of [...movements].sort(compareInventoryKeys)) {
+      const changed = await client.inventoryItem.updateMany({
+        where: {
+          variantId: movement.variantId,
+          stockLocationId: movement.stockLocationId,
+          allocated: { gte: movement.quantity },
+          ...(movement.reason === 'FULFILMENT' ? { onHand: { gte: movement.quantity } } : {}),
+        },
+        data: {
+          allocated: { decrement: movement.quantity },
+          ...(movement.reason === 'FULFILMENT' ? { onHand: { decrement: movement.quantity } } : {}),
+          version: { increment: 1 },
+          updatedBy: actor.actorUserId,
+        },
+      });
+      if (changed.count !== 1) throw new ConflictAppError({ code: 'ALLOCATION_MISMATCH' });
+      await client.stockLedgerEntry.create({
+        data: {
+          id: randomUUID(),
+          variantId: movement.variantId,
+          stockLocationId: movement.stockLocationId,
+          delta: -movement.quantity,
+          reason: movement.reason,
+          refType: movement.refType,
+          refId: movement.refId,
+          note: null,
+          actorUserId: actor.actorUserId,
+          createdBy: actor.actorUserId,
+        },
+      });
+      const row = await client.inventoryItem.findUniqueOrThrow({
+        where: {
+          variantId_stockLocationId: {
+            variantId: movement.variantId,
+            stockLocationId: movement.stockLocationId,
+          },
+        },
+        include: { stockLocation: { select: { isSellable: true, isDefault: true } } },
+      });
+      results.push(mapItem(row, row.stockLocation));
+    }
+    return results;
+  }
+
   async applyReservationAccounting(
     transaction: TransactionContext,
     changes: readonly ReservationAccountingChange[],
@@ -690,6 +742,17 @@ export class PrismaInventoryRepository implements InventoryRepository {
   ): Promise<readonly StockReservationRecord[]> {
     const rows = await asPrismaTransaction(transaction).stockReservation.findMany({
       where: { checkoutSessionId },
+      orderBy: [{ variantId: 'asc' }, { stockLocationId: 'asc' }, { id: 'asc' }],
+    });
+    return rows.map(mapReservation);
+  }
+
+  async listConsumedReservationsForOrder(
+    transaction: TransactionContext,
+    orderId: string,
+  ): Promise<readonly StockReservationRecord[]> {
+    const rows = await asPrismaTransaction(transaction).stockReservation.findMany({
+      where: { orderId, status: 'CONSUMED' },
       orderBy: [{ variantId: 'asc' }, { stockLocationId: 'asc' }, { id: 'asc' }],
     });
     return rows.map(mapReservation);

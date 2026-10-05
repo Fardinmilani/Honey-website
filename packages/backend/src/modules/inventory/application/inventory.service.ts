@@ -19,6 +19,7 @@ import {
   availableUnits,
   compareInventoryKeys,
   type InventoryActorContext,
+  type AllocatedStockMovement,
   type AdjustmentInput,
   type AvailabilityBand,
   type AvailabilitySnapshot,
@@ -493,6 +494,63 @@ export class InventoryService {
     );
     await this.#evaluateLowStock(transaction, variantIds);
     return updated;
+  }
+
+  listConsumedOrderReservations(
+    orderIdInput: string,
+    transaction: TransactionContext,
+  ): Promise<readonly StockReservationRecord[]> {
+    return this.repository.listConsumedReservationsForOrder(
+      transaction,
+      uuid(orderIdInput, 'orderId'),
+    );
+  }
+
+  /**
+   * A dispatched unit leaves both onHand and allocated. Releasing a cancelled
+   * order changes allocated alone. Both paths append one reason-aware ledger
+   * entry per location inside the caller's encompassing transaction.
+   */
+  async applyAllocatedStockMovements(
+    transaction: TransactionContext,
+    movements: readonly AllocatedStockMovement[],
+    actor: InventoryActorContext,
+  ): Promise<void> {
+    if (movements.length === 0) throw new ConflictAppError({ code: 'ALLOCATION_MISMATCH' });
+    const totals = new Map<string, number>();
+    for (const movement of movements) {
+      uuid(movement.variantId, 'variantId');
+      uuid(movement.stockLocationId, 'stockLocationId');
+      uuid(movement.refId, 'refId');
+      boundedInt(movement.quantity, 'quantity', 1);
+      const key = `${movement.variantId}:${movement.stockLocationId}`;
+      totals.set(key, (totals.get(key) ?? 0) + movement.quantity);
+    }
+    const locked = await this.repository.lockItems(
+      transaction,
+      movements.map((movement) => ({
+        variantId: movement.variantId,
+        stockLocationId: movement.stockLocationId,
+      })),
+    );
+    if (locked.length !== totals.size) throw new ConflictAppError({ code: 'ALLOCATION_MISMATCH' });
+    for (const item of locked) {
+      const quantity = totals.get(`${item.variantId}:${item.stockLocationId}`) ?? 0;
+      if (quantity <= 0 || item.allocated < quantity || item.onHand < quantity) {
+        throw new ConflictAppError({ code: 'ALLOCATION_MISMATCH' });
+      }
+    }
+    await this.repository.applyAllocatedMovements(transaction, movements, actor);
+    await this.repository.appendOutbox(
+      transaction,
+      'inventory_item',
+      locked[0]?.id ?? randomUUID(),
+      'inventory.changed',
+      { variantIds: [...new Set(movements.map((movement) => movement.variantId))].join(',') },
+    );
+    await this.#evaluateLowStock(transaction, [
+      ...new Set(movements.map((movement) => movement.variantId)),
+    ]);
   }
 
   /**

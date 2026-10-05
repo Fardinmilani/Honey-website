@@ -567,6 +567,106 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/fulfilment/orders/{orderId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read staff fulfilment details
+     * @description Returns order lines and shipment state to staff with order:read permission.
+     */
+    get: operations['getFulfilmentOrder'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/fulfilment/orders/{orderId}/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel an unshipped order and release its allocation
+     * @description Cancels an order before any shipment draft exists and releases its allocated stock.
+     */
+    post: operations['cancelUnshippedFulfilmentOrder'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/fulfilment/orders/{orderId}/shipments': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Prepare a shipment draft without moving physical stock
+     * @description Creates one idempotent shipment draft for paid, allocated order lines.
+     */
+    post: operations['createFulfilmentShipment'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/fulfilment/shipments/{shipmentId}/deliver': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record manual delivery
+     * @description Records delivery for a shipment already in transit without moving stock again.
+     */
+    post: operations['deliverFulfilmentShipment'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/fulfilment/shipments/{shipmentId}/dispatch': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Confirm physical dispatch and consume allocated stock once
+     * @description Atomically moves allocated stock out of inventory and marks the shipment in transit.
+     */
+    post: operations['dispatchFulfilmentShipment'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/inventory/adjustments': {
     parameters: {
       query?: never;
@@ -1097,6 +1197,86 @@ export interface paths {
      * @description Update a supplier.
      */
     patch: operations['adminUpdateSupplier'];
+    trace?: never;
+  };
+  '/v1/admin/shipping/configuration': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read shipping configuration
+     * @description Returns configured shipping zones, methods, translations, and rate rules for staff.
+     */
+    get: operations['listShippingConfiguration'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/shipping/methods/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Configure a shipping method
+     * @description Creates or replaces one localized manual shipping method.
+     */
+    put: operations['upsertShippingMethod'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/shipping/rates/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Configure a shipping rate
+     * @description Creates or replaces one integer-minor-unit manual rate rule.
+     */
+    put: operations['upsertShippingRate'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/shipping/zones/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Configure a shipping zone
+     * @description Creates or replaces one server-owned destination zone.
+     */
+    put: operations['upsertShippingZone'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   '/v1/admin/sourcing/allocations': {
@@ -1799,6 +1979,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/checkout/{id}/shipping-selection': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Select a server-owned shipping quote for this checkout
+     * @description Only an owned quote identifier is accepted. The server validates the destination, method, rate, and checkout pricing before selection.
+     */
+    post: operations['selectCheckoutShippingQuote'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me': {
     parameters: {
       query?: never;
@@ -2044,6 +2244,10 @@ export interface components {
       next: 'AUTHENTICATED';
       user: components['schemas']['SafeUserDto'];
     };
+    CancelFulfilmentOrderResponseDto: {
+      /** @example true */
+      cancelled: boolean;
+    };
     CartAdjustmentDto: {
       /** @enum {string} */
       code: 'QUANTITY_CLAMPED';
@@ -2160,7 +2364,20 @@ export interface components {
       grandTotal: components['schemas']['MoneyDto'];
       /** @example HNY-2026-000123 */
       number: string;
+      shipments?: components['schemas']['CustomerShipmentResponseDto'][];
       status: string;
+    };
+    CustomerShipmentResponseDto: {
+      /** Format: date-time */
+      deliveredAt: string | null;
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      shippedAt: string | null;
+      /** @enum {string} */
+      status: 'PENDING' | 'LABEL_CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'RETURNED';
+      trackingNumber: string | null;
+      trackingUrl: string | null;
     };
     DirectUploadDto: {
       /** Format: date-time */
@@ -2489,6 +2706,16 @@ export interface components {
     };
     SessionsResponseDto: {
       sessions: components['schemas']['SessionDto'][];
+    };
+    ShipmentResponseDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      orderId: string;
+      /** @enum {string} */
+      status: 'PENDING' | 'LABEL_CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'RETURNED';
+      trackingNumber: string | null;
+      trackingUrl: string | null;
     };
     StepUpResponseDto: {
       /** @example true */
@@ -3172,6 +3399,160 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AdminProductDto'];
+        };
+      };
+    };
+  };
+  getFulfilmentOrder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        orderId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Order lines and shipments for staff fulfilment. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  cancelUnshippedFulfilmentOrder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        orderId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CancelFulfilmentOrderResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  createFulfilmentShipment: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path: {
+        orderId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ShipmentResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  deliverFulfilmentShipment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shipmentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ShipmentResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  dispatchFulfilmentShipment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shipmentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ShipmentResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
         };
       };
     };
@@ -3998,6 +4379,108 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  listShippingConfiguration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Zones, methods, translations, and rates. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  upsertShippingMethod: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Saved method ID. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  upsertShippingRate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Saved rate ID. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  upsertShippingZone: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Saved zone ID. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
       };
     };
   };
@@ -4933,6 +5416,35 @@ export interface operations {
     };
   };
   extendCheckoutReservation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CheckoutResponseDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  selectCheckoutShippingQuote: {
     parameters: {
       query?: never;
       header?: never;

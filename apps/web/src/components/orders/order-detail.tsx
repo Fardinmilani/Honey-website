@@ -38,6 +38,15 @@ type OrderLine = Readonly<{
   lineTotal: Money;
 }>;
 
+type Shipment = Readonly<{
+  id: string;
+  status: string;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+}>;
+
 type CustomerOrder = Readonly<{
   number: string;
   status: string;
@@ -52,6 +61,7 @@ type CustomerOrder = Readonly<{
   placedAt: string;
   shippingAddress: OrderAddress | null;
   lines: readonly OrderLine[];
+  shipments: readonly Shipment[];
 }>;
 
 type OrderDetailProps = Readonly<{
@@ -173,6 +183,44 @@ function parseLine(value: unknown): OrderLine | null {
   };
 }
 
+function safeTrackingUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.username === '' && url.password === ''
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseShipment(value: unknown): Shipment | null {
+  if (!isRecord(value)) return null;
+  const id = stringField(value, 'id');
+  const status = stringField(value, 'status');
+  const trackingNumberRaw = value['trackingNumber'];
+  const shippedAtRaw = value['shippedAt'];
+  const deliveredAtRaw = value['deliveredAt'];
+  if (
+    id === null ||
+    status === null ||
+    (trackingNumberRaw !== null && !isString(trackingNumberRaw)) ||
+    (shippedAtRaw !== null && !isString(shippedAtRaw)) ||
+    (deliveredAtRaw !== null && !isString(deliveredAtRaw))
+  ) {
+    return null;
+  }
+  return {
+    id,
+    status,
+    trackingNumber: trackingNumberRaw === null ? null : trackingNumberRaw,
+    trackingUrl: safeTrackingUrl(value['trackingUrl']),
+    shippedAt: shippedAtRaw === null ? null : shippedAtRaw,
+    deliveredAt: deliveredAtRaw === null ? null : deliveredAtRaw,
+  };
+}
+
 function parseOrder(value: unknown): CustomerOrder | null {
   if (!isRecord(value)) return null;
   const number = stringField(value, 'number');
@@ -188,6 +236,7 @@ function parseOrder(value: unknown): CustomerOrder | null {
   const placedAt = stringField(value, 'placedAt');
   const shippingAddress = parseAddress(value['shippingAddress']);
   const linesRaw = value['lines'];
+  const shipmentsRaw = value['shipments'];
 
   if (
     number === null ||
@@ -202,7 +251,8 @@ function parseOrder(value: unknown): CustomerOrder | null {
     grandTotal === null ||
     placedAt === null ||
     shippingAddress === undefined ||
-    !Array.isArray(linesRaw)
+    !Array.isArray(linesRaw) ||
+    (shipmentsRaw !== undefined && !Array.isArray(shipmentsRaw))
   ) {
     return null;
   }
@@ -212,6 +262,15 @@ function parseOrder(value: unknown): CustomerOrder | null {
     const line = parseLine(item);
     if (line === null) return null;
     lines.push(line);
+  }
+
+  const shipments: Shipment[] = [];
+  if (Array.isArray(shipmentsRaw)) {
+    for (const item of shipmentsRaw) {
+      const shipment = parseShipment(item);
+      if (shipment === null) return null;
+      shipments.push(shipment);
+    }
   }
 
   return {
@@ -228,6 +287,7 @@ function parseOrder(value: unknown): CustomerOrder | null {
     placedAt,
     shippingAddress,
     lines,
+    shipments,
   };
 }
 
@@ -389,8 +449,16 @@ export function OrderDetail({
             </div>
             <div className={styles['metaRow']}>
               <p className={styles['metaLabel']}>{t('checkout.fulfilmentStatus')}</p>
-              <p className={styles['metaValue']}>
-                <span className={styles['badge']}>{order.fulfilmentStatus}</span>
+              <p className={styles['metaValue']} role="status">
+                <span className={styles['badge']}>
+                  {order.fulfilmentStatus === 'FULFILLED'
+                    ? t('checkout.fulfilmentFulfilled')
+                    : order.fulfilmentStatus === 'PARTIAL'
+                      ? t('checkout.fulfilmentPartial')
+                      : order.paymentStatus === 'PAID'
+                        ? t('checkout.fulfilmentUnfulfilled')
+                        : t('checkout.fulfilmentAwaitingPayment')}
+                </span>
               </p>
             </div>
           </div>
@@ -433,6 +501,51 @@ export function OrderDetail({
               <br />
               {order.shippingAddress.country} · {order.shippingAddress.phone}
             </p>
+          </div>
+        ) : null}
+
+        {order.shipments.length > 0 ? (
+          <div className={styles['section']}>
+            <h2 className={styles['sectionTitle']}>{t('checkout.trackingHeading')}</h2>
+            <ul className={styles['lines']}>
+              {order.shipments.map((shipment) => (
+                <li className={styles['line']} key={shipment.id}>
+                  <div className={styles['lineInfo']}>
+                    <p className={styles['lineTitle']} role="status">
+                      {shipment.status === 'DELIVERED'
+                        ? t('checkout.shipmentDelivered')
+                        : shipment.status === 'IN_TRANSIT'
+                          ? t('checkout.shipmentInTransit')
+                          : shipment.status === 'FAILED' || shipment.status === 'RETURNED'
+                            ? t('checkout.shipmentFailed')
+                            : t('checkout.shipmentPending')}
+                    </p>
+                    {shipment.trackingNumber !== null ? (
+                      <p className={styles['lineMeta']}>
+                        {t('checkout.trackingNumber')}: <bdi>{shipment.trackingNumber}</bdi>
+                      </p>
+                    ) : null}
+                    {shipment.shippedAt !== null ? (
+                      <p className={styles['lineMeta']}>
+                        {t('checkout.shippedAt')}:{' '}
+                        {formatDate(locale, shipment.shippedAt, { dateStyle: 'medium' })}
+                      </p>
+                    ) : null}
+                    {shipment.deliveredAt !== null ? (
+                      <p className={styles['lineMeta']}>
+                        {t('checkout.deliveredAt')}:{' '}
+                        {formatDate(locale, shipment.deliveredAt, { dateStyle: 'medium' })}
+                      </p>
+                    ) : null}
+                    {shipment.trackingUrl !== null ? (
+                      <a href={shipment.trackingUrl} target="_blank" rel="noopener noreferrer">
+                        {t('checkout.trackingHeading')}
+                      </a>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
 

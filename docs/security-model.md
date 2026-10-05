@@ -351,6 +351,27 @@ Governing decision: [ADR-0022](adr/0022-payment-verification-sources.md).
   webhook nor a customer who closes the tab can strand an order or a customer's
   money.
 
+### Shipping and fulfilment authority
+
+- Checkout accepts an available shipping method or quote identifier and a
+  validated address. It rejects any client-supplied shipping amount, rate,
+  discount, stock balance, or shipment/payment state as tampering. Confirmation
+  re-quotes server-side before writing the immutable order snapshot.
+- Staff shipment preparation, physical dispatch, tracking updates, and eligible
+  cancellation require explicit API permissions. A staff role name or hidden
+  button is never sufficient. The API validates every transition and records
+  privileged changes in the audit trail.
+- Physical stock is decremented only by a staff-confirmed dispatch against paid
+  orders with valid allocation. The transaction locks the actual allocated
+  locations, appends `FULFILMENT` ledger entries, and is idempotent under retries.
+- Customer tracking is returned only through the existing owner-scoped order
+  access path, including guest-cookie ownership. It omits warehouse/location
+  IDs, reservation IDs, raw provider payload, and staff notes. No public
+  tracking-number lookup is offered.
+- Manual tracking and delivery events are staff-authorized; the browser cannot
+  declare a shipment shipped or delivered. No live carrier callback is active
+  in Phase 15.
+
 ---
 
 ## 9. File uploads

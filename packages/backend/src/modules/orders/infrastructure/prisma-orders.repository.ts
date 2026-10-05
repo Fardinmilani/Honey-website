@@ -11,6 +11,8 @@ import type {
   CreatePendingOrderInput,
   CustomerOrder,
   CustomerOrderLine,
+  CustomerShipment,
+  FulfilmentOrder,
   OrderJsonObject,
   OrderOwner,
   OrdersRepository,
@@ -76,7 +78,31 @@ type CustomerOrderRow = Readonly<{
   billingAddressSnapshot: Prisma.JsonValue;
   placedAt: Date;
   lines: readonly CustomerLineRow[];
+  shipments: readonly CustomerShipmentRow[];
 }>;
+
+type CustomerShipmentRow = Readonly<{
+  id: string;
+  status: CustomerShipment['status'];
+  provider: string;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  shippedAt: Date | null;
+  deliveredAt: Date | null;
+  lines: readonly Readonly<{ quantity: number }>[];
+}>;
+
+function safeTrackingUrl(value: string | null): string | null {
+  if (value === null || value.length > 2048) return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' && parsed.username === '' && parsed.password === ''
+      ? parsed.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 function clientFor(client: PrismaClient, transaction: TransactionContext | undefined): Client {
   return transaction === undefined ? client : asPrismaTransaction(transaction);
@@ -139,6 +165,16 @@ function mapCustomerOrder(row: CustomerOrderRow): CustomerOrder {
     billingAddressSnapshot: toDomainJson(row.billingAddressSnapshot),
     placedAt: row.placedAt,
     lines: row.lines.map(mapCustomerLine),
+    shipments: row.shipments.map((shipment) => ({
+      id: shipment.id,
+      status: shipment.status,
+      provider: shipment.provider,
+      trackingNumber: shipment.trackingNumber,
+      trackingUrl: safeTrackingUrl(shipment.trackingUrl),
+      shippedAt: shipment.shippedAt,
+      deliveredAt: shipment.deliveredAt,
+      lines: shipment.lines.map((line) => ({ quantity: line.quantity })),
+    })),
   };
 }
 
@@ -204,6 +240,33 @@ const customerOrderSelect = {
       taxAmountMinor: true,
       lineTotalMinor: true,
     },
+  },
+  shipments: {
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      status: true,
+      provider: true,
+      trackingNumber: true,
+      trackingUrl: true,
+      shippedAt: true,
+      deliveredAt: true,
+      lines: { select: { quantity: true } },
+    },
+  },
+} satisfies Prisma.OrderSelect;
+
+const fulfilmentOrderSelect = {
+  id: true,
+  number: true,
+  email: true,
+  localeAtPurchase: true,
+  status: true,
+  paymentStatus: true,
+  fulfilmentStatus: true,
+  lines: {
+    orderBy: { id: 'asc' },
+    select: { id: true, variantId: true, quantity: true },
   },
 } satisfies Prisma.OrderSelect;
 
@@ -349,6 +412,140 @@ export class PrismaOrdersRepository implements OrdersRepository {
       },
     });
     return row === null ? null : mapCreated(row);
+  }
+
+  async lockForFulfilment(
+    orderId: string,
+    transaction: TransactionContext,
+  ): Promise<FulfilmentOrder | null> {
+    const client = asPrismaTransaction(transaction);
+    const locks = await client.$queryRaw<readonly Readonly<{ id: string }>[]>(Prisma.sql`
+      SELECT "id" FROM "order" WHERE "id" = ${orderId}::uuid FOR UPDATE
+    `);
+    if (locks.length !== 1) return null;
+    const row = await client.order.findUnique({
+      where: { id: orderId },
+      select: fulfilmentOrderSelect,
+    });
+    if (row === null) return null;
+    return {
+      id: row.id,
+      number: row.number,
+      email: row.email,
+      localeAtPurchase: row.localeAtPurchase,
+      status: row.status,
+      paymentStatus: row.paymentStatus,
+      fulfilmentStatus: row.fulfilmentStatus,
+      lines: row.lines.map((line) => ({
+        id: line.id,
+        variantId: line.variantId,
+        quantity: line.quantity,
+      })),
+    };
+  }
+
+  async updateFulfilmentState(
+    order: FulfilmentOrder,
+    fulfilmentStatus: 'PARTIAL' | 'FULFILLED',
+    actorUserId: string,
+    transaction: TransactionContext,
+  ): Promise<void> {
+    const client = asPrismaTransaction(transaction);
+    const status = fulfilmentStatus === 'FULFILLED' ? 'FULFILLED' : 'PARTIALLY_FULFILLED';
+    const updated = await client.order.updateMany({
+      where: { id: order.id, status: order.status, paymentStatus: 'PAID' },
+      data: { status, fulfilmentStatus, updatedBy: actorUserId },
+    });
+    if (updated.count !== 1) throw new ConflictAppError({ code: 'ORDER_NOT_FULFILLABLE' });
+    if (order.status !== status) {
+      await client.orderStatusHistory.create({
+        data: {
+          id: randomUUID(),
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: status,
+          reason: 'shipment_dispatched',
+          actorUserId,
+          createdBy: actorUserId,
+          updatedBy: actorUserId,
+        },
+      });
+    }
+    await client.auditLog.create({
+      data: {
+        id: randomUUID(),
+        actorUserId,
+        action: 'order.fulfilment_updated',
+        subjectType: 'order',
+        subjectId: order.id,
+        beforeJson: { status: order.status, fulfilmentStatus: order.fulfilmentStatus },
+        afterJson: { status, fulfilmentStatus },
+      },
+    });
+    await client.outboxEvent.create({
+      data: {
+        id: randomUUID(),
+        aggregateType: 'order',
+        aggregateId: order.id,
+        eventType: fulfilmentStatus === 'FULFILLED' ? 'fulfilment.completed' : 'fulfilment.partial',
+        payload: { orderId: order.id, fulfilmentStatus, version: 1 },
+      },
+    });
+  }
+
+  async cancelBeforeShipment(
+    order: FulfilmentOrder,
+    actorUserId: string,
+    transaction: TransactionContext,
+  ): Promise<void> {
+    const client = asPrismaTransaction(transaction);
+    const updated = await client.order.updateMany({
+      where: {
+        id: order.id,
+        status: { in: ['PAID', 'PROCESSING'] },
+        paymentStatus: 'PAID',
+        fulfilmentStatus: 'UNFULFILLED',
+      },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: new Date(),
+        cancellationReason: 'staff_before_shipment',
+        updatedBy: actorUserId,
+      },
+    });
+    if (updated.count !== 1) throw new ConflictAppError({ code: 'ORDER_NOT_CANCELLABLE' });
+    await client.orderStatusHistory.create({
+      data: {
+        id: randomUUID(),
+        orderId: order.id,
+        fromStatus: order.status,
+        toStatus: 'CANCELLED',
+        reason: 'staff_before_shipment',
+        actorUserId,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      },
+    });
+    await client.auditLog.create({
+      data: {
+        id: randomUUID(),
+        actorUserId,
+        action: 'order.cancelled_before_shipment',
+        subjectType: 'order',
+        subjectId: order.id,
+        beforeJson: { status: order.status },
+        afterJson: { status: 'CANCELLED' },
+      },
+    });
+    await client.outboxEvent.create({
+      data: {
+        id: randomUUID(),
+        aggregateType: 'order',
+        aggregateId: order.id,
+        eventType: 'order.cancelled',
+        payload: { orderId: order.id, version: 1 },
+      },
+    });
   }
 
   close(): Promise<void> {
