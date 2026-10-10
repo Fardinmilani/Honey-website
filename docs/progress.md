@@ -24,15 +24,321 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 12 | Cart & Pricing | Complete | 2026-09-12 |
 | 13 | Checkout, Reservations & Orders | ✅ Complete | 2026-09-25 |
 | 14 | Payments | ✅ Complete; committed as `66e1fe3` | 2026-10-04 |
-| 15 | Shipping & Fulfilment | ✅ Complete; uncommitted for human review | 2026-10-05 |
-| 16 | Background Jobs | CURRENT but NOT STARTED | — |
-| 17 | Admin Console | â¬œ Not started | â€” |
+| 15 | Shipping & Fulfilment | ✅ Complete; committed as `5887e7f` | 2026-10-05 |
+| 16 | Background Jobs | ✅ Complete; changes unstaged for review | 2026-10-10 |
+| 17 | Admin Console | CURRENT; not started | — |
 | 18 | Content, Reviews & Notifications | â¬œ Not started | â€” |
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 16 — Background Jobs (**CURRENT but NOT STARTED**).
-**Previous phase:** Phase 15 — Shipping & Fulfilment (**complete 2026-10-05; uncommitted for human review**).
+**Current phase:** Phase 17 — Admin Console (**CURRENT; NOT STARTED**).
+**Previous phase:** Phase 16 — Background Jobs (**complete 2026-10-10; unstaged for review**).
+
+## Phase 16 — Background Jobs (completed)
+
+**Completed:** 2026-10-10. The historical capability-audit stop and its human
+resolution remain below. The worker is a headless Nest/BullMQ composition root
+over `packages/backend`; local PostgreSQL, Redis, MinIO, and Mailpit were
+verified through Docker. This phase introduced no Phase 17 implementation.
+
+Backup verification status: **Capability seam implemented. Concrete verification
+adapter: deferred to Phase 20. Repeatable schedule: intentionally disabled until
+a concrete adapter exists.** `BACKUP_VERIFICATION_ENABLED=true` fails worker
+configuration, and startup emits an explicit deferred-capability event.
+
+### Files created
+
+- `apps/web/src/app/api/bff/revalidate/route.test.ts`
+- `apps/worker/scripts/docker-sigterm-smoke.mjs`
+- `apps/worker/src/config.test.ts`
+- `apps/worker/src/config.ts`
+- `apps/worker/src/contracts.test.ts`
+- `apps/worker/src/email.integration.test.ts`
+- `apps/worker/src/failure-policy.ts`
+- `apps/worker/src/failure-policy.test.ts`
+- `apps/worker/src/fixtures/stalled-worker-child.mjs`
+- `apps/worker/src/main.ts`
+- `apps/worker/src/outbox-dispatcher.test.ts`
+- `apps/worker/src/outbox-dispatcher.ts`
+- `apps/worker/src/outbox-postgres-redis.integration.test.ts`
+- `apps/worker/src/outbox-routing.ts`
+- `apps/worker/src/redis-connection.ts`
+- `apps/worker/src/redis.integration.test.ts`
+- `apps/worker/src/runtime.ts`
+- `apps/worker/src/web-revalidation.adapter.test.ts`
+- `apps/worker/src/web-revalidation.adapter.ts`
+- `apps/worker/src/worker.module.ts`
+- `apps/worker/tsconfig.build.json`
+- `docker/worker.Dockerfile`
+- `docs/adr/0041-backup-verification-phase-boundary.md`
+- `docs/adr/0042-worker-system-execution-context.md`
+- `docs/background-jobs-development.md`
+- `packages/backend/src/jobs/contracts.ts`
+- `packages/backend/src/jobs/index.ts`
+- `packages/backend/src/platform/application/backup-verification.service.ts`
+- `packages/backend/src/platform/application/sitemap-revalidation.service.ts`
+- `packages/backend/src/platform/domain/backup-verification.port.ts`
+- `packages/backend/src/platform/domain/job-failure.ts`
+- `packages/backend/src/platform/domain/outbox-dispatch.ts`
+- `packages/backend/src/platform/domain/sitemap-revalidation.port.ts`
+- `packages/backend/src/platform/infrastructure/prisma-job-failure.repository.ts`
+- `packages/backend/src/platform/infrastructure/prisma-outbox-dispatch.repository.ts`
+- `packages/backend/test/outbox-dispatch.integration.test.ts`
+- `packages/backend/test/phase16.seams.test.ts`
+- `packages/db/prisma/migrations/20261005120000_phase16_background_jobs/migration.sql`
+- `scripts/verify-phase16.mjs`
+
+### Files modified
+
+- `.env.example` — documents safe worker, schedule, and revalidation settings.
+- `.github/workflows/ci.yml` — runs Phase 16 tests, verifier, image checks, and an active-job SIGTERM smoke.
+- `PLANS.md` — records Phase 16 completion and Phase 17 as current but not started.
+- `README.md` — points to worker commands and the Phase 16 development guide.
+- `apps/web/package.json` — loads the root local `.env` in web dev/start commands.
+- `apps/web/src/app/api/bff/revalidate/route.ts` — limits authenticated revalidation to fixed catalog and locale targets.
+- `apps/web/vitest.config.ts` — includes the revalidation route test.
+- `apps/worker/package.json` — pins BullMQ and runtime/test dependencies and adds worker scripts.
+- `docker-compose.yml` — adds an optional private worker service gated on healthy dependencies.
+- `docs/adr/README.md` — indexes ADR-0041 and ADR-0042.
+- `docs/architecture.md` — describes the active worker and queue capability boundary.
+- `docs/database-strategy.md` — records dispatch leases and safe terminal failure storage.
+- `docs/docker-strategy.md` — distinguishes the current local stack from Phase 20 targets.
+- `docs/implementation-phases.md` — records the accepted Phase 16/20 backup split.
+- `docs/local-development.md` — gives separate web/worker terminals and Docker worker operation.
+- `docs/module-boundaries.md` — records the worker/backend/web revalidation seams.
+- `docs/progress.md` — preserves the audit stop and records this completed phase.
+- `docs/security-model.md` — documents narrow worker system execution.
+- `package.json` — adds worker, image, smoke, and Phase 16 verifier commands; runs workspace test tasks one at a time to bound integration-suite resource contention.
+- `packages/backend/src/index.ts` — exports shared job and application seams.
+- `packages/backend/src/modules/fulfilment/application/fulfilment.service.ts` — resolves and sends committed shipment notifications from the worker.
+- `packages/backend/src/modules/fulfilment/domain/fulfilment.ts` — defines the narrow notification and system context contracts.
+- `packages/backend/src/modules/fulfilment/index.ts` — exports the notification seam.
+- `packages/backend/src/modules/fulfilment/infrastructure/smtp-fulfilment-notification.adapter.ts` — classifies permanent recipient and transient SMTP errors without exposing addresses.
+- `packages/backend/src/modules/inventory/application/inventory.service.ts` — adds bounded system-only reconciliation pages without changing staff repair.
+- `packages/backend/src/modules/inventory/domain/inventory.ts` — defines the narrow system reconciliation context.
+- `packages/backend/src/modules/inventory/infrastructure/prisma-inventory.repository.ts` — supports bounded reconciliation reads.
+- `packages/backend/src/modules/payments/payments.module.ts` — composes existing reconciliation for a headless worker.
+- `packages/backend/src/modules/procurement/application/procurement.service.ts` — supports the bounded inventory reconciliation seam.
+- `packages/backend/src/modules/procurement/infrastructure/prisma-procurement.repository.ts` — supports bounded procurement reconciliation reads.
+- `packages/backend/src/platform/index.ts` — exports outbox, failure, sitemap, and backup ports/services.
+- `packages/backend/test/phase11.integration.test.ts` — proves system dry-run and unchanged staff repair behavior.
+- `packages/backend/test/phase15.fulfilment.integration.test.ts` — proves outbox-backed notification behavior.
+- `packages/db/prisma/schema.prisma` — adds dispatch lease/version fields and safe JobFailure metadata.
+- `pnpm-lock.yaml` — records only intentional exact worker dependency additions.
+- `pnpm-workspace.yaml` — disables an optional native package script in favor of its JS fallback.
+- `scripts/verify-phase5.mjs` — removes the Phase 5-only worker-image absence check.
+- `scripts/verify-phase7.mjs` — exempts the Phase 16 worker from a Phase 7 temporal BullMQ absence check.
+- `scripts/verify-phase8.mjs` — exempts the Phase 16 worker from a Phase 8 temporal BullMQ absence check.
+- `scripts/verify-phase14.mjs` — removes the Phase 14-only worker-processor absence check.
+- `scripts/verify-phase15.mjs` — removes the Phase 15-only worker-processor absence check.
+
+### Decisions made
+
+- [ADR-0041](adr/0041-backup-verification-phase-boundary.md) records the
+  human-approved Phase 16 orchestration/Phase 20 concrete verification split.
+- [ADR-0042](adr/0042-worker-system-execution-context.md) records the narrow
+  `SYSTEM`/`WORKER` inventory context; no staff user is forged.
+- The existing [BullMQ](adr/0006-redis-bullmq.md),
+  [cache revalidation](adr/0018-caching-and-invalidation.md), and
+  [shared backend](adr/0021-shared-backend-package.md) decisions govern the
+  bounded outbox claim, fixed authenticated web endpoint, and thin processors.
+  The explicit active/inactive queue map and event routes are in
+  [background-jobs-development.md](background-jobs-development.md).
+- Workspace test tasks run one at a time after concurrent Nest/PostgreSQL suites
+  caused existing API 5-second timeouts. Test timeouts, assertions, and required
+  suites remain unchanged.
+
+| Release detail | Observed implementation |
+|---|---|
+| Exact worker dependencies | BullMQ `5.81.5`; Nest common/core `11.1.28`; RxJS `7.8.2`; reflect-metadata `0.2.2`. Test/tool dependencies: Vitest `4.1.10`, tsx `4.20.6`, pg `8.22.0`, @types/pg `8.16.0`, @types/node `22.18.0`; workspace dependencies reused. |
+| Composition and contracts | Headless Nest `createApplicationContext`; public backend application services; plain JSON V1 envelopes; strict decoding and prior V1 compatibility; stable event IDs and parent/cursor-derived continuation IDs. |
+| Outbox routing | Catalog publish/update/archive events route to cache; committed shipment shipped/delivered events route to email; known no-consumer events are deferred-quarantined; unsupported type/version is distinctly quarantined. Bounded leased `SKIP LOCKED` claim, fenced confirmation after enqueue, and stable IDs cover the crash window. |
+| Repeat schedules | Outbox 5 seconds; reservation sweep and payment reconciliation 60 seconds; inventory dry-run daily in 100-key jobs; FA and EN sitemap refresh hourly; dead-letter reconciliation every 5 minutes. BullMQ scheduler upsert deduplicates registration. Cadence does not change business eligibility rules. |
+| Queue limits and retention | Outbox/inventory/maintenance concurrency 1; email/payments/cache concurrency 2; email limiter 10 per second. Four attempts, exponential delay from 1 second, jitter 0.25. Completed history: 7 days/10,000 jobs; failed history: 30 days/10,000 jobs. |
+| Durable failure schema | One forward migration adds outbox lease/version/quarantine fields and safe JobFailure job/version/correlation/attempt/error-class/error-code/terminal-cycle metadata. Unique `(queue,jobId,terminalCycle)` prevents repeated alerts; payload is always `{}` and errors are fixed safe descriptions. Existing migrations are unchanged. |
+| Logging and metrics | Hashed opaque job/correlation identifiers, SYSTEM/WORKER metadata, start/completion/duration/attempt/retry classification; one high-severity terminal event per created failure row. Queue counts and oldest wait age, unresolved dead letters, outbox pending/quarantine count and oldest age carry no customer labels. |
+| Lifecycle and image | Graceful close waits for active jobs and pending failure capture, closes BullMQ/Nest/database resources; stalled work can redeliver. Multi-stage image uses pinned install, UID 1000 and exec-form Node under tini; no public port, `.env`, or Hero media. |
+
+### Unresolved decisions
+
+- None blocks Phase 16. Phase 20 must supply a real backup-verification adapter
+  before the disabled schedule can be activated; this is the accepted ownership
+  boundary, not an unimplemented Phase 16 service.
+
+### Risks
+
+- SMTP acceptance and local `sentAt` cannot commit atomically; a crash in that
+  window can duplicate an external email. The delivery record is idempotent.
+- A web revalidation outage delays catalog invalidation and sitemap refresh;
+  bounded retries, terminal capture, and operational metrics expose it.
+- Inventory system reconciliation processes at most 100 keys per job and chains
+  continuation jobs; a very large catalog may need multiple queue turns.
+- The optional local worker requires a server-only revalidation secret in the
+  untracked `.env`; absent configuration fails startup rather than bypassing auth.
+- GitHub CI itself was not run locally. Its Docker and job gates are configured;
+  the image and active-job signal path passed on local Docker.
+
+### Acceptance checklist
+
+- [x] Headless Nest worker, all ten centrally named queues, and only six active
+  queue processors; SMS, orders, media, and search remain registered without
+  invented consumers.
+- [x] Plain-JSON V1 envelopes, strict runtime decoding, deterministic IDs,
+  synthetic prior-release V1 compatibility, and safe unknown-version rejection.
+- [x] PostgreSQL bounded `SKIP LOCKED` outbox leases, enqueue-before-confirm,
+  two-dispatcher safety, Redis-outage recovery, poison-event quarantine, and
+  domain-idempotent replay.
+- [x] Reservation sweep, provider-status reconciliation, read-only inventory
+  reconciliation, and FA/EN sitemap schedules call existing backend services.
+  Backup contract/port/processor/failure path exists but its schedule is disabled.
+- [x] Inventory system reconciliation uses bounded 100-key pages with a
+  validated cursor and deterministic continuation jobs; sitemap refresh
+  invalidates only the requested locale's catalog data tag.
+- [x] Actual worker reconciliation against populated PostgreSQL payments
+  preserves PAID, rejects amount/currency/provider-reference mismatches, and
+  produces one capture and one paid event across duplicate execution using a
+  fake provider; no live provider is called.
+- [x] Actual outbox/email processors deliver FA/EN messages through fake SMTP,
+  retain one delivery record on replay, and reject/redact malformed PII jobs.
+- [x] Bounded exponential retry with jitter, permanent-error classification,
+  redacted durable `JobFailure`, one terminal alert per cycle, safe queue/outbox
+  metrics, and shutdown/restart-safe BullMQ behavior.
+- [x] A Docker SIGTERM during an active sitemap job completed that job and
+  exited cleanly; two Redis workers, repeat-schedule dedupe, duplicate delivery,
+  and the enqueue-before-confirm crash window were tested.
+- [x] Worker never imports API/web/DB internals; protected Hero media, prior
+  migrations, auth, payment, inventory, and Phase 17 scope remain intact.
+- [x] No file was staged, committed, tagged, or pushed.
+
+### Verification results
+
+- `pnpm install --frozen-lockfile`, `pnpm format`, `pnpm format:check`,
+  `pnpm lint`, `pnpm boundaries`, `pnpm typecheck`, `pnpm test`, and `pnpm build`:
+  passed after corrections. Workspace test: 17/17 tasks successful; backend
+  233 passed/5 historical skips, API 68 passed/1 historical skip, web 46
+  passed/0 skipped, worker **33 passed/0 failed/0 skipped** across eight files.
+  Worker unit tests: 19/0/0; Redis transport/restart tests: 5/0/0;
+  PostgreSQL + Redis retry/backup tests: 3/0/0; outbox/runtime integration:
+  5/0/0; PostgreSQL + Redis + fake SMTP email integration: 1/0/0.
+  Default workspace tests omit four MinIO tests and one backend/one API
+  database-readiness test when their environment flags are absent. Explicit
+  Docker-backed reruns activated them: backend six-file suite 30/0/0 and API
+  readiness suite 7/0/0. No required Phase 16 test is skipped.
+- Final `pnpm test` initially failed with 11 API timeout/cascading-spy failures
+  under concurrent workspace suites. API alone passed 68/0/1; limiting Turbo
+  test tasks to one at a time made full `pnpm test` pass 17/17 tasks without
+  changing timeouts or assertions. The first new paged inventory fixture also
+  violated `product_variant_catalog_bounds` because dimensions were omitted;
+  adding the required fixture dimensions made its five-test suite and the full
+  33-test worker suite pass.
+- `pnpm db:format`, `pnpm db:validate`, `pnpm db:generate`, `pnpm db:migrate`,
+  `pnpm db:migrate:status`, `pnpm db:test`, and two local `pnpm db:seed` runs:
+  passed. The clean database migrated all ten migrations; DB integration found
+  75 tables, 31 enums, and 35 PostgreSQL rejection proofs. The first standalone
+  seed lacked an exported database URL; reruns with the safe local URL passed.
+- `pnpm phase4:verify` through `pnpm phase16:verify`: all 13 passed. The first
+  Phase 13 run saw the unapplied new migration; it passed after migration.
+- OpenAPI check, lint, and forbidden-field gates passed. Breaking comparison
+  reported no pull-request base ref and therefore did not compare a base.
+- Full Playwright against a fresh Docker PostgreSQL database with two workers:
+  **101 passed, 0 failed, 0 skipped**. The initial run on a previously used
+  local database hit reservation drift (51 passed/50 failed); the isolated rerun
+  established the clean-data result without changing business code.
+- Real MinIO media/storage integration: **24 passed, 0 failed, 0 skipped**;
+  explicit MinIO Hero-object scan: empty.
+- `docker compose config --quiet`, `pnpm docker:verify`, worker image build,
+  Redis health command, non-root/image-content checks, and active-job Docker
+  SIGTERM smoke: passed. Initial image and smoke fixture issues were corrected
+  and both commands passed on rerun.
+- `git diff --check`, Hero status/diff/hash checks, historical-migration diff,
+  untracked `.env`, and empty staging: passed. No Phase 17 files were created.
+
+## Phase 16 — Background Jobs (blocked capability audit)
+
+**Audited:** 2026-10-05 · **Status:** Not release-ready; implementation not started.
+
+The Phase 16 deliverables require a repeatable backup-verification job that calls
+an existing application service or accepted verification abstraction. No such
+service or abstraction exists in `apps/`, `packages/`, `scripts/`, `docker/`, or
+CI. The local Docker verification checks PostgreSQL, Redis, MinIO, and Mailpit
+health, but does not verify a backup. Local development explicitly has no
+automatic backup or recovery (`local-development.md`). Production backup,
+off-host storage, and restore drills are assigned to Phase 20
+(`implementation-phases.md` and `docker-strategy.md`). Creating those now would
+cross the Phase 16 scope boundary; a health check or empty scheduled job would
+not satisfy the deliverable. Per `AGENTS.md` phase discipline and the Phase 16
+execution prompt's backup sequencing guard, work stopped at this blocker.
+
+### Files created
+
+None.
+
+### Files modified
+
+- `docs/progress.md` — recorded the blocker and corrected the Phase 15 commit
+  status observed in Git.
+
+### Decisions made
+
+- No architectural decision or ADR was made. No worker code, dependency,
+  migration, queue, or schedule was added.
+
+### Unresolved decisions
+
+- A human must resolve the Phase 16/20 sequencing conflict: provide or approve
+  a real, transport-independent backup-verification seam within Phase 16 scope,
+  or revise the phase plan so verification is delivered with the Phase 20 backup
+  infrastructure. Until then, the required backup-verification schedule and
+  Phase 16 completion are blocked. Do not substitute a dummy check.
+- If Phase 16 resumes, review two further application boundaries before coding:
+  inventory reconciliation currently requires a staff principal rather than an
+  explicit system context, and sitemap generation exists only in `apps/web`.
+  Neither should be bypassed or copied into the worker.
+
+### Risks
+
+- Phase 16 remains incomplete. No background jobs or outbox dispatch were
+  activated, so existing request and transport behavior remains in place.
+
+### Acceptance checklist
+
+- [ ] Phase 16 deliverables and acceptance criteria: not met; implementation
+  stopped before code changes because backup verification lacks a legitimate
+  service.
+- [x] Pre-flight Git state: working tree and staging were clean before this
+  documentation update; Phase 15 files are present in `5887e7f`.
+- [x] Hero assets: `git status --porcelain` and `git diff --stat HEAD` were empty.
+- [x] No dependency, migration, source code, or later-phase work was introduced.
+
+### Verification results
+
+- Ran the prompt's read-only Git pre-flight commands: `git status --short`,
+  `git diff --cached --name-only`, `git log -10 --oneline`, Hero status/diff,
+  and `git ls-files .env`. Working tree, staging, Hero status/diff, and tracked
+  `.env` output were empty before this documentation change.
+- Inspected the backup references and executable code paths; no backup
+  verification service, script, or test exists.
+- `lint`, `typecheck`, `test`, `build`, Docker, database, and phase verifiers were
+  not run because the phase stopped at the mandated capability audit before
+  implementation.
+
+### Human resolution and resumption (2026-10-05)
+
+The capability-audit stop above was correct. The human owner subsequently
+resolved the Phase 16/20 sequencing conflict: Phase 16 implements the versioned
+backup-verification job contract, application port, processor, retry/dead-letter
+and metrics wiring, and a capability-gated schedule. The current release keeps
+the capability disabled because no concrete verifier exists. Phase 20 owns the
+backup system, concrete verification adapter, schedule activation, and restore
+drills. This decision removes backup verification as a Phase 16 release blocker
+without claiming any backup has been verified. Phase 16 implementation resumed.
+
+The owner also authorized a transport-neutral sitemap revalidation port with a
+fixed authenticated web endpoint and a narrowly scoped trusted system execution
+context for inventory reconciliation. Neither requires a worker import of
+`apps/web` or a forged staff account. The original audit findings remain in this
+record; final implementation and verification results will be added when the
+phase ends.
 
 ## Phase 15 — Shipping & Fulfilment
 

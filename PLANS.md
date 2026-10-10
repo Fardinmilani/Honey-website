@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 16 — Background Jobs (**CURRENT but NOT STARTED**)
-**Completed phase:** Phase 15 — Shipping & Fulfilment (**complete 2026-10-05; uncommitted for human review**)
+**Current phase:** Phase 17 — Admin Console (**CURRENT; NOT STARTED**)
+**Completed phase:** Phase 16 — Background Jobs (**complete 2026-10-10; changes left unstaged for review**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -77,14 +77,20 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 13 | Checkout, Reservations & Orders | **Complete 2026-09-25** — reservations, checkout transaction, immutable order snapshots |
 | 14 | Payments | **Complete 2026-10-04** — Zarinpal adapter, `applyPaymentOutcome`, fake provider, reconciliation |
 | 15 | Shipping & Fulfilment | **Complete 2026-10-05** — manual-flat provider, zones and rates, fulfilment, physical stock movement, tracking |
-| 16 | Background Jobs | **CURRENT but NOT STARTED** — worker composition root, queues, scheduling, retries, dead letters |
-| 17 | Admin Console | Catalog, inventory, orders, procurement, content administration |
+| 16 | Background Jobs | **Complete 2026-10-10** — worker composition root, queues, scheduling, retries, dead letters; backup verification orchestration is capability-gated |
+| 17 | Admin Console | **CURRENT; NOT STARTED** — catalog, inventory, orders, procurement, content administration |
 | 18 | Content, Reviews & Notifications | CMS pages, moderated reviews, transactional messaging |
 | 19 | Observability & Performance | Tracing, metrics, caching layers, Core Web Vitals budget |
 | 20 | Hardening & Launch Readiness | Security review, backups, restore drill, runbooks |
 
 Phases 2–20 are sequential by default. Nothing after the current phase may be
 started, scaffolded, or pre-wired without an explicit instruction.
+
+For the Phase 16/20 backup boundary, Phase 16 provides a versioned job,
+processor/port seam, failure policy, metrics, and a capability-gated schedule.
+The schedule remains disabled without a concrete verifier. Phase 20 supplies
+the backup system, verification adapter, activation, and restore drills
+([ADR-0041](docs/adr/0041-backup-verification-phase-boundary.md)).
 
 ---
 

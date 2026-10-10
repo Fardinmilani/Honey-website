@@ -380,8 +380,18 @@ A processor never contains a business rule — it deserializes, validates, and
 calls the same `packages/backend` application service the API would call.
 
 **Transactional outbox** — domain events are written inside the same transaction
-as the state change and dispatched afterwards. This is what makes "the order was
-created but the email never sent" impossible.
+as the state change and dispatched afterwards. A bounded PostgreSQL claim and
+lease lets multiple dispatchers work safely; BullMQ enqueue happens before the
+event is marked dispatched. A crash can cause redelivery, so deterministic job
+IDs and application idempotency provide one logical domain effect. Redis outage
+does not roll back the committed business transaction. Phase 16 routes only
+events with an existing downstream application service; known deferred events
+and unknown types remain visible without blocking later events.
+
+Backup verification is an explicitly disabled Phase 16 orchestration capability.
+The contract, processor seam, retry/dead-letter policy, and gated schedule exist,
+while Phase 20 supplies the concrete verifier, backup infrastructure, and
+activation ([ADR-0041](adr/0041-backup-verification-phase-boundary.md)).
 
 ---
 

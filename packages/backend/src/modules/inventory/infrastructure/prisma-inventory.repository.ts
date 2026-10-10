@@ -138,6 +138,33 @@ function auditData(
   };
 }
 
+function aggregateLedgerRows(
+  rows: readonly Readonly<{
+    variantId: string;
+    stockLocationId: string;
+    reason: string;
+    _sum: Readonly<{ delta: number | null }>;
+  }>[],
+): readonly (InventoryKey & InventoryLedgerState)[] {
+  const byKey = new Map<string, InventoryKey & InventoryLedgerState>();
+  for (const row of rows) {
+    const key = `${row.variantId}:${row.stockLocationId}`;
+    const current = byKey.get(key) ?? {
+      variantId: row.variantId,
+      stockLocationId: row.stockLocationId,
+      onHand: 0,
+      reserved: 0,
+      allocated: 0,
+    };
+    const next = reduceInventoryLedgerState(current, {
+      reason: row.reason,
+      delta: row._sum.delta ?? 0,
+    });
+    byKey.set(key, { ...current, ...next });
+  }
+  return [...byKey.values()];
+}
+
 export class PrismaInventoryRepository implements InventoryRepository {
   readonly #client: PrismaClient;
 
@@ -303,6 +330,42 @@ export class PrismaInventoryRepository implements InventoryRepository {
 
   async listAllItems(): Promise<readonly InventoryItemRecord[]> {
     const rows = await this.#client.inventoryItem.findMany({
+      include: { stockLocation: { select: { isSellable: true, isDefault: true } } },
+    });
+    return rows.map((row) => mapItem(row, row.stockLocation));
+  }
+
+  async listReconciliationKeysAfter(
+    cursor: InventoryKey | undefined,
+    limit: number,
+  ): Promise<readonly InventoryKey[]> {
+    const cursorSql =
+      cursor === undefined
+        ? Prisma.empty
+        : Prisma.sql`WHERE (variant_id, stock_location_id) > (${cursor.variantId}::uuid, ${cursor.stockLocationId}::uuid)`;
+    const rows = await this.#client.$queryRaw<InventoryKey[]>(Prisma.sql`
+      SELECT variant_id::text AS "variantId", stock_location_id::text AS "stockLocationId"
+      FROM (
+        SELECT variant_id, stock_location_id FROM inventory_item
+        UNION
+        SELECT variant_id, stock_location_id FROM stock_ledger_entry
+      ) AS keys
+      ${cursorSql}
+      ORDER BY variant_id, stock_location_id
+      LIMIT ${limit}
+    `);
+    return rows;
+  }
+
+  async listItemsForKeys(keys: readonly InventoryKey[]): Promise<readonly InventoryItemRecord[]> {
+    if (keys.length === 0) return [];
+    const rows = await this.#client.inventoryItem.findMany({
+      where: {
+        OR: keys.map((key) => ({
+          variantId: key.variantId,
+          stockLocationId: key.stockLocationId,
+        })),
+      },
       include: { stockLocation: { select: { isSellable: true, isDefault: true } } },
     });
     return rows.map((row) => mapItem(row, row.stockLocation));
@@ -685,23 +748,24 @@ export class PrismaInventoryRepository implements InventoryRepository {
       by: ['variantId', 'stockLocationId', 'reason'],
       _sum: { delta: true },
     });
-    const byKey = new Map<string, InventoryKey & InventoryLedgerState>();
-    for (const row of rows) {
-      const key = `${row.variantId}:${row.stockLocationId}`;
-      const current = byKey.get(key) ?? {
-        variantId: row.variantId,
-        stockLocationId: row.stockLocationId,
-        onHand: 0,
-        reserved: 0,
-        allocated: 0,
-      };
-      const next = reduceInventoryLedgerState(current, {
-        reason: row.reason,
-        delta: row._sum.delta ?? 0,
-      });
-      byKey.set(key, { ...current, ...next });
-    }
-    return [...byKey.values()];
+    return aggregateLedgerRows(rows);
+  }
+
+  async ledgerStateForKeys(
+    keys: readonly InventoryKey[],
+  ): Promise<readonly (InventoryKey & InventoryLedgerState)[]> {
+    if (keys.length === 0) return [];
+    const rows = await this.#client.stockLedgerEntry.groupBy({
+      by: ['variantId', 'stockLocationId', 'reason'],
+      where: {
+        OR: keys.map((key) => ({
+          variantId: key.variantId,
+          stockLocationId: key.stockLocationId,
+        })),
+      },
+      _sum: { delta: true },
+    });
+    return aggregateLedgerRows(rows);
   }
 
   async repairCurrentState(

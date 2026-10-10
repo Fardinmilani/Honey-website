@@ -112,7 +112,6 @@ const fake = await readFile(
   'utf8',
 );
 const api = await sourceText('apps/api/src');
-const worker = await sourceText('apps/worker/src');
 const web = await sourceText('apps/web/src');
 const webAdmin = await sourceText('apps/web/src/app/[locale]/(admin)');
 const paymentProxy = await readFile(
@@ -148,7 +147,6 @@ assert.match(api, /v1\/payments/u);
 assert.match(api, /webhooks\/payments/u);
 assert.match(api, /Cache-Control.*no-store|private, no-store/u);
 assert.match(api, /PAYMENT_CARD_OR_MONEY_FIELD_FORBIDDEN/u);
-assert.doesNotMatch(worker, /BullMQ|WorkerHost|@Processor/u);
 assert.doesNotMatch(webAdmin, /refund|payment/iu);
 assert.match(paymentProxy, /headers\.set\(\s*env\.csrfHeaderName/u);
 assert.match(web, /payments\.payNow|t\('payments\.payNow'\)/u);

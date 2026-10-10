@@ -1,6 +1,7 @@
 export { FulfilmentService, type CreateShipmentRequest } from './application/fulfilment.service.js';
 export {
   type FulfilmentNotification,
+  type FulfilmentNotificationKind,
   type FulfilmentNotificationPort,
   type FulfilmentRepository,
   type ShipmentRecord,

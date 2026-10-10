@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { createPrismaClient, type Prisma, type PrismaClient } from '@honey/db';
+import { createPrismaClient, Prisma, type PrismaClient } from '@honey/db';
 
 import {
   asPrismaTransaction,
@@ -482,6 +482,72 @@ export class PrismaProcurementRepository {
       }
     }
     return [...totals.values()];
+  }
+
+  async listReconciliationKeysAfter(
+    cursor: Readonly<{ variantId: string; stockLocationId: string }> | undefined,
+    limit: number,
+  ): Promise<readonly Readonly<{ variantId: string; stockLocationId: string }>[]> {
+    const cursorSql =
+      cursor === undefined
+        ? Prisma.empty
+        : Prisma.sql`WHERE (variant_id, stock_location_id) > (${cursor.variantId}::uuid, ${cursor.stockLocationId}::uuid)`;
+    return this.#client.$queryRaw<
+      ReadonlyArray<Readonly<{ variantId: string; stockLocationId: string }>>
+    >(Prisma.sql`
+      SELECT variant_id::text AS "variantId", stock_location_id::text AS "stockLocationId"
+      FROM (
+        SELECT DISTINCT pol.variant_id, po.destination_stock_location_id AS stock_location_id
+        FROM purchase_order_line AS pol
+        JOIN purchase_order AS po ON po.id = pol.purchase_order_id
+        WHERE po.status::text IN ('CONFIRMED', 'PARTIALLY_RECEIVED')
+          AND pol.variant_id IS NOT NULL
+          AND po.destination_stock_location_id IS NOT NULL
+      ) AS keys
+      ${cursorSql}
+      ORDER BY variant_id, stock_location_id
+      LIMIT ${limit}
+    `);
+  }
+
+  async incomingForKeys(
+    keys: readonly Readonly<{ variantId: string; stockLocationId: string }>[],
+  ): Promise<
+    readonly Readonly<{ variantId: string; stockLocationId: string; incoming: number }>[]
+  > {
+    if (keys.length === 0) return [];
+    const values = keys.map(
+      (key) => Prisma.sql`(${key.variantId}::uuid, ${key.stockLocationId}::uuid)`,
+    );
+    const rows = await this.#client.$queryRaw<
+      ReadonlyArray<Readonly<{ variantId: string; stockLocationId: string; incoming: bigint }>>
+    >(Prisma.sql`
+      WITH target(variant_id, stock_location_id) AS (VALUES ${Prisma.join(values)})
+      SELECT pol.variant_id::text AS "variantId",
+        po.destination_stock_location_id::text AS "stockLocationId",
+        SUM(GREATEST(0, pol.quantity_ordered - received.quantity))::bigint AS incoming
+      FROM purchase_order_line AS pol
+      JOIN purchase_order AS po ON po.id = pol.purchase_order_id
+      JOIN target ON target.variant_id = pol.variant_id
+        AND target.stock_location_id = po.destination_stock_location_id
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(grl.quantity_accepted + grl.quantity_rejected), 0)::bigint AS quantity
+        FROM goods_receipt_line AS grl
+        JOIN goods_receipt AS gr ON gr.id = grl.goods_receipt_id
+        WHERE grl.purchase_order_line_id = pol.id
+          AND gr.purchase_order_id = po.id
+      ) AS received ON true
+      WHERE po.status::text IN ('CONFIRMED', 'PARTIALLY_RECEIVED')
+      GROUP BY pol.variant_id, po.destination_stock_location_id
+      HAVING SUM(GREATEST(0, pol.quantity_ordered - received.quantity)) > 0
+    `);
+    return rows.map((row) => {
+      const incoming = Number(row.incoming);
+      if (!Number.isSafeInteger(incoming) || incoming < 0) {
+        throw new Error('Incoming stock projection exceeds safe integer range.');
+      }
+      return { variantId: row.variantId, stockLocationId: row.stockLocationId, incoming };
+    });
   }
 
   async claimIdempotency(

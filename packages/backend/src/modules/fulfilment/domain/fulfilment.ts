@@ -64,6 +64,8 @@ export type FulfilmentNotification = Readonly<{
   trackingUrl: string | null;
 }>;
 
+export type FulfilmentNotificationKind = 'SHIPPED' | 'DELIVERED';
+
 export interface FulfilmentNotificationPort {
   sendShipped(notification: FulfilmentNotification): Promise<void>;
   sendDelivered(notification: FulfilmentNotification): Promise<void>;

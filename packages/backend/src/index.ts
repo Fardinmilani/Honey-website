@@ -1,4 +1,5 @@
 export * from './errors/index.js';
+export * from './jobs/index.js';
 export * from './modules/catalog/index.js';
 export * from './modules/cart/index.js';
 export * from './modules/checkout/index.js';

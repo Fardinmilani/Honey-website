@@ -261,6 +261,13 @@ export type ReconciliationReport = Readonly<{
   repaired: boolean;
 }>;
 
+/** A worker scan covers one bounded keyset page; the caller enqueues the next page. */
+export type SystemReconciliationReport = ReconciliationReport &
+  Readonly<{
+    hasMore: boolean;
+    nextCursor: InventoryKey | null;
+  }>;
+
 export type PlanningInput = Readonly<{
   reorderPoint?: number;
   safetyStock?: number;
@@ -268,6 +275,13 @@ export type PlanningInput = Readonly<{
 
 export interface IncomingProjectionPort {
   incomingByKey(): Promise<readonly (InventoryKey & Readonly<{ incoming: number }>)[]>;
+  listReconciliationKeysAfter(
+    cursor: InventoryKey | undefined,
+    limit: number,
+  ): Promise<readonly InventoryKey[]>;
+  incomingForKeys(
+    keys: readonly InventoryKey[],
+  ): Promise<readonly (InventoryKey & Readonly<{ incoming: number }>)[]>;
 }
 
 export class IncomingProjectionBinder implements IncomingProjectionPort {
@@ -279,6 +293,25 @@ export class IncomingProjectionBinder implements IncomingProjectionPort {
 
   incomingByKey(): Promise<readonly (InventoryKey & Readonly<{ incoming: number }>)[]> {
     return this.#delegate?.incomingByKey() ?? Promise.resolve([]);
+  }
+
+  listReconciliationKeysAfter(
+    cursor: InventoryKey | undefined,
+    limit: number,
+  ): Promise<readonly InventoryKey[]> {
+    if (this.#delegate === undefined) {
+      throw new Error('Inventory reconciliation incoming projection is not bound.');
+    }
+    return this.#delegate.listReconciliationKeysAfter(cursor, limit);
+  }
+
+  incomingForKeys(
+    keys: readonly InventoryKey[],
+  ): Promise<readonly (InventoryKey & Readonly<{ incoming: number }>)[]> {
+    if (this.#delegate === undefined) {
+      throw new Error('Inventory reconciliation incoming projection is not bound.');
+    }
+    return this.#delegate.incomingForKeys(keys);
   }
 }
 
@@ -364,6 +397,11 @@ export type InventoryRepository = {
     transaction?: TransactionContext,
   ): Promise<readonly InventoryItemRecord[]>;
   listAllItems(): Promise<readonly InventoryItemRecord[]>;
+  listReconciliationKeysAfter(
+    cursor: InventoryKey | undefined,
+    limit: number,
+  ): Promise<readonly InventoryKey[]>;
+  listItemsForKeys(keys: readonly InventoryKey[]): Promise<readonly InventoryItemRecord[]>;
   listLedger(input: {
     variantId: string;
     cursor?: { createdAt: string; id: string };
@@ -411,6 +449,9 @@ export type InventoryRepository = {
   variantExists(variantId: string): Promise<boolean>;
   locationExists(stockLocationId: string): Promise<boolean>;
   ledgerStateByKey(): Promise<readonly (InventoryKey & InventoryLedgerState)[]>;
+  ledgerStateForKeys(
+    keys: readonly InventoryKey[],
+  ): Promise<readonly (InventoryKey & InventoryLedgerState)[]>;
   repairCurrentState(
     transaction: TransactionContext,
     repairs: readonly (InventoryKey &

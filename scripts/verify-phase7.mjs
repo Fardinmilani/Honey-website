@@ -147,6 +147,7 @@ const manifests = await Promise.all(
     .filter((path) => path.endsWith('package.json'))
     .filter((path) => !path.includes('node_modules'))
     .filter((path) => !relative(root, path).replaceAll('\\', '/').startsWith('apps/web/'))
+    .filter((path) => !relative(root, path).replaceAll('\\', '/').startsWith('apps/worker/'))
     .map((path) => readFile(path, 'utf8')),
 );
 assert.doesNotMatch(manifests.join('\n'), /"(?:bullmq|ffmpeg|fluent-ffmpeg|cloudinary)"\s*:/iu);

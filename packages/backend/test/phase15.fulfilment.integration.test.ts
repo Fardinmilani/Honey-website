@@ -435,6 +435,40 @@ describe('Phase 15 fulfilment on PostgreSQL', () => {
         where: { subjectId: draft.id, action: 'shipment.shipped' },
       }),
     ).toBe(1);
+    const emailEvents = await prisma.outboxEvent.findMany({
+      where: {
+        aggregateType: 'shipment',
+        aggregateId: draft.id,
+        eventType: { in: ['shipment.shipped', 'shipment.delivered'] },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(emailEvents.map((event) => event.eventType).sort()).toEqual([
+      'shipment.delivered',
+      'shipment.shipped',
+    ]);
+    expect(notifications.shipped).toHaveLength(0);
+    expect(notifications.delivered).toHaveLength(0);
+
+    const context = {
+      kind: 'SYSTEM',
+      source: 'WORKER',
+      correlationId: 'phase16-fulfilment-email',
+    } as const;
+    await fulfilment.sendNotificationForSystem(context, { shipmentId: draft.id, kind: 'SHIPPED' });
+    await fulfilment.sendNotificationForSystem(context, {
+      shipmentId: draft.id,
+      kind: 'DELIVERED',
+    });
+    expect(notifications.shipped).toMatchObject([
+      { shipmentId: draft.id, locale: 'en', trackingNumber: draft.trackingNumber },
+    ]);
+    expect(notifications.delivered).toMatchObject([
+      { shipmentId: draft.id, locale: 'en', trackingNumber: draft.trackingNumber },
+    ]);
+    expect(notifications.shipped[0]?.email).toBe(
+      (await prisma.order.findUniqueOrThrow({ where: { id: fixture.orderId } })).email,
+    );
   }, 30_000);
 
   it('allows partial dispatch, but cannot claim the same allocated units twice', async () => {

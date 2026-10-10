@@ -48,6 +48,7 @@ import {
   type StockReservationRecord,
   type ReconciliationDrift,
   type ReconciliationReport,
+  type SystemReconciliationReport,
   type StockLedgerRecord,
   type StockLocationRecord,
   type StockMovement,
@@ -88,6 +89,26 @@ function uuid(value: string, path: string): string {
   return value;
 }
 
+function systemReconciliationCursor(value: unknown): InventoryKey | undefined {
+  if (value === undefined) return undefined;
+  if (
+    value === null ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    !('variantId' in value) ||
+    !('stockLocationId' in value) ||
+    typeof value.variantId !== 'string' ||
+    typeof value.stockLocationId !== 'string' ||
+    Object.keys(value).length !== 2
+  ) {
+    throw validation('cursor', 'CURSOR_INVALID');
+  }
+  return {
+    variantId: uuid(value.variantId, 'cursor.variantId').toLowerCase(),
+    stockLocationId: uuid(value.stockLocationId, 'cursor.stockLocationId').toLowerCase(),
+  };
+}
+
 function decodeCursor(value: string | undefined): { updatedAt: string; id: string } | undefined {
   if (value === undefined) return undefined;
   try {
@@ -118,6 +139,8 @@ const RESERVATION_TTL_MS = 15 * 60 * 1_000;
 const RESERVATION_MAX_HOLD_MS = 30 * 60 * 1_000;
 const DEFAULT_EXPIRY_BATCH_SIZE = 100;
 const MAX_EXPIRY_BATCH_SIZE = 500;
+const RECONCILIATION_BATCH_SIZE = 100;
+const SYSTEM_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/u;
 const SYSTEM_RESERVATION_ACTOR: InventoryActorContext = {
   actorUserId: null,
   metadata: { requestId: 'inventory-reservation-expiry' },
@@ -160,6 +183,64 @@ function earliestExpiry(rows: readonly StockReservationRecord[]): Date | null {
     if (earliest === null || row.expiresAt.getTime() < earliest.getTime()) earliest = row.expiresAt;
   }
   return earliest;
+}
+
+type ReconciliationRepair = InventoryKey & {
+  onHand?: number;
+  incoming?: number;
+  reserved?: number;
+  allocated?: number;
+};
+
+function reconciliationDelta(
+  keys: readonly InventoryKey[],
+  ledger: readonly (InventoryKey &
+    Readonly<{ onHand: number; reserved: number; allocated: number }>)[],
+  items: readonly InventoryItemRecord[],
+  incoming: readonly (InventoryKey & Readonly<{ incoming: number }>)[],
+): Readonly<{ drifts: ReconciliationDrift[]; repairs: ReconciliationRepair[] }> {
+  const keyOf = (value: InventoryKey): string => `${value.variantId}:${value.stockLocationId}`;
+  const itemMap = new Map(items.map((item) => [keyOf(item), item]));
+  const ledgerMap = new Map(ledger.map((row) => [keyOf(row), row]));
+  const incomingMap = new Map(incoming.map((row) => [keyOf(row), row.incoming]));
+  const drifts: ReconciliationDrift[] = [];
+  const repairs: ReconciliationRepair[] = [];
+  for (const parts of keys) {
+    const key = keyOf(parts);
+    const item = itemMap.get(key);
+    const ledgerState = ledgerMap.get(key);
+    const expected = {
+      onHand: ledgerState?.onHand ?? 0,
+      reserved: ledgerState?.reserved ?? 0,
+      allocated: ledgerState?.allocated ?? 0,
+      incoming: incomingMap.get(key) ?? 0,
+    };
+    const actual = {
+      onHand: item?.onHand ?? 0,
+      reserved: item?.reserved ?? 0,
+      allocated: item?.allocated ?? 0,
+      incoming: item?.incoming ?? 0,
+    };
+    const repair: ReconciliationRepair = {
+      variantId: parts.variantId,
+      stockLocationId: parts.stockLocationId,
+    };
+    for (const field of ['onHand', 'reserved', 'allocated', 'incoming'] as const) {
+      if (actual[field] !== expected[field]) {
+        drifts.push({ ...parts, field, expected: expected[field], actual: actual[field] });
+        repair[field] = expected[field];
+      }
+    }
+    if (
+      repair.onHand !== undefined ||
+      repair.incoming !== undefined ||
+      repair.reserved !== undefined ||
+      repair.allocated !== undefined
+    ) {
+      repairs.push(repair);
+    }
+  }
+  return { drifts, repairs };
 }
 
 export class InventoryService {
@@ -972,107 +1053,92 @@ export class InventoryService {
   ): Promise<ReconciliationReport> {
     assertAdmin(principal, 'inventory:adjust');
     const actor = this.#actor(principal, metadata);
+    return this.#reconcile(actor, repair);
+  }
+
+  /** One read-only keyset page per job; the worker schedules continuation when hasMore is true. */
+  async reconcileForSystem(
+    context: Readonly<{ kind: 'SYSTEM'; source: 'WORKER'; correlationId: string }>,
+    repair = false,
+    cursor?: InventoryKey,
+  ): Promise<SystemReconciliationReport> {
+    if (
+      context.kind !== 'SYSTEM' ||
+      context.source !== 'WORKER' ||
+      !SYSTEM_CORRELATION_ID.test(context.correlationId)
+    ) {
+      throw new ForbiddenAppError({ code: 'SYSTEM_EXECUTION_REQUIRED' });
+    }
+    if (repair) throw new ForbiddenAppError({ code: 'SYSTEM_REPAIR_NOT_ALLOWED' });
+    return this.#reconcileSystemDryRun(systemReconciliationCursor(cursor));
+  }
+
+  async #reconcileSystemDryRun(cursor?: InventoryKey): Promise<SystemReconciliationReport> {
+    if (this.incoming === undefined) {
+      throw new Error('Inventory reconciliation incoming projection is not configured.');
+    }
+    const [inventoryKeys, incomingKeys] = await Promise.all([
+      this.repository.listReconciliationKeysAfter(cursor, RECONCILIATION_BATCH_SIZE),
+      this.incoming.listReconciliationKeysAfter(cursor, RECONCILIATION_BATCH_SIZE),
+    ]);
+    const keysById = new Map<string, InventoryKey>();
+    for (const key of [...inventoryKeys, ...incomingKeys]) {
+      keysById.set(`${key.variantId}:${key.stockLocationId}`, key);
+    }
+    const keys = [...keysById.values()]
+      .sort(compareInventoryKeys)
+      .slice(0, RECONCILIATION_BATCH_SIZE);
+    if (keys.length === 0) {
+      return { drifted: false, drifts: [], repaired: false, hasMore: false, nextCursor: null };
+    }
+    const last = keys[keys.length - 1];
+    if (last === undefined || (cursor !== undefined && compareInventoryKeys(last, cursor) <= 0)) {
+      throw new Error('Inventory reconciliation cursor did not advance.');
+    }
+    const [ledger, items, incoming, remainingInventory, remainingIncoming] = await Promise.all([
+      this.repository.ledgerStateForKeys(keys),
+      this.repository.listItemsForKeys(keys),
+      this.incoming.incomingForKeys(keys),
+      this.repository.listReconciliationKeysAfter(last, 1),
+      this.incoming.listReconciliationKeysAfter(last, 1),
+    ]);
+    const drifts = reconciliationDelta(keys, ledger, items, incoming).drifts;
+    const hasMore = remainingInventory.length > 0 || remainingIncoming.length > 0;
+    return {
+      drifted: drifts.length > 0,
+      drifts,
+      repaired: false,
+      hasMore,
+      nextCursor: hasMore ? last : null,
+    };
+  }
+
+  async #reconcile(actor: InventoryActorContext, repair: boolean): Promise<ReconciliationReport> {
     const [ledger, items, incoming] = await Promise.all([
       this.repository.ledgerStateByKey(),
       this.repository.listAllItems(),
       this.incoming?.incomingByKey() ?? Promise.resolve([]),
     ]);
-    const itemMap = new Map<string, InventoryItemRecord>();
     const keyParts = new Map<string, InventoryKey>();
-    const remember = (variantId: string, stockLocationId: string): string => {
+    const remember = (variantId: string, stockLocationId: string): void => {
       const key = `${variantId}:${stockLocationId}`;
       keyParts.set(key, { variantId, stockLocationId });
-      return key;
     };
     for (const item of items) {
-      itemMap.set(remember(item.variantId, item.stockLocationId), item);
+      remember(item.variantId, item.stockLocationId);
     }
-    const ledgerMap = new Map<
-      string,
-      Readonly<{ onHand: number; reserved: number; allocated: number }>
-    >();
     for (const row of ledger) {
-      ledgerMap.set(remember(row.variantId, row.stockLocationId), row);
+      remember(row.variantId, row.stockLocationId);
     }
-    const incomingMap = new Map<string, number>();
     for (const row of incoming) {
-      incomingMap.set(remember(row.variantId, row.stockLocationId), row.incoming);
+      remember(row.variantId, row.stockLocationId);
     }
-    const drifts: ReconciliationDrift[] = [];
-    const repairMap = new Map<
-      string,
-      InventoryKey & { onHand?: number; incoming?: number; reserved?: number; allocated?: number }
-    >();
-    for (const [key, parts] of keyParts) {
-      const item = itemMap.get(key);
-      const ledgerState = ledgerMap.get(key);
-      const expectedOnHand = ledgerState?.onHand ?? 0;
-      const expectedReserved = ledgerState?.reserved ?? 0;
-      const expectedAllocated = ledgerState?.allocated ?? 0;
-      const actualOnHand = item?.onHand ?? 0;
-      const actualReserved = item?.reserved ?? 0;
-      const actualAllocated = item?.allocated ?? 0;
-      const expectedIncoming = incomingMap.get(key) ?? 0;
-      const actualIncoming = item?.incoming ?? 0;
-      const repair: InventoryKey & {
-        onHand?: number;
-        incoming?: number;
-        reserved?: number;
-        allocated?: number;
-      } = {
-        variantId: parts.variantId,
-        stockLocationId: parts.stockLocationId,
-      };
-      if (actualOnHand !== expectedOnHand) {
-        drifts.push({
-          variantId: parts.variantId,
-          stockLocationId: parts.stockLocationId,
-          field: 'onHand',
-          expected: expectedOnHand,
-          actual: actualOnHand,
-        });
-        repair.onHand = expectedOnHand;
-      }
-      if (actualReserved !== expectedReserved) {
-        drifts.push({
-          variantId: parts.variantId,
-          stockLocationId: parts.stockLocationId,
-          field: 'reserved',
-          expected: expectedReserved,
-          actual: actualReserved,
-        });
-        repair.reserved = expectedReserved;
-      }
-      if (actualAllocated !== expectedAllocated) {
-        drifts.push({
-          variantId: parts.variantId,
-          stockLocationId: parts.stockLocationId,
-          field: 'allocated',
-          expected: expectedAllocated,
-          actual: actualAllocated,
-        });
-        repair.allocated = expectedAllocated;
-      }
-      if (actualIncoming !== expectedIncoming) {
-        drifts.push({
-          variantId: parts.variantId,
-          stockLocationId: parts.stockLocationId,
-          field: 'incoming',
-          expected: expectedIncoming,
-          actual: actualIncoming,
-        });
-        repair.incoming = expectedIncoming;
-      }
-      if (
-        repair.onHand !== undefined ||
-        repair.incoming !== undefined ||
-        repair.reserved !== undefined ||
-        repair.allocated !== undefined
-      ) {
-        repairMap.set(key, repair);
-      }
-    }
-    const repairs = [...repairMap.values()];
+    const { drifts, repairs } = reconciliationDelta(
+      [...keyParts.values()],
+      ledger,
+      items,
+      incoming,
+    );
     if (!repair || drifts.length === 0) {
       return { drifted: drifts.length > 0, drifts, repaired: false };
     }

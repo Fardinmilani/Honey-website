@@ -268,6 +268,11 @@ Rules:
 - Job payload schemas are versioned and validated on consumption — a payload
   enqueued by the previous release must still be readable.
 - Never imports `apps/api`. Never calls the API over HTTP.
+- Does not import `apps/web` or Next.js. Sitemap and catalog revalidation use
+  a backend application port and worker-side adapter to one fixed,
+  authenticated web endpoint. The job cannot provide a destination URL.
+- Scheduled reconciliation uses a narrow system context; manual staff
+  authorization remains in the backend service ([ADR-0042](adr/0042-worker-system-execution-context.md)).
 - Every handler is idempotent; duplicate delivery is expected, not exceptional.
 - Owns retry, backoff, concurrency, rate limits, and dead-letter policy. The
   backend library has no opinion about how often a job is retried.

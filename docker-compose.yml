@@ -100,6 +100,42 @@ services:
     networks:
       - honey-internal
 
+  worker:
+    profiles: ['worker']
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    image: honey-worker:phase16
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-honey_local}:${POSTGRES_PASSWORD:-replace-with-local-development-password}@postgres:5432/${POSTGRES_DB:-honey_local}
+      REDIS_URL: redis://redis:6379
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+      PAYMENT_CALLBACK_URL: ${PAYMENT_CALLBACK_URL:-http://host.docker.internal:3000/fa/checkout/payment-return}
+      PAYMENT_PROVIDER_REQUEST_TIMEOUT_MS: ${PAYMENT_PROVIDER_REQUEST_TIMEOUT_MS:-8000}
+      PAYMENT_RECONCILIATION_MIN_AGE_SECONDS: ${PAYMENT_RECONCILIATION_MIN_AGE_SECONDS:-300}
+      IDENTITY_SMTP_HOST: mailpit
+      IDENTITY_SMTP_PORT: 1025
+      IDENTITY_SMTP_SECURE: 'false'
+      IDENTITY_EMAIL_FROM: ${IDENTITY_EMAIL_FROM:-no-reply@example.invalid}
+      IDENTITY_SMTP_TIMEOUT_MS: ${IDENTITY_SMTP_TIMEOUT_MS:-5000}
+      WEB_REVALIDATE_SECRET: ${WEB_REVALIDATE_SECRET:-}
+      WORKER_WEB_ORIGIN: ${WORKER_DOCKER_WEB_ORIGIN:-http://host.docker.internal:3000}
+      WORKER_QUEUE_PREFIX: ${WORKER_QUEUE_PREFIX:-honey-worker}
+      BACKUP_VERIFICATION_ENABLED: 'false'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    networks:
+      - honey-internal
+
 volumes:
   postgres-data:
     name: honey-local-postgres-data

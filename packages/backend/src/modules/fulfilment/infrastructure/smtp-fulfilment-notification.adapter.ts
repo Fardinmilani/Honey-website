@@ -15,6 +15,17 @@ export type FulfilmentSmtpConfig = Readonly<{
 
 type NotificationKind = 'SHIPPED' | 'DELIVERED';
 
+class FulfilmentEmailError extends Error {
+  constructor(readonly code: 'FULFILMENT_EMAIL_RECIPIENT_INVALID' | 'FULFILMENT_SMTP_UNAVAILABLE') {
+    super(
+      code === 'FULFILMENT_EMAIL_RECIPIENT_INVALID'
+        ? 'Fulfilment email recipient is invalid.'
+        : 'Fulfilment email delivery failed.',
+    );
+    this.name = 'FulfilmentEmailError';
+  }
+}
+
 function safeTrackingUrl(value: string | null): string | null {
   if (value === null) return null;
   try {
@@ -59,10 +70,9 @@ function messageFor(kind: NotificationKind, notification: FulfilmentNotification
 }
 
 /**
- * Direct Phase 15 email delivery. A durable (shipment, event) row prevents a
- * successful replay from sending again and allows an unsent transition to be
- * retried through the authorized shipment endpoint. The stock transaction has
- * already committed before this adapter is called.
+ * Worker-driven delivery after the shipment transaction commits. A durable
+ * (shipment, event) row prevents a successful replay from sending again and
+ * allows an unsent delivery to be retried by the queue.
  */
 export class SmtpFulfilmentNotificationAdapter implements FulfilmentNotificationPort {
   readonly #database;
@@ -95,7 +105,7 @@ export class SmtpFulfilmentNotificationAdapter implements FulfilmentNotification
 
   async #send(kind: NotificationKind, notification: FulfilmentNotification): Promise<void> {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(notification.email)) {
-      throw new Error('Fulfilment email recipient is invalid.');
+      throw new FulfilmentEmailError('FULFILMENT_EMAIL_RECIPIENT_INVALID');
     }
     const delivery = await this.#database.fulfilmentEmailDelivery.upsert({
       where: {
@@ -142,7 +152,7 @@ export class SmtpFulfilmentNotificationAdapter implements FulfilmentNotification
         where: { id: delivery.id, sentAt: null, leaseUntil },
         data: { leaseUntil: null },
       });
-      throw new Error('Fulfilment email delivery failed.');
+      throw new FulfilmentEmailError('FULFILMENT_SMTP_UNAVAILABLE');
     }
   }
 

@@ -145,7 +145,6 @@ const fulfilmentApi = await readFile(
 const web =
   (await source('apps/web/src/components/checkout')) +
   (await source('apps/web/src/components/orders'));
-const worker = await source('apps/worker/src');
 const backendTests = await source('packages/backend', true);
 const apiTests = await readFile(resolve(root, 'apps/api/test/phase15.test.ts'), 'utf8');
 const webTests = await readFile(resolve(root, 'apps/web/e2e/shipping-fulfilment.spec.ts'), 'utf8');
@@ -182,7 +181,6 @@ assert.match(api, /v1\/admin\/shipping/u);
 assert.match(fulfilmentApi, /RequirePermissions/u);
 assert.match(fulfilmentApi, /v1\/admin\/fulfilment/u);
 assert.match(web, /shipping|tracking/iu);
-assert.doesNotMatch(worker, /BullMQ|WorkerHost|@Processor/u);
 
 assert.match(backendTests, /ALLOCATION_RELEASE/u);
 assert.match(backendTests, /FULFILMENT/u);

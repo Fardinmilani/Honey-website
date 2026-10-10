@@ -9,6 +9,17 @@ containers.
 [ADR-0007](adr/0007-s3-storage-abstraction.md),
 [ADR-0021](adr/0021-shared-backend-package.md)
 
+> **Implementation status after Phase 16:** The diagrams and full-container
+> workflow below describe the target architecture. The current local Compose
+> file starts PostgreSQL, Redis, MinIO, and Mailpit by default; only the
+> headless worker is optional through `--profile worker`. API and web run on
+> the host or from their separately built images. There is no `full` profile,
+> root `pnpm dev` command, production Compose file, backup bucket, or backup
+> infrastructure yet. The worker's current shutdown grace defaults to 30 s.
+> Use [local-development.md](local-development.md) for executable local steps.
+> Real backup verification and deployment hardening belong to Phase 20 under
+> [ADR-0041](adr/0041-backup-verification-phase-boundary.md).
+
 ---
 
 ## 1. Principles
@@ -25,7 +36,7 @@ containers.
 
 ---
 
-## 2. Local topology
+## 2. Target local topology
 
 ```
                         honey-net (bridge)
@@ -61,11 +72,10 @@ containers.
 | `worker` | built from `docker/worker.Dockerfile` | — | source bind | BullMQ composition root, watch mode |
 | `web` | built from `docker/web.Dockerfile` | 3000 | source bind | Next.js dev server |
 
-Buckets created by `minio-init`: `honey-media` (public read via CDN in
-production), `honey-private` (invoices, exports — signed access only),
-`honey-backups`.
+The current `minio-init` creates `honey-media` and `honey-private` only. A
+backup bucket is a Phase 20 target, not a Phase 16 service.
 
-### File layout
+### Planned file layout
 
 ```
 docker/
@@ -81,9 +91,8 @@ docker-compose.prod.yml                  production                         (TRA
 .data/                                   bind-mounted local volumes         (IGNORED)
 ```
 
-`docker-compose.yml` and `docker-compose.prod.yml` are tracked; only
-`docker-compose.override.yml` — the per-developer file — is ignored. Verified in
-the Phase 1 gitignore run.
+Only `docker-compose.yml` exists in Phase 16. The production Compose and
+`docker/prod/` paths above are planned Phase 20 deliverables.
 
 ---
 
@@ -107,38 +116,37 @@ Startup order: `postgres` + `redis` + `minio` → `minio-init` → `api`
 
 ---
 
-## 4. Developer workflow
+## 4. Developer workflow in Phase 16
 
 ```bash
 cp .env.example .env
-docker compose up -d postgres redis minio mailpit    # infrastructure only
-pnpm db:migrate && pnpm db:seed
-pnpm dev                                             # web + api + worker via turbo
+pnpm docker:up
+pnpm db:migrate
 ```
 
-The default recommendation is **infrastructure in Docker, applications on the
-host**: fastest HMR, native debugger attachment, no bind-mount performance
-penalty on Windows and macOS.
+Set the local database and server-only revalidation values in untracked `.env`.
+Run `pnpm api:dev`, `pnpm web:dev`, and `pnpm worker:dev` in separate terminals.
+The worker can instead run in Compose:
 
 ```bash
-docker compose --profile full up      # everything containerized (CI-like)
+docker compose --profile worker up --build -d worker
 ```
 
-Compose profiles keep both modes in one file. `full` is what CI and "works on my
-machine" investigations use.
+The `full` profile and source bind-mount workflow shown in the target topology
+are not implemented. See [local-development.md](local-development.md) for seed
+prerequisites and full local commands.
 
 **Volume paths.** Named volumes by default. Where a bind mount is used for
 inspection it points at `.data/`, which the root `.gitignore` excludes along with
 `**/pgdata/`, `**/redis-data/`, `**/minio-data/`, `docker/data/`, and
 `infra/docker/data/`.
 
-**Windows note.** Bind-mounting `node_modules` from the host into a Linux
-container is slow and breaks native modules. In `full` mode, `node_modules` lives
-in an anonymous volume inside the container and only source is bind-mounted.
+**Windows note.** Host `node_modules` is not bind-mounted into the current
+worker image.
 
 ---
 
-## 5. Image construction
+## 5. Target image construction
 
 Every application image follows the same four-stage shape:
 
@@ -178,14 +186,14 @@ being fetched from object storage.
 
 ---
 
-## 6. Graceful shutdown
+## 6. Graceful shutdown target
 
 On `SIGTERM`:
 
 - **api** — stop accepting new connections, finish in-flight requests (grace
   30 s), close the Prisma and Redis pools, exit.
-- **worker** — stop pulling new jobs, let active jobs finish (grace 60 s, longer
-  than the longest expected job), let unfinished jobs return to the queue for
+- **worker** — stop pulling new jobs, let active jobs finish (Phase 16 default
+  grace 30 s, configurable), let unfinished jobs return to the queue for
   redelivery, exit.
 - **web** — drain, then exit.
 
@@ -195,7 +203,7 @@ redeliver.
 
 ---
 
-## 7. Production topology — self-hosted VPS
+## 7. Production topology — Phase 20 self-hosted VPS target
 
 The initial production target is a **single self-hosted Linux VPS running Docker
 Compose behind a reverse proxy with TLS**, provider-neutral and portable to
@@ -275,7 +283,7 @@ rather than an opaque OOM kill.
 
 ---
 
-## 8. Deployment sequence
+## 8. Deployment sequence — Phase 20 target
 
 ```
 1. CI builds and pushes immutable, digest-tagged images
@@ -301,7 +309,7 @@ ever required.
 
 ---
 
-## 9. Backups in the container world
+## 9. Backups in the container world — Phase 20 target
 
 | What | How | Where |
 |---|---|---|

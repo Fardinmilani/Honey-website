@@ -145,6 +145,21 @@ export class ProcurementService {
     return this.repository.projectIncoming();
   }
 
+  listReconciliationKeysAfter(
+    cursor: Readonly<{ variantId: string; stockLocationId: string }> | undefined,
+    limit: number,
+  ): Promise<readonly Readonly<{ variantId: string; stockLocationId: string }>[]> {
+    return this.repository.listReconciliationKeysAfter(cursor, limit);
+  }
+
+  incomingForKeys(
+    keys: readonly Readonly<{ variantId: string; stockLocationId: string }>[],
+  ): Promise<
+    readonly Readonly<{ variantId: string; stockLocationId: string; incoming: number }>[]
+  > {
+    return this.repository.incomingForKeys(keys);
+  }
+
   async listSuppliers(
     principal: AuthenticatedPrincipal,
     input: { cursor?: string; limit?: number; status?: SupplierStatus },

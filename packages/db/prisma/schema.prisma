@@ -1855,15 +1855,21 @@ model FaqItemTranslation {
 }
 
 model OutboxEvent {
-  id            String    @id @db.Uuid
-  aggregateType String    @map("aggregate_type")
-  aggregateId   String    @map("aggregate_id") @db.Uuid
-  eventType     String    @map("event_type")
-  payload       Json      @db.JsonB
-  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
-  publishedAt   DateTime? @map("published_at") @db.Timestamptz(3)
-  attempts      Int       @default(0)
-  lastError     String?   @map("last_error")
+  id             String    @id @db.Uuid
+  aggregateType  String    @map("aggregate_type")
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  eventType      String    @map("event_type")
+  eventVersion   Int       @default(1) @map("event_version")
+  correlationId  String?   @map("correlation_id")
+  payload        Json      @db.JsonB
+  occurredAt     DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(3)
+  attempts       Int       @default(0)
+  lastError      String?   @map("last_error")
+  claimToken     String?   @map("claim_token") @db.Uuid
+  claimExpiresAt DateTime? @map("claim_expires_at") @db.Timestamptz(3)
+  nextAttemptAt  DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  quarantinedAt  DateTime? @map("quarantined_at") @db.Timestamptz(3)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -1924,19 +1930,28 @@ model FeatureFlag {
 }
 
 model JobFailure {
-  id       String   @id @db.Uuid
-  queue    String
-  jobId    String   @map("job_id")
-  name     String
-  payload  Json     @db.JsonB
-  error    String
-  failedAt DateTime @default(now()) @map("failed_at") @db.Timestamptz(3)
+  id             String    @id @db.Uuid
+  queue          String
+  jobId          String    @map("job_id")
+  name           String
+  payload        Json      @default("{}") @db.JsonB
+  payloadVersion Int       @default(1) @map("payload_version")
+  correlationId  String?   @map("correlation_id")
+  attemptsMade   Int       @default(0) @map("attempts_made")
+  errorCode      String    @default("UNCLASSIFIED") @map("error_code")
+  errorClass     String    @default("UNCLASSIFIED") @map("error_class")
+  error          String    @default("Job failure.")
+  terminalCycle  String?   @map("terminal_cycle")
+  failedAt       DateTime  @default(now()) @map("failed_at") @db.Timestamptz(3)
+  lastAttemptAt  DateTime  @default(now()) @map("last_attempt_at") @db.Timestamptz(3)
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   createdBy String?  @map("created_by") @db.Uuid
   updatedBy String?  @map("updated_by") @db.Uuid
 
+  @@unique([queue, jobId, terminalCycle])
   @@index([queue, failedAt(sort: Desc)])
   @@map("job_failure")
 }

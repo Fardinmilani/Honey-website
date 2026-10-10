@@ -6,7 +6,10 @@ numbered phase at a time.
 
 ## Current state
 
-Phase 15 adds server-owned shipping zones, methods, and rates to checkout,
+Phase 16 adds a headless BullMQ worker for committed outbox dispatch, shipment
+email, reservation expiry, payment and inventory reconciliation, and sitemap
+revalidation. Backup verification has a disabled orchestration contract until
+Phase 20 supplies a real verifier. Phase 15 adds server-owned shipping zones, methods, and rates to checkout,
 followed by staff-managed shipments and physical stock movement at dispatch.
 Customers can select a quoted method and see shipment status and tracking in
 Persian and English. The launch provider is the manual flat-rate adapter; no
@@ -18,6 +21,7 @@ The existing Hero media under `apps/web/public/media/hero/` remains protected,
 byte-identical, and outside object storage.
 
 See [`docs/shipping-fulfilment-development.md`](docs/shipping-fulfilment-development.md),
+[`docs/background-jobs-development.md`](docs/background-jobs-development.md),
 [`docs/payments-development.md`](docs/payments-development.md), and
 [`docs/cart-pricing-development.md`](docs/cart-pricing-development.md).
 
@@ -57,8 +61,8 @@ pnpm docker:up
 pnpm docker:verify
 ```
 
-The Compose stack contains infrastructure only. It does not build or run an
-application container. See [`docs/local-development.md`](docs/local-development.md)
+The default Compose stack contains infrastructure only. Its optional `worker`
+profile builds and runs the headless worker separately. See [`docs/local-development.md`](docs/local-development.md)
 for ports, credentials policy, service-specific checks, reset safety, and
 troubleshooting.
 
@@ -120,6 +124,11 @@ BFF, security headers, Playwright, and the web image.
 | `pnpm stylelint`            | Enforce logical CSS (no physical left/right)            |
 | `pnpm test:e2e`             | Run Playwright a11y, Hero motion, and visual specs      |
 | `pnpm api:dev`              | Start the API in TypeScript watch mode                  |
+| `pnpm worker:dev`           | Start the headless worker in TypeScript watch mode      |
+| `pnpm worker:start`         | Start the built worker                                  |
+| `pnpm worker:test`          | Run worker tests                                        |
+| `pnpm worker:docker:build`  | Build the non-root Phase 16 worker image                |
+| `pnpm phase16:verify`       | Verify Phase 16 boundaries, contracts, and integrity    |
 | `pnpm api:start`            | Start the built API                                     |
 | `pnpm api:test`             | Run the focused API test suite                          |
 | `pnpm api:openapi:generate` | Regenerate OpenAPI and TypeScript contracts             |
@@ -145,7 +154,7 @@ BFF, security headers, Playwright, and the web image.
 apps/
   web/       Next.js App Router — storefront + admin shell (Phase 9)
   api/       NestJS/Fastify HTTP composition root and transport policy
-  worker/    future BullMQ composition root
+  worker/    headless Nest/BullMQ composition root
 packages/
   backend/   platform, identity, and transport-independent media logic
   core/      framework-free primitives

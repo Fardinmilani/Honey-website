@@ -4,17 +4,30 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
-    "lint": "eslint src --max-warnings=0",
+    "dev": "tsx --env-file-if-exists=../../.env watch src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "lint": "eslint src scripts --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "vitest run src",
+    "smoke:sigterm": "node scripts/docker-sigterm-smoke.mjs"
   },
   "dependencies": {
     "@honey/backend": "workspace:*",
     "@honey/core": "workspace:*",
-    "@honey/utils": "workspace:*"
+    "@honey/utils": "workspace:*",
+    "@nestjs/common": "11.1.28",
+    "@nestjs/core": "11.1.28",
+    "bullmq": "5.81.5",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
   },
   "devDependencies": {
-    "@honey/config-ts": "workspace:*"
+    "@honey/config-ts": "workspace:*",
+    "@types/node": "22.18.0",
+    "@types/pg": "8.16.0",
+    "pg": "8.22.0",
+    "tsx": "4.20.6",
+    "vitest": "4.1.10"
   }
 }

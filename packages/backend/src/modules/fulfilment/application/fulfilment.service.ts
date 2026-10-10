@@ -13,6 +13,7 @@ import type { TransactionRunner } from '../../../platform/domain/transaction.js'
 import type { ShippingProvider } from '../../shipping/index.js';
 import type {
   FulfilmentNotification,
+  FulfilmentNotificationKind,
   FulfilmentNotificationPort,
   FulfilmentRepository,
   ShipmentRecord,
@@ -20,6 +21,7 @@ import type {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}$/u;
+const SYSTEM_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/u;
 
 function validation(path: string, code: string): ValidationAppError {
   return new ValidationAppError([{ path, code }]);
@@ -373,7 +375,6 @@ export class FulfilmentService {
       );
       return { order, shipment: updated };
     });
-    await this.notifications.sendShipped(notificationFor(result.order, result.shipment));
     return result.shipment;
   }
 
@@ -404,8 +405,42 @@ export class FulfilmentService {
       );
       return { order, shipment: updated };
     });
-    await this.notifications.sendDelivered(notificationFor(result.order, result.shipment));
     return result.shipment;
+  }
+
+  /** Called by the worker for a committed shipment event; the job carries no recipient PII. */
+  async sendNotificationForSystem(
+    context: Readonly<{ kind: 'SYSTEM'; source: 'WORKER'; correlationId: string }>,
+    input: Readonly<{ shipmentId: string; kind: FulfilmentNotificationKind }>,
+  ): Promise<void> {
+    if (
+      context.kind !== 'SYSTEM' ||
+      context.source !== 'WORKER' ||
+      !SYSTEM_CORRELATION_ID.test(context.correlationId)
+    ) {
+      throw new ForbiddenAppError({ code: 'SYSTEM_EXECUTION_REQUIRED' });
+    }
+    const shipment = await this.repository.findById(uuid(input.shipmentId, 'shipmentId'));
+    if (shipment === null) throw new NotFoundAppError();
+    if (
+      (input.kind === 'SHIPPED' && shipment.shippedAt === null) ||
+      (input.kind === 'DELIVERED' && shipment.deliveredAt === null)
+    ) {
+      throw new ConflictAppError({ code: 'SHIPMENT_NOTIFICATION_NOT_READY' });
+    }
+    if (input.kind !== 'SHIPPED' && input.kind !== 'DELIVERED') {
+      throw validation('kind', 'SHIPMENT_NOTIFICATION_KIND_INVALID');
+    }
+    const order = await this.transactions.run((transaction) =>
+      this.orders.lockForFulfilment(shipment.orderId, transaction),
+    );
+    if (order === null) throw new NotFoundAppError();
+    const notification = notificationFor(order, shipment);
+    if (input.kind === 'SHIPPED') {
+      await this.notifications.sendShipped(notification);
+    } else {
+      await this.notifications.sendDelivered(notification);
+    }
   }
 
   async cancelBeforeShipment(

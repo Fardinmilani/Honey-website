@@ -422,7 +422,9 @@ a request.
 versioned payload schema, and call an existing application service; the
 transactional outbox dispatcher; repeatable jobs (reservation sweep, payment
 `getStatus` reconciliation, sitemap regeneration, inventory reconciliation,
-backup verification); retry with exponential backoff and jitter, bounded attempts,
+backup-verification orchestration contract, port, processor, and capability-gated
+schedule, disabled until Phase 20 supplies a concrete verifier); retry with
+exponential backoff and jitter, bounded attempts,
 dead-letter capture with alerting; deterministic `jobId` deduplication; graceful
 shutdown that lets active jobs finish; `docker/worker.Dockerfile`; queue metrics
 and a `JobFailure` record.
@@ -435,6 +437,11 @@ it does not introduce new reservation business rules.
 **Out of scope** — new business logic of any kind. Every rule a processor needs
 already exists as an application service, or the phase that should have created
 it was incomplete.
+
+The backup-verification job contract and retry/dead-letter/metrics plumbing are
+delivered in Phase 16, but no executable verification is scheduled while the
+capability is disabled. Phase 20 owns the actual backup system and verifier
+adapter; Phase 16 must not simulate a successful verification.
 
 **Acceptance** — every handler is proven idempotent by a duplicate-delivery test;
 an outbox event is dispatched exactly once from the domain's perspective; a
@@ -518,7 +525,9 @@ gates CI; load testing shows no oversell and no deadlock under contention.
 proxy, unattended security updates, non-root deploy user, SSH hardening); reverse
 proxy with automatic TLS renewal, HSTS, and the security headers, asserted by
 tests; secret management with a rotation procedure; **off-host** automated
-backups with a **rehearsed and timed restore drill**; PITR verified from WAL
+backups with a **rehearsed and timed restore drill**; the concrete
+backup-verification adapter and activation of the Phase 16 repeatable schedule;
+PITR verified from WAL
 archives; disk, certificate-expiry, and resource-limit monitoring; a documented
 deployment pipeline with pre-deploy migrations and rollback; runbooks in
 `infra/runbooks/` (incident, restore, rollback, oversell, payment reconciliation,

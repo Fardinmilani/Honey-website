@@ -12,9 +12,9 @@ reads fall back to PostgreSQL when Redis is unavailable and mutations still
 require successful persistence before invalidation is attempted. Phase 9 adds
 the Next.js web app (`pnpm web:dev` on port 3000). Phase 10 adds storefront
 catalog routes; `WEB_INDEXING_ENABLED` defaults to `false` so local and staging
-builds stay noindex. The Compose stack still runs infrastructure only — the web
-and API processes are started from the host (or built as standalone images on
-demand).
+builds stay noindex. The default Compose stack runs infrastructure only — the
+web and API processes are started from the host (or built as standalone images
+on demand). Phase 16 adds an optional worker profile with no published port.
 
 ## Prerequisites
 
@@ -238,6 +238,44 @@ routes use localized segments (`/fa/mahsoulat`, `/en/products`, etc.). Visiting
 `/` issues a 307 to the negotiated locale. Runbooks:
 [`web-development.md`](web-development.md),
 [`storefront-development.md`](storefront-development.md).
+
+## Worker development
+
+Phase 16's worker calls backend application services directly. PostgreSQL and
+Redis run in Docker. Configure a server-only `WEB_REVALIDATE_SECRET` in the
+untracked `.env`; the worker and web process must use the same value. Apply
+migrations once, then start the web process and one worker in separate terminals:
+
+```sh
+pnpm db:migrate
+```
+
+Web terminal:
+
+```sh
+pnpm web:dev
+```
+
+Worker terminal:
+
+```sh
+pnpm worker:dev
+```
+
+Alternatively, run the profile-gated worker container, which reaches PostgreSQL,
+Redis, and Mailpit by their private Compose service names and the host web
+process through `host.docker.internal`. It publishes no worker port:
+
+```sh
+docker compose --profile worker up --build -d worker
+docker compose --profile worker logs worker
+```
+
+Use one local worker mode at a time. The image can also be built without
+starting a service via `pnpm worker:docker:build`. A failed Redis connection or
+invalid configuration fails worker startup. Backup verification stays disabled
+until Phase 20 supplies a concrete verifier; see
+[`background-jobs-development.md`](background-jobs-development.md).
 
 ## Redis verification
 

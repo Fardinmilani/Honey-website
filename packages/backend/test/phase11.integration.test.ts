@@ -7,10 +7,14 @@ import { createPrismaClient, type PrismaClient } from '@honey/db';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { ConflictAppError } from '../src/errors/index.js';
+import { ConflictAppError, ForbiddenAppError, ValidationAppError } from '../src/errors/index.js';
 import type { AuthenticatedPrincipal } from '../src/modules/identity/index.js';
 import { InventoryService } from '../src/modules/inventory/application/inventory.service.js';
-import { IncomingProjectionBinder } from '../src/modules/inventory/domain/inventory.js';
+import {
+  IncomingProjectionBinder,
+  type InventoryKey,
+  type ReconciliationDrift,
+} from '../src/modules/inventory/domain/inventory.js';
 import { PrismaInventoryRepository } from '../src/modules/inventory/infrastructure/prisma-inventory.repository.js';
 import { ProcurementService } from '../src/modules/procurement/application/procurement.service.js';
 import { PrismaProcurementRepository } from '../src/modules/procurement/infrastructure/prisma-procurement.repository.js';
@@ -719,5 +723,139 @@ describe('Phase 11 sourcing, procurement, and inventory on PostgreSQL', () => {
     expect(restored.onHand).toBe(item.onHand);
     const second = await inventory.reconcile(principal, metadata, true);
     expect(second.drifted).toBe(false);
+  });
+
+  it('allows only a bounded worker dry-run and preserves staff-only repair', async () => {
+    const item = await inventory.getItem(principal, variantId, locationId);
+    await prisma.inventoryItem.update({
+      where: { id: item.id },
+      data: { onHand: item.onHand + 7 },
+    });
+    const customer: AuthenticatedPrincipal = {
+      userId: randomUUID(),
+      sessionId: randomUUID(),
+      kind: 'CUSTOMER',
+      permissions: [],
+    };
+    await expect(inventory.reconcile(customer, metadata, true)).rejects.toBeInstanceOf(
+      ForbiddenAppError,
+    );
+
+    const report = await inventory.reconcileForSystem(
+      { kind: 'SYSTEM', source: 'WORKER', correlationId: 'phase16-inventory-reconciliation' },
+      false,
+    );
+    expect(report.drifted).toBe(true);
+    expect(report.repaired).toBe(false);
+    expect((await inventory.getItem(principal, variantId, locationId)).onHand).toBe(
+      item.onHand + 7,
+    );
+    await expect(
+      inventory.reconcileForSystem(
+        { kind: 'SYSTEM', source: 'WORKER', correlationId: 'phase16-inventory-reconciliation' },
+        true,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenAppError);
+    await expect(
+      inventory.reconcileForSystem(
+        { kind: 'SYSTEM', source: 'WORKER', correlationId: 'phase16-inventory-reconciliation' },
+        false,
+        { variantId: 'invalid', stockLocationId: locationId },
+      ),
+    ).rejects.toBeInstanceOf(ValidationAppError);
+    expect((await inventory.reconcile(principal, metadata, true)).repaired).toBe(true);
+    expect((await inventory.getItem(principal, variantId, locationId)).onHand).toBe(item.onHand);
+    expect(await prisma.user.count({ where: { id: customer.userId } })).toBe(0);
+  });
+
+  it('matches the existing incoming projection and manual drift math across cursor pages', async () => {
+    const projected = await procurement.incomingByKey();
+    expect(projected.length).toBeGreaterThan(0);
+    const bounded = await procurement.incomingForKeys(
+      projected.map(({ variantId, stockLocationId }) => ({ variantId, stockLocationId })),
+    );
+    const ordered = (rows: typeof projected) =>
+      [...rows].sort((left, right) =>
+        `${left.variantId}:${left.stockLocationId}`.localeCompare(
+          `${right.variantId}:${right.stockLocationId}`,
+        ),
+      );
+    expect(ordered(bounded)).toEqual(ordered(projected));
+
+    const productId = randomUUID();
+    await prisma.product.create({
+      data: { id: productId, sku: `PHASE16-RECON-${productId}`, sourcingType: 'OWN_PRODUCTION' },
+    });
+    const variantIds = Array.from({ length: 105 }, () => randomUUID()).sort();
+    await prisma.productVariant.createMany({
+      data: variantIds.map((id) => ({
+        id,
+        productId,
+        sku: `PHASE16-RECON-V-${id}`,
+        netWeightGrams: 450,
+        jarSizeLabelKey: 'jar.450g',
+        packagingTypeKey: 'packaging.glass',
+        weightGramsShipping: 700,
+        dimensionsMm: [85, 85, 120],
+      })),
+    });
+    await prisma.inventoryItem.createMany({
+      data: variantIds.map((id) => ({
+        id: randomUUID(),
+        variantId: id,
+        stockLocationId: locationId,
+        onHand: 1,
+      })),
+    });
+    const manual = await inventory.reconcile(principal, metadata, false);
+    const systemContext: Readonly<{
+      kind: 'SYSTEM';
+      source: 'WORKER';
+      correlationId: string;
+    }> = {
+      kind: 'SYSTEM',
+      source: 'WORKER',
+      correlationId: 'phase16-cursor-test',
+    };
+    const scheduledDrifts: ReconciliationDrift[] = [];
+    let cursor: InventoryKey | undefined;
+    let pages = 0;
+    for (;;) {
+      const page = await inventory.reconcileForSystem(systemContext, false, cursor);
+      pages += 1;
+      expect(page.repaired).toBe(false);
+      expect(page.drifts.length).toBeLessThanOrEqual(400);
+      scheduledDrifts.push(...page.drifts);
+      if (!page.hasMore) {
+        expect(page.nextCursor).toBeNull();
+        break;
+      }
+      expect(page.nextCursor).not.toBeNull();
+      if (page.nextCursor === null) throw new Error('Missing continuation cursor.');
+      cursor = page.nextCursor;
+      if (pages > 10) throw new Error('System reconciliation did not terminate.');
+    }
+    expect(pages).toBeGreaterThan(1);
+    const sortedDrifts = (rows: readonly ReconciliationDrift[]) =>
+      [...rows].sort((left, right) =>
+        `${left.variantId}:${left.stockLocationId}:${left.field}`.localeCompare(
+          `${right.variantId}:${right.stockLocationId}:${right.field}`,
+        ),
+      );
+    expect(sortedDrifts(scheduledDrifts)).toEqual(sortedDrifts(manual.drifts));
+    expect(scheduledDrifts).toContainEqual({
+      variantId: variantIds[104],
+      stockLocationId: locationId,
+      field: 'onHand',
+      expected: 0,
+      actual: 1,
+    });
+    expect(scheduledDrifts.length).toBeGreaterThanOrEqual(105);
+    expect(
+      await inventory.reconcileForSystem(systemContext, false, {
+        variantId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+        stockLocationId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+      }),
+    ).toEqual({ drifted: false, drifts: [], repaired: false, hasMore: false, nextCursor: null });
   });
 });

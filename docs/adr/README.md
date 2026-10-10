@@ -60,6 +60,8 @@ that costs, and what was rejected.
 | [0038](0038-phase13-minimal-shipping-quote-boundary.md) | Minimal checkout-owned `STANDARD` quote enables Phase 13 without pulling in Phase 15 | Accepted |
 | [0039](0039-phase15-physical-fulfilment-and-allocation-release.md) | Physical dispatch consumes allocated stock; pre-dispatch cancellation releases allocation | Accepted |
 | [0040](0040-shipment-line-allocation-provenance.md) | Shipment lines preserve exact consumed-reservation stock sources | Accepted |
+| [0041](0041-backup-verification-phase-boundary.md) | Backup verification orchestration in Phase 16; concrete verifier and activation in Phase 20 | Accepted |
+| [0042](0042-worker-system-execution-context.md) | Scheduled work uses a narrow explicit system context, not a fake staff user | Accepted |
 
 ### Supersession chain
 

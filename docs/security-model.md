@@ -151,6 +151,17 @@ Enforcement rules:
 - The full role × endpoint matrix is covered by integration tests, including the
   negative cases. A new endpoint without an authorization test fails review.
 
+### 3.2.1 Worker system execution
+
+The Phase 16 worker is a trusted composition root, not a staff account. Where a
+scheduled job needs application authorization, it uses a narrow `SYSTEM` /
+`WORKER` context with a correlation ID and an explicit service entry point.
+The manual inventory reconciliation path retains its staff permission check;
+the worker reaches the same reconciliation implementation without creating a
+user row or granting general admin access ([ADR-0042](adr/0042-worker-system-execution-context.md)).
+No queue payload can declare payment state, price, stock, or permission. The
+worker's job decoder rejects extra fields before service calls.
+
 ### 3.3 The web app is not a security boundary
 
 Next.js middleware, route guards, and conditionally rendered admin navigation are

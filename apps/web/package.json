@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "node --env-file-if-exists=../../.env node_modules/next/dist/bin/next dev --port 3000",
     "build": "next build && node scripts/prepare-standalone.mjs",
-    "start": "node .next/standalone/apps/web/server.js",
+    "start": "node --env-file-if-exists=../../.env .next/standalone/apps/web/server.js",
     "lint": "eslint src e2e scripts --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm build:deps && vitest run",

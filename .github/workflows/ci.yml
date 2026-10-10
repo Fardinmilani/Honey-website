@@ -16,7 +16,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     services:
       postgres:
         image: postgres:16.14-alpine3.23
@@ -295,6 +295,18 @@ jobs:
       - name: Verify Phase 15 shipping and fulfilment
         run: pnpm phase15:verify
 
+      - name: Run Phase 16 PostgreSQL outbox and application-seam integration
+        run: >-
+          pnpm --filter @honey/backend test -- --run
+          test/outbox-dispatch.integration.test.ts
+          test/phase16.seams.test.ts
+
+      - name: Run Phase 16 worker unit and Redis integration
+        run: pnpm worker:test
+
+      - name: Verify Phase 16 background jobs
+        run: pnpm phase16:verify
+
       - name: Prove Hero media never entered object storage
         run: |
           for bucket in honey-media-ci honey-private-ci; do
@@ -306,6 +318,30 @@ jobs:
 
       - name: Build API container
         run: pnpm api:docker:build
+
+      - name: Build worker container
+        run: pnpm worker:docker:build
+
+      - name: Smoke-test headless worker image and Redis readiness
+        run: |
+          test "$(docker run --rm --entrypoint id honey-worker:phase16 -u)" = '1000'
+          docker run --rm --network host \
+            --env NODE_ENV=development \
+            --env DATABASE_URL \
+            --env REDIS_URL \
+            --env PAYMENT_PROVIDER=mock \
+            --env IDENTITY_SMTP_HOST=127.0.0.1 \
+            --env IDENTITY_EMAIL_FROM=worker-ci@example.invalid \
+            --env WEB_REVALIDATE_SECRET=phase16-ci-revalidation-secret \
+            --env WORKER_WEB_ORIGIN=http://127.0.0.1:3000 \
+            honey-worker:phase16 node apps/worker/dist/main.js --healthcheck
+          docker run --rm --entrypoint sh honey-worker:phase16 -c \
+            'test ! -e /app/.env && test ! -d /app/apps/web/public/media/hero'
+
+      - name: Verify SIGTERM during an active worker job
+        env:
+          WORKER_SMOKE_DOCKER_NETWORK: host
+        run: pnpm worker:smoke:sigterm
 
       - name: Build web container
         run: pnpm web:docker:build

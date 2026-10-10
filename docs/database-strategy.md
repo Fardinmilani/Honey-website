@@ -200,6 +200,7 @@ session (user_id, expires_at)
 session (token_hash)                            UNIQUE
 audit_log (subject_type, subject_id, created_at DESC)
 outbox_event (published_at, occurred_at) WHERE published_at IS NULL  -- dispatcher
+outbox_event (next_attempt_at, occurred_at, id) WHERE published_at IS NULL AND quarantined_at IS NULL  -- Phase 16 bounded claims
 idempotency_key (key, scope)                    UNIQUE
 ```
 
@@ -211,6 +212,20 @@ idempotency_key (key, scope)                    UNIQUE
   active reservations, unpublished outbox rows. They stay small and stay in cache.
 - Composite index column order follows equality-first, then range, then sort.
 - `stock_ledger_entry` is append-heavy: it gets two indexes, not six.
+
+Phase 16 adds outbox lease and claim-token fields. A dispatcher claims a bounded
+eligible batch with `FOR UPDATE SKIP LOCKED`, enqueues a deterministic BullMQ
+job, and confirms publication only after queue acceptance. Lease fencing makes
+an old dispatcher unable to confirm a claim taken over by another instance.
+Redis outage leaves the committed row eligible. Unknown event versions are
+quarantined visibly, so they cannot monopolize the pending batch.
+
+Terminal `JobFailure` rows retain queue, job ID, payload version, correlation,
+attempt count, safe error code/class, and timestamps. A database trigger scrubs
+legacy payload/error columns on all new writes and updates; the Phase 16
+migration also scrubs any preexisting free-form values. A unique
+`(queue,job_id,terminal_cycle)` key prevents one exhausted job from producing
+unbounded duplicate rows.
 - No index is added without a query that needs it. `pg_stat_user_indexes` is
   reviewed quarterly and unused indexes are dropped.
 - Every list endpoint is `EXPLAIN (ANALYZE, BUFFERS)`-checked against seeded
