@@ -51,6 +51,9 @@ const CATALOG_EVENTS = new Set([
 
 /** Existing events with no Phase 16 application consumer are visible as quarantine, not discarded. */
 const NO_ACTIVE_CONSUMER_EVENTS = new Set([
+  'review.submitted',
+  'newsletter.confirmed',
+  'newsletter.unsubscribed',
   'checkout.started',
   'shipment.created',
   'fulfilment.completed',
@@ -95,6 +98,69 @@ export function routeOutboxEvent(event: ClaimedOutboxEvent): OutboxRoute {
   }
   // The event UUID is an exact lineage key without copying a possibly sensitive request ID.
   const correlationId = `outbox-${event.id}`;
+  if (
+    [
+      'content.created',
+      'content.updated',
+      'content.published',
+      'content.archived',
+      'review.approved',
+      'review.rejected',
+    ].includes(event.eventType)
+  ) {
+    const review = event.eventType.startsWith('review.');
+    const payload = event.payload;
+    if (
+      review &&
+      (typeof payload !== 'object' ||
+        payload === null ||
+        !('productId' in payload) ||
+        typeof payload.productId !== 'string' ||
+        !UUID.test(payload.productId))
+    )
+      return { disposition: 'UNSUPPORTED_EVENT' };
+    const targetId =
+      review &&
+      typeof payload === 'object' &&
+      payload !== null &&
+      'productId' in payload &&
+      typeof payload.productId === 'string'
+        ? payload.productId
+        : event.aggregateId;
+    return {
+      disposition: 'ENQUEUE',
+      route: {
+        queue: 'cache',
+        name: JOB_NAMES.catalogRevalidate,
+        jobId: deterministicJobId({ type: JOB_NAMES.catalogRevalidate, key: event.id }),
+        data: createJobEnvelope(
+          JOB_NAMES.catalogRevalidate,
+          { scope: review ? 'product' : 'content', id: targetId },
+          correlationId,
+          event.id,
+          event.occurredAt.toISOString(),
+        ),
+      },
+    };
+  }
+  if (event.eventType === 'notification.newsletter_queued') {
+    if (event.aggregateType !== 'newsletter') return { disposition: 'UNSUPPORTED_EVENT' };
+    return {
+      disposition: 'ENQUEUE',
+      route: {
+        queue: 'email',
+        name: JOB_NAMES.newsletterEmail,
+        jobId: deterministicJobId({ type: JOB_NAMES.newsletterEmail, key: event.id }),
+        data: createJobEnvelope(
+          JOB_NAMES.newsletterEmail,
+          { deliveryId: event.aggregateId },
+          correlationId,
+          event.id,
+          event.occurredAt.toISOString(),
+        ),
+      },
+    };
+  }
   if (CATALOG_EVENTS.has(event.eventType)) {
     const scope =
       event.aggregateType === 'product' ||

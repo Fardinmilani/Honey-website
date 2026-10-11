@@ -29,6 +29,7 @@ export const PERMISSION_CODES = [
   'content:write',
   'content:publish',
   'review:moderate',
+  'review:submit',
   'settings:read',
   'settings:write',
   'role:grant',

@@ -4,7 +4,14 @@ import { notFound } from 'next/navigation';
 import { buildLocaleTypeSitemapEntries } from '@/lib/sitemap/entries';
 import { buildUrlSetXml } from '@/lib/sitemap/xml';
 
-const SITEMAP_TYPES = ['static', 'products', 'categories', 'collections'] as const;
+const SITEMAP_TYPES = [
+  'static',
+  'products',
+  'categories',
+  'collections',
+  'pages',
+  'articles',
+] as const;
 
 type SitemapType = (typeof SITEMAP_TYPES)[number];
 

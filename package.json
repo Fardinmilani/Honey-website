@@ -70,7 +70,9 @@
     "web:dev": "pnpm --filter @honey/web dev",
     "web:build": "pnpm --filter @honey/web build",
     "web:start": "pnpm --filter @honey/web start",
-    "web:docker:build": "docker build --file docker/web.Dockerfile --tag honey-web:phase10 --tag honey-web:phase11 ."
+    "web:docker:build": "docker build --file docker/web.Dockerfile --tag honey-web:phase10 --tag honey-web:phase11 .",
+    "phase18:verify": "node scripts/verify-phase18.mjs",
+    "phase18:test:e2e": "node scripts/test-phase18-browser.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

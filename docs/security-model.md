@@ -127,7 +127,7 @@ procurement:read  procurement:write
 order:read  order:write  order:note  order:refund  order:cancel
 customer:read  customer:export
 content:read  content:write  content:publish
-review:moderate
+review:moderate  review:submit
 settings:read  settings:write
 role:grant  audit:read
 ```
@@ -485,3 +485,14 @@ outside working hours.
 
 Runbooks with concrete commands live in `infra/runbooks/`. Contact and escalation
 paths are defined before launch, not during an incident.
+# Phase 18 editorial and newsletter security
+
+STAFF content uses content:read/write/publish and moderation uses review:moderate.
+Template preview/read uses content:read; save uses content:write. Customer review
+operations require order:read and ownership; writes retain CSRF/account limits.
+Authority fields and unknown properties are rejected. Customer text is immutable
+and pending until staff moderation; public identity is only verified buyer.
+Newsletter has explicit consent, ID-only queued intents, hashed 32-byte random
+tokens, expiry/single use, generic rate-limited responses and POST-only transitions.
+Token pages use noindex/no-store/no-referrer. Resubscribe invalidates previous
+links and request identities. SMTP logs/provider failures are redacted. See ADR 0047.

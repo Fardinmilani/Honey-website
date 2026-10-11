@@ -377,3 +377,13 @@ web → api → db/redis/provider → worker.
 3. Minimum 90 days for internal clients; longer if an external client exists.
 4. Track usage per deprecated operation and remove only when it reaches zero.
 5. Removal is a major version.
+# Phase 18 HTTP contracts
+
+Published content lives at `/v1/content/{kind}` and page/article slug details;
+approved reviews at `/v1/products/{productId}/reviews`. Protected eligibility and
+submission are `/v1/me/reviews/eligibility` and `/v1/me/reviews`. Newsletter
+subscribe/confirm/unsubscribe are explicit POST operations with generic accepted
+responses. Admin content, moderation and templates use distinct STAFF-only DTOs.
+Public schemas contain no author/order IDs, moderator, hashes or delivery internals.
+Token/private/admin responses are no-store; public editorial/review reads permit
+bounded caching. Exact permissions and CSRF remain enforced in the API.

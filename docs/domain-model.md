@@ -681,3 +681,13 @@ the domain's point of view* even though delivery is at-least-once.
 10. Every published product has at least one published variant with a current price.
 11. Every product and category has a translation for every enabled locale before it can be published.
 12. No field name or enum value in the schema matches `/moisture|lab|hmf|diastase|purity|therapeut|medic|cure|treat/i` — asserted by a schema lint test in CI.
+# Phase 18 activated domains
+
+Page/Article translations use bounded typed blocks and locale slugs/SEO. FAQ retains
+plain question/answer. Publication requires both launch languages. ProductReview
+is unique by customer/product, links a qualified own delivered order, and follows
+PENDING→APPROVED/REJECTED with immutable original text. Approved-only count/average
+is public; zero omits Product aggregateRating. NotificationTemplate is unique by
+code/locale/channel; NotificationDelivery stores hashed recipients and fenced safe
+states. NewsletterSubscription follows PENDING→CONFIRMED→UNSUBSCRIBED; renewed
+explicit consent resets to PENDING with new request/token identities. See ADR 0047.

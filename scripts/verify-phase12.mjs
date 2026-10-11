@@ -228,7 +228,7 @@ assert.match(i18n, /\/cart/u);
 assert.doesNotMatch(web, /from\s+['"]@honey\/backend['"]/u);
 assert.doesNotMatch(web, /from\s+['"]@honey\/db['"]/u);
 assert.doesNotMatch(web, /from\s+['"]@prisma\/client['"]/u);
-assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|reviews|notifications|queues)/u);
+assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|queues)/u);
 await verifyAdminBoundary(root);
 
 const seo = await implementationText('apps/web/src/lib/seo');

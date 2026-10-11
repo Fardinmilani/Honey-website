@@ -34,7 +34,7 @@ async function addWildflowerHoneyToCart(page: Page): Promise<void> {
 }
 
 async function fillContactAndAddress(page: Page, email: string): Promise<void> {
-  await page.getByLabel('Email address').fill(email);
+  await page.locator('main').getByLabel('Email address').fill(email);
   await page.getByLabel('Full name').fill('Checkout Tester');
   await page.getByLabel('Delivery phone number').fill('+989120000000');
   await page.getByLabel('Country').fill('IR');

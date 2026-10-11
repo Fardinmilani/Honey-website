@@ -2,6 +2,8 @@ import { type DynamicModule, Module } from '@nestjs/common';
 
 import {
   FulfilmentModule,
+  ContentModule,
+  NotificationsModule,
   InventoryModule,
   OrdersModule,
   PaymentsModule,
@@ -26,6 +28,13 @@ export class WorkerModule {
       module: WorkerModule,
       imports: [
         platformModule,
+        ContentModule.registerWorkerRevalidation(config.redisUrl, config.cacheNamespace),
+        NotificationsModule.register({
+          databaseUrl: config.databaseUrl,
+          smtp: config.smtp,
+          siteOrigin: config.notificationSiteOrigin ?? config.webOrigin,
+          enabledLocales: ['fa', 'en'],
+        }),
         inventoryModule,
         ProcurementModule.register({ databaseUrl: config.databaseUrl, inventoryModule }),
         ordersModule,

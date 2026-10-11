@@ -1,6 +1,11 @@
 {
   "components": {
     "schemas": {
+      "AcceptedDto": {
+        "properties": { "accepted": { "enum": [true], "type": "boolean" } },
+        "required": ["accepted"],
+        "type": "object"
+      },
       "AcceptedResponseDto": {
         "properties": { "accepted": { "example": true, "type": "boolean" } },
         "required": ["accepted"],
@@ -28,6 +33,30 @@
           "position": { "type": "number" }
         },
         "required": ["id", "position"],
+        "type": "object"
+      },
+      "AdminContentDto": {
+        "properties": {
+          "id": { "type": "string" },
+          "key": { "type": "string" },
+          "kind": { "enum": ["page", "article", "faq"], "type": "string" },
+          "publishedAt": { "nullable": true, "type": "string" },
+          "status": { "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "type": "string" },
+          "translations": {
+            "items": { "$ref": "#/components/schemas/TranslationDto" },
+            "type": "array"
+          },
+          "updatedAt": { "type": "string" }
+        },
+        "required": ["id", "kind", "key", "status", "publishedAt", "updatedAt", "translations"],
+        "type": "object"
+      },
+      "AdminContentPageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/AdminContentDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
         "type": "object"
       },
       "AdminMediaAttachmentDto": {
@@ -203,6 +232,33 @@
         "required": ["id", "amountMinor", "reason", "status", "createdAt", "completedAt"],
         "type": "object"
       },
+      "AdminReviewDto": {
+        "properties": {
+          "body": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "id": { "type": "string" },
+          "locale": { "type": "string" },
+          "productId": { "format": "uuid", "type": "string" },
+          "productNames": { "additionalProperties": { "type": "string" }, "type": "object" },
+          "rating": { "maximum": 5, "minimum": 1, "type": "number" },
+          "status": { "enum": ["PENDING", "APPROVED", "REJECTED"], "type": "string" },
+          "title": { "type": "string" },
+          "verifiedPurchase": { "enum": [true], "type": "boolean" }
+        },
+        "required": [
+          "productId",
+          "id",
+          "rating",
+          "title",
+          "body",
+          "locale",
+          "createdAt",
+          "verifiedPurchase",
+          "status",
+          "productNames"
+        ],
+        "type": "object"
+      },
       "AdminTaxonomyDto": {
         "properties": {
           "id": { "type": "string" },
@@ -299,6 +355,11 @@
           "name": { "type": "string" }
         },
         "required": ["locale", "name", "id"],
+        "type": "object"
+      },
+      "AggregateDto": {
+        "properties": { "average": { "type": "number" }, "count": { "type": "number" } },
+        "required": ["count", "average"],
         "type": "object"
       },
       "AllocationPageDto": {
@@ -730,6 +791,11 @@
         "required": ["method", "url", "fields", "expiresAt"],
         "type": "object"
       },
+      "EligibilityDto": {
+        "properties": { "eligible": { "type": "boolean" } },
+        "required": ["eligible"],
+        "type": "object"
+      },
       "HealthResponseDto": {
         "properties": { "status": { "enum": ["ok"], "example": "ok", "type": "string" } },
         "required": ["status"],
@@ -848,6 +914,22 @@
       "MetaDto": {
         "properties": { "locale": { "type": "string" }, "requestId": { "type": "string" } },
         "required": ["locale", "requestId"],
+        "type": "object"
+      },
+      "ModeratedDto": {
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["APPROVED", "REJECTED"], "type": "string" }
+        },
+        "required": ["id", "status"],
+        "type": "object"
+      },
+      "ModerationPageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/AdminReviewDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
         "type": "object"
       },
       "MoneyDto": {
@@ -1071,6 +1153,18 @@
         ],
         "type": "object"
       },
+      "PreviewDto": {
+        "properties": {
+          "allowedVariables": { "items": { "type": "string" }, "type": "array" },
+          "direction": { "enum": ["rtl", "ltr"], "type": "string" },
+          "locale": { "enum": ["fa", "en"], "type": "string" },
+          "smsEnabled": { "enum": [false], "type": "boolean" },
+          "subject": { "nullable": true, "type": "string" },
+          "text": { "type": "string" }
+        },
+        "required": ["subject", "text", "locale", "direction", "allowedVariables", "smsEnabled"],
+        "type": "object"
+      },
       "PricePageDto": {
         "properties": {
           "items": {
@@ -1187,6 +1281,73 @@
           "sortWeight",
           "publishedAt"
         ],
+        "type": "object"
+      },
+      "PublicContentDto": {
+        "properties": {
+          "blocks": {
+            "items": {
+              "description": "Strict heading, paragraph, quote or public-media image block; unknown properties rejected by domain validation.",
+              "type": "object"
+            },
+            "maxItems": 60,
+            "minItems": 1,
+            "type": "array"
+          },
+          "id": { "type": "string" },
+          "kind": { "enum": ["page", "article", "faq"], "type": "string" },
+          "locale": { "type": "string" },
+          "media": {
+            "items": {
+              "properties": {
+                "altTextByLocale": {
+                  "additionalProperties": { "type": "string" },
+                  "type": "object"
+                },
+                "height": { "nullable": true, "type": "integer" },
+                "id": { "type": "string" },
+                "kind": { "type": "string" },
+                "url": { "type": "string" },
+                "width": { "nullable": true, "type": "integer" }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "metaDescription": { "maxLength": 320, "nullable": true, "type": "string" },
+          "metaTitle": { "maxLength": 200, "nullable": true, "type": "string" },
+          "publishedAt": { "type": "string" },
+          "slug": { "maxLength": 160, "type": "string" },
+          "slugs": { "additionalProperties": { "type": "string" }, "type": "object" },
+          "title": { "maxLength": 200, "type": "string" },
+          "updatedAt": { "type": "string" }
+        },
+        "required": [
+          "locale",
+          "title",
+          "slug",
+          "blocks",
+          "metaTitle",
+          "metaDescription",
+          "id",
+          "kind",
+          "publishedAt",
+          "updatedAt",
+          "slugs",
+          "media"
+        ],
+        "type": "object"
+      },
+      "PublicContentPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/PublicContentDto" },
+            "type": "array"
+          },
+          "meta": { "properties": { "locale": { "type": "string" } }, "type": "object" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor", "meta"],
         "type": "object"
       },
       "PublicProductDto": {
@@ -1317,6 +1478,42 @@
         "required": ["id", "paymentId", "amount", "reason", "status", "createdAt", "completedAt"],
         "type": "object"
       },
+      "ReviewDto": {
+        "properties": {
+          "body": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "id": { "type": "string" },
+          "locale": { "type": "string" },
+          "productId": { "format": "uuid", "type": "string" },
+          "rating": { "maximum": 5, "minimum": 1, "type": "number" },
+          "title": { "type": "string" },
+          "verifiedPurchase": { "enum": [true], "type": "boolean" }
+        },
+        "required": [
+          "productId",
+          "id",
+          "rating",
+          "title",
+          "body",
+          "locale",
+          "createdAt",
+          "verifiedPurchase"
+        ],
+        "type": "object"
+      },
+      "ReviewPageDto": {
+        "properties": {
+          "aggregate": {
+            "allOf": [{ "$ref": "#/components/schemas/AggregateDto" }],
+            "nullable": true,
+            "type": "object"
+          },
+          "items": { "items": { "$ref": "#/components/schemas/ReviewDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor", "aggregate"],
+        "type": "object"
+      },
       "SafeUserDto": {
         "properties": {
           "displayName": { "nullable": true, "type": "string" },
@@ -1347,6 +1544,7 @@
                 "content:write",
                 "content:publish",
                 "review:moderate",
+                "review:submit",
                 "settings:read",
                 "settings:write",
                 "role:grant",
@@ -1473,6 +1671,14 @@
         "required": ["items", "nextCursor"],
         "type": "object"
       },
+      "SubmittedDto": {
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["PENDING"], "type": "string" }
+        },
+        "required": ["id", "status"],
+        "type": "object"
+      },
       "TaxPageDto": {
         "properties": {
           "items": {
@@ -1495,6 +1701,91 @@
           "region": { "nullable": true, "type": "string" }
         },
         "required": ["id", "code", "rateBps", "country", "region", "isInclusive", "isActive"],
+        "type": "object"
+      },
+      "TemplateListRecordDto": {
+        "properties": {
+          "allowedVariables": { "items": { "type": "string" }, "type": "array" },
+          "body": { "maxLength": 12000, "type": "string" },
+          "channel": { "enum": ["EMAIL", "SMS"], "type": "string" },
+          "code": {
+            "enum": [
+              "shipment-shipped",
+              "shipment-delivered",
+              "newsletter-confirm",
+              "newsletter-welcome"
+            ],
+            "type": "string"
+          },
+          "complete": { "type": "boolean" },
+          "id": { "type": "string" },
+          "locale": { "enum": ["fa", "en"], "type": "string" },
+          "subject": { "maxLength": 200, "nullable": true, "type": "string" },
+          "updatedAt": { "type": "string" }
+        },
+        "required": [
+          "code",
+          "locale",
+          "channel",
+          "subject",
+          "body",
+          "id",
+          "updatedAt",
+          "allowedVariables",
+          "complete"
+        ],
+        "type": "object"
+      },
+      "TemplatePageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/TemplateListRecordDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "TemplateRecordDto": {
+        "properties": {
+          "body": { "maxLength": 12000, "type": "string" },
+          "channel": { "enum": ["EMAIL", "SMS"], "type": "string" },
+          "code": {
+            "enum": [
+              "shipment-shipped",
+              "shipment-delivered",
+              "newsletter-confirm",
+              "newsletter-welcome"
+            ],
+            "type": "string"
+          },
+          "id": { "type": "string" },
+          "locale": { "enum": ["fa", "en"], "type": "string" },
+          "subject": { "maxLength": 200, "nullable": true, "type": "string" },
+          "updatedAt": { "type": "string" }
+        },
+        "required": ["code", "locale", "channel", "subject", "body", "id", "updatedAt"],
+        "type": "object"
+      },
+      "TranslationDto": {
+        "properties": {
+          "blocks": {
+            "items": {
+              "description": "Strict heading, paragraph, quote or public-media image block; unknown properties rejected by domain validation.",
+              "type": "object"
+            },
+            "maxItems": 60,
+            "minItems": 1,
+            "type": "array"
+          },
+          "locale": { "type": "string" },
+          "metaDescription": { "maxLength": 320, "nullable": true, "type": "string" },
+          "metaTitle": { "maxLength": 200, "nullable": true, "type": "string" },
+          "slug": { "maxLength": 160, "type": "string" },
+          "title": { "maxLength": 200, "type": "string" }
+        },
+        "required": ["locale", "title", "slug", "blocks", "metaTitle", "metaDescription"],
         "type": "object"
       },
       "ValidationIssueDto": {
@@ -2323,6 +2614,180 @@
         "tags": ["Catalog Admin"]
       }
     },
+    "/v1/admin/content/{kind}": {
+      "get": {
+        "description": "Read bounded editorial content and translation completeness.",
+        "operationId": "listAdminContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminContentPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded editorial content and translation completeness",
+        "tags": ["Content Admin"]
+      },
+      "post": {
+        "description": "Create an audited editorial draft.",
+        "operationId": "createAdminContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminContentDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Create an audited editorial draft",
+        "tags": ["Content Admin"]
+      }
+    },
+    "/v1/admin/content/{kind}/{id}": {
+      "get": {
+        "description": "Read private editorial content.",
+        "operationId": "getAdminContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminContentDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read private editorial content",
+        "tags": ["Content Admin"]
+      }
+    },
+    "/v1/admin/content/{kind}/{id}/archive": {
+      "post": {
+        "description": "Archive editorial content and invalidate public surfaces.",
+        "operationId": "archiveContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminContentDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Archive editorial content and invalidate public surfaces",
+        "tags": ["Content Admin"]
+      }
+    },
+    "/v1/admin/content/{kind}/{id}/publish": {
+      "post": {
+        "description": "Publish only complete enabled-locale editorial content.",
+        "operationId": "publishContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminContentDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Publish only complete enabled-locale editorial content",
+        "tags": ["Content Admin"]
+      }
+    },
+    "/v1/admin/content/{kind}/{id}/translations": {
+      "put": {
+        "description": "Save a validated plain-text block translation.",
+        "operationId": "saveContentTranslation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminContentDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Save a validated plain-text block translation",
+        "tags": ["Content Admin"]
+      }
+    },
     "/v1/admin/customers": {
       "get": {
         "description": "STAFF customer:read lookup excludes staff, credentials and sessions, masks phone numbers, and records only the result count in the audit.",
@@ -2960,6 +3425,58 @@
         "tags": ["Media"]
       }
     },
+    "/v1/admin/notifications/templates": {
+      "get": {
+        "description": "Read bounded per-locale templates.",
+        "operationId": "listNotificationTemplates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TemplatePageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded per-locale templates",
+        "tags": ["Notifications Admin"]
+      },
+      "put": {
+        "description": "Save an audited template with explicit allowed placeholders.",
+        "operationId": "saveNotificationTemplate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TemplateRecordDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Save an audited template with explicit allowed placeholders",
+        "tags": ["Notifications Admin"]
+      }
+    },
+    "/v1/admin/notifications/templates/preview": {
+      "post": {
+        "description": "Render safe synthetic preview without sending a message.",
+        "operationId": "previewNotificationTemplate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PreviewDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Render safe synthetic preview without sending a message",
+        "tags": ["Notifications Admin"]
+      }
+    },
     "/v1/admin/orders": {
       "get": {
         "description": "STAFF order:read query with exact order-number or customer-email filters and keyset pagination.",
@@ -3574,6 +4091,74 @@
         "security": [{ "sessionCookie": [] }],
         "summary": "Update a supplier",
         "tags": ["Procurement Admin"]
+      }
+    },
+    "/v1/admin/reviews": {
+      "get": {
+        "description": "Read the bounded moderation queue with safe product context.",
+        "operationId": "listPendingReviews",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ModerationPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read the bounded moderation queue with safe product context",
+        "tags": ["Reviews Admin"]
+      }
+    },
+    "/v1/admin/reviews/{id}/approve": {
+      "post": {
+        "description": "Approve a pending review after publication-policy checks.",
+        "operationId": "approveReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ModeratedDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Approve a pending review after publication-policy checks",
+        "tags": ["Reviews Admin"]
+      }
+    },
+    "/v1/admin/reviews/{id}/reject": {
+      "post": {
+        "description": "Reject a pending review without rewriting customer text.",
+        "operationId": "rejectReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ModeratedDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Reject a pending review without rewriting customer text",
+        "tags": ["Reviews Admin"]
       }
     },
     "/v1/admin/shipping/configuration": {
@@ -4613,6 +5198,62 @@
         "tags": ["Checkout"]
       }
     },
+    "/v1/content/{kind}": {
+      "get": {
+        "description": "Read published content in the requested locale without fallback.",
+        "operationId": "listPublishedContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PublicContentPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Read published content in the requested locale without fallback",
+        "tags": ["Content"]
+      }
+    },
+    "/v1/content/{kind}/{slug}": {
+      "get": {
+        "description": "Resolve a published locale slug.",
+        "operationId": "getPublishedContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": { "maxLength": 160, "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": { "enum": ["page", "article", "faq"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PublicContentDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Resolve a published locale slug",
+        "tags": ["Content"]
+      }
+    },
     "/v1/me": {
       "get": {
         "description": "Returns only the safe account and effective authorization summary for the current principal.",
@@ -4641,6 +5282,42 @@
         "security": [{ "sessionCookie": [] }],
         "summary": "Get the authenticated account",
         "tags": ["Identity"]
+      }
+    },
+    "/v1/me/reviews": {
+      "post": {
+        "description": "Submit one immutable pending review with server-verified purchase linkage.",
+        "operationId": "submitProductReview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/SubmittedDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Submit one immutable pending review with server-verified purchase linkage",
+        "tags": ["Customer Reviews"]
+      }
+    },
+    "/v1/me/reviews/eligibility": {
+      "get": {
+        "description": "Check the authenticated customer’s own fully delivered purchase.",
+        "operationId": "getReviewEligibility",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/EligibilityDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Check the authenticated customer’s own fully delivered purchase",
+        "tags": ["Customer Reviews"]
       }
     },
     "/v1/me/sessions": {
@@ -4753,6 +5430,57 @@
         "security": [{ "sessionCookie": [] }],
         "summary": "Re-verify staff TOTP for a sensitive action",
         "tags": ["Identity"]
+      }
+    },
+    "/v1/newsletter/confirm": {
+      "post": {
+        "description": "Explicitly consume an expiring newsletter-only confirmation token.",
+        "operationId": "confirmNewsletterSubscription",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Explicitly consume an expiring newsletter-only confirmation token",
+        "tags": ["Newsletter"]
+      }
+    },
+    "/v1/newsletter/subscribe": {
+      "post": {
+        "description": "Request explicit-consent double opt-in with a generic response.",
+        "operationId": "requestNewsletterSubscription",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Request explicit-consent double opt-in with a generic response",
+        "tags": ["Newsletter"]
+      }
+    },
+    "/v1/newsletter/unsubscribe": {
+      "post": {
+        "description": "Explicit idempotent newsletter opt-out with a secure token.",
+        "operationId": "unsubscribeNewsletter",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Explicit idempotent newsletter opt-out with a secure token",
+        "tags": ["Newsletter"]
       }
     },
     "/v1/orders": {
@@ -4917,6 +5645,30 @@
         "tags": ["Payments"]
       }
     },
+    "/v1/products/{productId}/reviews": {
+      "get": {
+        "description": "Read approved reviews and their exact approved-only aggregate.",
+        "operationId": "listApprovedProductReviews",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ReviewPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Read approved reviews and their exact approved-only aggregate",
+        "tags": ["Reviews"]
+      }
+    },
     "/webhooks/payments/{provider}": {
       "post": {
         "description": "Accepts the exact raw body for signature verification. CSRF is not used; invalid signatures are persisted and ignored.",
@@ -4940,6 +5692,22 @@
   "servers": [],
   "tags": [
     { "description": "Process and dependency health endpoints.", "name": "Operations" },
+    { "description": "Published localized editorial content.", "name": "Content" },
+    { "description": "Staff editorial authoring and publication.", "name": "Content Admin" },
+    { "description": "Approved public product reviews and aggregate.", "name": "Reviews" },
+    {
+      "description": "Private verified-purchase eligibility and pending submission.",
+      "name": "Customer Reviews"
+    },
+    { "description": "Staff permission-protected moderation.", "name": "Reviews Admin" },
+    {
+      "description": "Staff template authoring and synthetic preview.",
+      "name": "Notifications Admin"
+    },
+    {
+      "description": "Generic explicit double-opt-in and unsubscribe actions.",
+      "name": "Newsletter"
+    },
     {
       "description": "Registration, authentication, account, and session endpoints.",
       "name": "Identity"

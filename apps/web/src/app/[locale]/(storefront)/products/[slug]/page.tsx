@@ -13,6 +13,9 @@ import { Breadcrumbs } from '@/components/catalog/breadcrumbs';
 import { AddToCart } from '@/components/catalog/add-to-cart';
 import { JsonLdScript } from '@/components/catalog/json-ld-script';
 import { ProductGallery } from '@/components/catalog/product-gallery';
+import { Reviews } from '@/components/editorial/reviews';
+import { getReviews } from '@/lib/editorial/api';
+import { csrfConfig } from '@/lib/admin/server';
 import { SetEntityLocaleHrefs } from '@/components/shell/set-entity-locale-hrefs';
 import { buildEntityAlternatePaths, resolveProductLocaleSlugs } from '@/lib/catalog/alternates';
 import { getProductBySlug } from '@/lib/catalog/api';
@@ -148,7 +151,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
     { name: product.name, url: absoluteUrl(productPath) },
   ]);
 
+  const reviews = await getReviews(product.id);
   const productJsonLd = buildProductJsonLd({
+    aggregate: reviews.aggregate,
     name: product.name,
     description: description || product.name,
     images,
@@ -277,6 +282,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </article>
       </Container>
       <JsonLdScript data={productJsonLd} />
+      <Reviews locale={locale} productId={product.id} initial={reviews} csrf={csrfConfig()} />
       <JsonLdScript data={breadcrumbJsonLd} />
     </>
   );

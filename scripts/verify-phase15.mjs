@@ -177,8 +177,22 @@ assert.match(fulfilmentEmail, /fulfilmentEmailDelivery\.createMany/u);
 assert.match(fulfilmentEmail, /skipDuplicates:\s*true/u);
 assert.match(fulfilmentEmail, /fulfilmentEmailDelivery\.findUniqueOrThrow/u);
 assert.match(fulfilmentEmail, /fulfilmentEmailDelivery\.updateMany/u);
-assert.match(fulfilmentEmail, /sendMail\(/u);
-assert.match(fulfilmentEmail, /notification\.locale === 'fa'/u);
+assert.match(fulfilmentEmail, /NotificationsModule\.standalone/u);
+assert.match(fulfilmentEmail, /sendFulfilment/u);
+assert.match(
+  await readFile(
+    resolve(root, 'packages/backend/src/modules/notifications/infrastructure/smtp-mail-sender.ts'),
+    'utf8',
+  ),
+  /sendMail\(/u,
+);
+assert.match(
+  await readFile(
+    resolve(root, 'packages/backend/src/modules/notifications/domain/templates.ts'),
+    'utf8',
+  ),
+  /template\.locale === 'fa'/u,
+);
 assert.match(appModule, /new SmtpFulfilmentNotificationAdapter\(/u);
 assert.match(api, /RequirePermissions/u);
 assert.match(api, /v1\/admin\/shipping/u);

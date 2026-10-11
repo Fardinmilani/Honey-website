@@ -9,6 +9,12 @@ import { defaultLocale, isLocale, type Locale } from './config.js';
  * Dynamic segments use `[param]` placeholders shared across locales.
  */
 export const pathnames = {
+  '/pages/[slug]': { fa: '/safahat/[slug]', en: '/pages/[slug]' },
+  '/articles': { fa: '/maghalat', en: '/articles' },
+  '/articles/[slug]': { fa: '/maghalat/[slug]', en: '/articles/[slug]' },
+  '/faq': { fa: '/porseshha', en: '/faq' },
+  '/newsletter/confirm': { fa: '/newsletter/confirm', en: '/newsletter/confirm' },
+  '/newsletter/unsubscribe': { fa: '/newsletter/unsubscribe', en: '/newsletter/unsubscribe' },
   '/': {
     fa: '/',
     en: '/',

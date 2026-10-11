@@ -22,7 +22,14 @@ type CatalogRevalidateBody = {
 
 type RevalidateBody = CatalogRevalidateBody | Readonly<{ scope: 'sitemap'; locale: 'fa' | 'en' }>;
 
-const SITEMAP_TYPES = ['static', 'products', 'categories', 'collections'] as const;
+const SITEMAP_TYPES = [
+  'static',
+  'products',
+  'categories',
+  'collections',
+  'pages',
+  'articles',
+] as const;
 
 function parseRevalidateBody(body: unknown): RevalidateBody | null {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
@@ -122,6 +129,7 @@ export async function POST(request: Request) {
     }
     revalidatePath('/sitemap.xml');
     revalidateTag(catalogTags.locale(parsed.locale), { expire: 0 });
+    revalidateTag('content', { expire: 0 });
     return NextResponse.json({ revalidated: true, locale: parsed.locale });
   }
 
@@ -134,6 +142,11 @@ export async function POST(request: Request) {
 
   for (const tag of tags) {
     revalidateTag(tag, { expire: 0 });
+  }
+  if (parsed.scope === 'content') {
+    for (const locale of ['fa', 'en'])
+      for (const type of ['pages', 'articles']) revalidatePath(`/sitemaps/${locale}/${type}`);
+    revalidatePath('/sitemap.xml');
   }
 
   return NextResponse.json({ revalidated: true, tags });

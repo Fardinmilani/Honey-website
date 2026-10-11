@@ -24,7 +24,10 @@ async function placeUnpaidOrderAndStart(page: Page): Promise<string> {
   await page.getByRole('button', { name: 'Add to cart' }).click();
   await expect(page.getByRole('button', { name: 'Added to cart' })).toBeVisible();
   await page.goto('/en/checkout');
-  await page.getByLabel('Email address').fill(`payments-a11y-${Date.now()}@example.invalid`);
+  await page
+    .locator('main')
+    .getByLabel('Email address')
+    .fill(`payments-a11y-${Date.now()}@example.invalid`);
   await page.getByLabel('Full name').fill('A11y Tester');
   await page.getByLabel('Delivery phone number').fill('+989120000000');
   await page.getByLabel('Country').fill('IR');

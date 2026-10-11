@@ -1,6 +1,9 @@
 import type { AdminMessages } from '../types.js';
 
 export const admin = {
+  content: 'Editorial content',
+  reviews: 'Review moderation',
+  notifications: 'Notification templates',
   persian: 'Persian',
   english: 'English',
   phone: 'Phone',

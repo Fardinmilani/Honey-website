@@ -245,6 +245,9 @@ export type SeoMessages = {
 };
 
 export type AdminMessages = {
+  readonly content: string;
+  readonly reviews: string;
+  readonly notifications: string;
   readonly persian: string;
   readonly english: string;
   readonly phone: string;
@@ -353,9 +356,9 @@ export type AdminMessages = {
   readonly translations: string;
   readonly faTranslation: string;
   readonly enTranslation: string;
+  readonly publicationHelp: string;
   readonly complete: string;
   readonly incomplete: string;
-  readonly publicationHelp: string;
   readonly translationHelp: string;
   readonly sku: string;
   readonly brandLine: string;
@@ -626,6 +629,7 @@ export type AdminMessages = {
 };
 
 export type MessageNamespaces = {
+  readonly editorial: EditorialMessages;
   readonly admin: AdminMessages;
   readonly common: CommonMessages;
   readonly navigation: NavigationMessages;
@@ -645,6 +649,7 @@ export type MessageNamespace = keyof MessageNamespaces;
 export type MessageCatalog = MessageNamespaces;
 
 export const messageNamespaces = [
+  'editorial',
   'admin',
   'common',
   'navigation',
@@ -664,3 +669,73 @@ export type MessageKey = {
 }[MessageNamespace];
 
 export type InterpolationValues = Readonly<Record<string, string | number | boolean>>;
+
+export type EditorialMessages = {
+  readonly articles: string;
+  readonly pages: string;
+  readonly faq: string;
+  readonly empty: string;
+  readonly more: string;
+  readonly next: string;
+  readonly title: string;
+  readonly slug: string;
+  readonly metaTitle: string;
+  readonly metaDescription: string;
+  readonly blocks: string;
+  readonly heading: string;
+  readonly paragraph: string;
+  readonly quote: string;
+  readonly image: string;
+  readonly alt: string;
+  readonly level: string;
+  readonly add: string;
+  readonly remove: string;
+  readonly up: string;
+  readonly down: string;
+  readonly media: string;
+  readonly noMedia: string;
+  readonly answer: string;
+  readonly question: string;
+  readonly preview: string;
+  readonly reviews: string;
+  readonly verified: string;
+  readonly noReviews: string;
+  readonly rating: string;
+  readonly average: string;
+  readonly count: string;
+  readonly reviewTitle: string;
+  readonly reviewBody: string;
+  readonly reviewGuidance: string;
+  readonly reviewEligible: string;
+  readonly reviewUnavailable: string;
+  readonly submit: string;
+  readonly pending: string;
+  readonly submitted: string;
+  readonly error: string;
+  readonly newsletter: string;
+  readonly email: string;
+  readonly consent: string;
+  readonly subscribe: string;
+  readonly subscribeResult: string;
+  readonly confirm: string;
+  readonly unsubscribe: string;
+  readonly tokenHelp: string;
+  readonly actionResult: string;
+  readonly invalidToken: string;
+  readonly templates: string;
+  readonly subject: string;
+  readonly body: string;
+  readonly channel: string;
+  readonly code: string;
+  readonly allowedVariables: string;
+  readonly smsDisabled: string;
+  readonly approve: string;
+  readonly reject: string;
+  readonly locale: string;
+  readonly product: string;
+  readonly status: string;
+  readonly publication: string;
+  readonly readOnly: string;
+  readonly complete: string;
+  readonly incomplete: string;
+};

@@ -26,7 +26,10 @@ async function addWildflowerHoneyToCart(page: Page): Promise<void> {
 async function placeUnpaidOrder(page: Page): Promise<string> {
   await addWildflowerHoneyToCart(page);
   await page.goto('/en/checkout');
-  await page.getByLabel('Email address').fill(`payments-e2e-${Date.now()}@example.invalid`);
+  await page
+    .locator('main')
+    .getByLabel('Email address')
+    .fill(`payments-e2e-${Date.now()}@example.invalid`);
   await page.getByLabel('Full name').fill('Payment Tester');
   await page.getByLabel('Delivery phone number').fill('+989120000000');
   await page.getByLabel('Country').fill('IR');

@@ -4,6 +4,8 @@ export type WorkerConfig = Readonly<{
   redisUrl: string;
   redisPrefix: string;
   webOrigin: string;
+  notificationSiteOrigin?: string;
+  cacheNamespace?: string;
   revalidationSecret: string;
   shutdownGraceMs: number;
   outboxIntervalMs: number;
@@ -91,10 +93,22 @@ export function loadWorkerConfig(environment: NodeJS.ProcessEnv = process.env): 
     throw new Error('Invalid worker configuration: WORKER_WEB_ORIGIN.');
   }
   const revalidationSecret = value(environment, 'WEB_REVALIDATE_SECRET');
+  const notificationSiteOrigin = value(environment, 'PUBLIC_SITE_URL', webOrigin);
+  const publicOrigin = url(notificationSiteOrigin, ['http:', 'https:'], 'PUBLIC_SITE_URL');
+  if (
+    publicOrigin.origin !== notificationSiteOrigin ||
+    publicOrigin.username !== '' ||
+    publicOrigin.password !== '' ||
+    (nodeEnv === 'production' && publicOrigin.protocol !== 'https:')
+  )
+    throw new Error('Invalid worker configuration: PUBLIC_SITE_URL.');
   if (revalidationSecret.length < 16) {
     throw new Error('Invalid worker configuration: WEB_REVALIDATE_SECRET.');
   }
   const redisPrefix = value(environment, 'WORKER_QUEUE_PREFIX', 'honey-worker');
+  const cacheNamespace = value(environment, 'CATALOG_CACHE_NAMESPACE', 'honey:catalog:v1');
+  if (!/^[a-zA-Z0-9:_-]{1,100}$/u.test(cacheNamespace))
+    throw new Error('Invalid worker configuration: CATALOG_CACHE_NAMESPACE.');
   if (!/^[a-z][a-z0-9-]{2,39}$/u.test(redisPrefix)) {
     throw new Error('Invalid worker configuration: WORKER_QUEUE_PREFIX.');
   }
@@ -138,7 +152,9 @@ export function loadWorkerConfig(environment: NodeJS.ProcessEnv = process.env): 
     databaseUrl,
     redisUrl,
     redisPrefix,
+    cacheNamespace,
     webOrigin,
+    notificationSiteOrigin,
     revalidationSecret,
     shutdownGraceMs: integer(environment, 'WORKER_SHUTDOWN_GRACE_MS', 30_000, 1_000, 120_000),
     outboxIntervalMs: integer(environment, 'WORKER_OUTBOX_INTERVAL_MS', 5_000, 1_000, 300_000),

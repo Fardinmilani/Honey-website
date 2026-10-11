@@ -530,3 +530,12 @@ recorded fixtures — never live in CI.
 - **Client-side business logic** — the browser renders, it does not decide.
 - **A second database engine** — Postgres does search, queues-of-record, and JSON
   until it measurably cannot.
+# Phase 18 content and delivery
+
+Content, Reviews and Notifications are transport-independent backend modules.
+Existing application seams preserve ownership; a forward migration adds missing
+review/template/delivery/subscription models while reusing editorial skeletons.
+Redis holds only namespaced content resolutions, rechecked against Postgres.
+Atomic outbox events use Phase 16 cache/email queues to revalidate public web tags
+and render recipient-locale templates. Public web reads remain HTTP-only. See
+ADR 0047 for snapshot, delivery fencing and newsletter token decisions.

@@ -22,7 +22,10 @@ async function beginCheckout(page: Page): Promise<void> {
   expect((await added).status()).toBe(200);
   await expect(page.getByRole('button', { name: 'Added to cart' })).toBeVisible();
   await page.goto('/en/checkout');
-  await page.getByLabel('Email address').fill(`shipping-e2e-${Date.now()}@example.invalid`);
+  await page
+    .locator('main')
+    .getByLabel('Email address')
+    .fill(`shipping-e2e-${Date.now()}@example.invalid`);
   await page.getByLabel('Full name').fill('Shipping Tester');
   await page.getByLabel('Delivery phone number').fill('+989120000000');
   await page.getByLabel('Country').fill('IR');

@@ -139,6 +139,27 @@ export async function createAdminTestStorage(root) {
         PUBLIC_MEDIA_BASE_URL: `${browserEndpoint}/${publicBucket}/`,
       },
       cleanup,
+      async assertNoHero() {
+        let matches = 0;
+        for (const bucket of created) {
+          let token;
+          do {
+            const page = await client.send(
+              new ListObjectsV2Command({
+                Bucket: bucket,
+                MaxKeys: 1000,
+                ...(token === undefined ? {} : { ContinuationToken: token }),
+              }),
+            );
+            matches += (page.Contents ?? []).filter((item) =>
+              /hero|honey-scroll|honey-poster/iu.test(item.Key ?? ''),
+            ).length;
+            token = page.NextContinuationToken;
+          } while (token !== undefined);
+        }
+        if (matches !== 0) throw new Error('Hero object storage exclusion failed.');
+        process.stdout.write('MinIO Hero-name scan: 0 matches.\n');
+      },
     };
   } catch (error) {
     await cleanup();

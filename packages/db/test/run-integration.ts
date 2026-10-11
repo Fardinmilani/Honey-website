@@ -47,7 +47,15 @@ try {
       ],
     );
     const permissions = await prisma.permission.findMany({ select: { code: true } });
-    assert.equal(permissions.length, 24);
+    assert.equal(permissions.length, 25);
+    const customerPermissions = await prisma.rolePermission.findMany({
+      where: { role: { code: 'CUSTOMER' } },
+      select: { permission: { select: { code: true } } },
+    });
+    assert.deepEqual(
+      customerPermissions.map((grant) => grant.permission.code),
+      ['review:submit'],
+    );
     const forbiddenMarketplaceRole = ['SELL', 'ER'].join('');
     assert.equal(
       roles.some((role) => role.code === forbiddenMarketplaceRole),

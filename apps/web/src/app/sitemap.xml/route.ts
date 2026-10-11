@@ -3,7 +3,14 @@ import { locales } from '@honey/i18n';
 import { absoluteUrl } from '@/lib/seo';
 import { buildSitemapIndexXml } from '@/lib/sitemap/xml';
 
-const SITEMAP_TYPES = ['static', 'products', 'categories', 'collections'] as const;
+const SITEMAP_TYPES = [
+  'static',
+  'products',
+  'categories',
+  'collections',
+  'pages',
+  'articles',
+] as const;
 
 export function GET() {
   const locations = locales.flatMap((locale) =>

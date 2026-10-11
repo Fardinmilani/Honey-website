@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 
 import { OrdersService } from './application/orders.service.js';
+import { ReviewPurchaseService } from './application/review-purchase.service.js';
+import { PrismaReviewPurchaseRepository } from './infrastructure/prisma-review-purchase.repository.js';
 import { AdminOrdersService } from './application/admin-orders.service.js';
 import { PrismaAdminOrdersRepository } from './infrastructure/prisma-admin-orders.repository.js';
 import { PrismaAuditWriter } from '../identity/index.js';
@@ -36,9 +38,11 @@ export class OrdersModule {
     const repository = options.overrides?.repository ?? ownedRepository;
     if (repository === undefined) throw new Error('Orders module configuration failed.');
     const adminRepository = new PrismaAdminOrdersRepository(options.databaseUrl);
+    const reviewRepository = new PrismaReviewPurchaseRepository(options.databaseUrl);
     const audit = new PrismaAuditWriter(options.databaseUrl);
     const transactions = new PrismaPlatformAdapter(options.databaseUrl);
     const providers: Provider[] = [
+      { provide: ReviewPurchaseService, useValue: new ReviewPurchaseService(reviewRepository) },
       {
         provide: AdminOrdersService,
         useValue: new AdminOrdersService(adminRepository, audit, transactions),
@@ -48,10 +52,19 @@ export class OrdersModule {
         provide: OrdersShutdownLifecycle,
         useValue: new OrdersShutdownLifecycle(async () => {
           await ownedRepository?.close();
-          await Promise.allSettled([adminRepository.close(), audit.close(), transactions.close()]);
+          await Promise.allSettled([
+            adminRepository.close(),
+            reviewRepository.close(),
+            audit.close(),
+            transactions.close(),
+          ]);
         }),
       },
     ];
-    return { module: OrdersModule, providers, exports: [OrdersService, AdminOrdersService] };
+    return {
+      module: OrdersModule,
+      providers,
+      exports: [OrdersService, AdminOrdersService, ReviewPurchaseService],
+    };
   }
 }

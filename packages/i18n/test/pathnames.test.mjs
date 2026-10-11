@@ -11,9 +11,11 @@ import {
   toFilesystemLocalePath,
 } from '../dist/index.js';
 
-test('pathname map covers catalog, cart, checkout, and order routes', () => {
+test('pathname map covers catalog, commerce and Phase 18 editorial routes', () => {
   assert.deepEqual(Object.keys(pathnames).sort(), [
     '/',
+    '/articles',
+    '/articles/[slug]',
     '/cart',
     '/categories',
     '/categories/[slug]',
@@ -21,8 +23,12 @@ test('pathname map covers catalog, cart, checkout, and order routes', () => {
     '/checkout/payment-return',
     '/collections',
     '/collections/[slug]',
+    '/faq',
+    '/newsletter/confirm',
+    '/newsletter/unsubscribe',
     '/orders',
     '/orders/[number]',
+    '/pages/[slug]',
     '/products',
     '/products/[slug]',
     '/search',
@@ -36,6 +42,10 @@ test('pathname map covers catalog, cart, checkout, and order routes', () => {
   assert.equal(pathnames['/checkout'].fa, '/takmil-sefaresh');
   assert.equal(pathnames['/checkout/payment-return'].fa, '/takmil-sefaresh/bazgasht-pardakht');
   assert.equal(pathnames['/orders/[number]'].fa, '/sefareshha/[number]');
+  assert.equal(pathnames['/articles'].fa, '/maghalat');
+  assert.equal(pathnames['/pages/[slug]'].fa, '/safahat/[slug]');
+  assert.equal(pathnames['/faq'].fa, '/porseshha');
+  assert.equal(pathnames['/newsletter/confirm'].fa, '/newsletter/confirm');
 });
 
 test('localizedHref fills dynamic slugs', () => {

@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 18 — Content, Reviews & Notifications (**CURRENT; NOT STARTED**)
-**Completed phase:** Phase 17 — Admin Console (**COMPLETE 2026-10-11; working tree only, awaiting human review**)
+**Current phase:** Phase 19 — Observability, Caching & Performance (**CURRENT; NOT STARTED**)
+**Completed phase:** Phase 18 — Content, Reviews & Notifications (**COMPLETE 2026-10-11; changes unstaged for human review**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -79,8 +79,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 15 | Shipping & Fulfilment | **Complete 2026-10-05** — manual-flat provider, zones and rates, fulfilment, physical stock movement, tracking |
 | 16 | Background Jobs | **Complete 2026-10-10** — worker composition root, queues, scheduling, retries, dead letters; backup verification orchestration is capability-gated |
 | 17 | Admin Console | **COMPLETE 2026-10-11** — catalog, media, inventory, sourcing, procurement, orders, customers, supported settings, audit; Phase 18 CMS excluded |
-| 18 | Content, Reviews & Notifications | **CURRENT; NOT STARTED** — CMS pages, moderated reviews, transactional messaging |
-| 19 | Observability & Performance | Tracing, metrics, caching layers, Core Web Vitals budget |
+| 18 | Content, Reviews & Notifications | **COMPLETE 2026-10-11** — bilingual editorial content, verified moderated reviews, localized templates and double-opt-in newsletter |
+| 19 | Observability, Caching & Performance | **CURRENT; NOT STARTED** — tracing, metrics, caching layers, Core Web Vitals budget |
 | 20 | Hardening & Launch Readiness | Security review, backups, restore drill, runbooks |
 
 Phases 2–20 are sequential by default. Nothing after the current phase may be
@@ -159,7 +159,10 @@ These block or shape later phases and need a human decision. Tracked in
 6. **Legal entity and invoicing** — invoice format and statutory fields remain
    open. Phase 13's `HNY-YYYY-######` reference is unique and concurrency-safe,
    but is explicitly not a statutory invoice number.
-7. **Reviews** — are customer reviews in scope for launch? *Shapes Phase 18.*
+7. **Reviews** — **resolved 2026-10-11:** Phase 18 implements authenticated,
+   verified-purchase reviews with approval before publication and a private
+   verified-buyer display. Exact eligibility, duplicate and refund rules are in
+   [ADR-0047](docs/adr/0047-content-reviews-localized-notifications.md).
 8. **Production domain** — the domain name, and whether the canonical host is the
    apex or `www`. *No longer blocks Phase 10 implementation.* Canonical URLs are
    configuration-driven (`PUBLIC_SITE_URL` / `NEXT_PUBLIC_SITE_URL`) with

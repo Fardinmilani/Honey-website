@@ -3,6 +3,9 @@ import { APP_GUARD } from '@nestjs/core';
 
 import {
   IdentityModule,
+  ContentModule,
+  ReviewsModule,
+  NotificationsModule,
   CatalogModule,
   CartModule,
   MediaModule,
@@ -50,6 +53,19 @@ import { AdminCatalogQueryController } from './modules/catalog/admin-catalog-que
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
+import {
+  AdminContentController,
+  PublicContentController,
+} from './modules/content/content.controller.js';
+import {
+  AdminReviewsController,
+  CustomerReviewsController,
+  PublicReviewsController,
+} from './modules/reviews/reviews.controller.js';
+import {
+  AdminNotificationsController,
+  NewsletterController,
+} from './modules/notifications/notifications.controller.js';
 
 export type AppModuleOptions = Readonly<{
   config: ApiConfig;
@@ -64,6 +80,13 @@ export class AppModule {
     return enableTestRoutes
       ? [
           PlatformController,
+          AdminContentController,
+          AdminReviewsController,
+          CustomerReviewsController,
+          PublicReviewsController,
+          AdminNotificationsController,
+          NewsletterController,
+          PublicContentController,
           IdentityController,
           MediaController,
           PublicCatalogController,
@@ -89,6 +112,13 @@ export class AppModule {
         ]
       : [
           PlatformController,
+          AdminContentController,
+          AdminReviewsController,
+          CustomerReviewsController,
+          PublicReviewsController,
+          AdminNotificationsController,
+          NewsletterController,
+          PublicContentController,
           IdentityController,
           MediaController,
           PublicCatalogController,
@@ -144,6 +174,19 @@ export class AppModule {
       databaseUrl: options.config.databaseUrl,
       redisUrl: options.config.redisUrl,
     });
+    const contentModule = ContentModule.register({
+      databaseUrl: options.config.databaseUrl,
+      redisUrl: options.config.redisUrl,
+      cacheNamespace: options.config.catalog.cacheNamespace,
+      enabledLocales: options.config.catalog.enabledLocales,
+      mediaModule,
+    });
+    const notificationsModule = NotificationsModule.register({
+      databaseUrl: options.config.databaseUrl,
+      smtp: options.config.identity.smtp,
+      siteOrigin: options.config.notificationSiteOrigin,
+      enabledLocales: options.config.catalog.enabledLocales,
+    });
     const cartModule = CartModule.register({
       databaseUrl: options.config.databaseUrl,
       config: {
@@ -187,10 +230,21 @@ export class AppModule {
       ),
     });
     const shippingModule = ShippingModule.register({ databaseUrl: options.config.databaseUrl });
+    const catalogModule = CatalogModule.register({
+      config: options.config.catalog,
+      databaseUrl: options.config.databaseUrl,
+      redisUrl: options.config.redisUrl,
+      inventoryModule,
+      pricingModule,
+      mediaModule,
+    });
     return {
       module: AppModule,
       imports: [
         platformModule,
+        contentModule,
+        notificationsModule,
+        catalogModule,
         identityModule,
         inventoryModule,
         pricingModule,
@@ -202,13 +256,12 @@ export class AppModule {
           databaseUrl: options.config.databaseUrl,
           inventoryModule,
         }),
-        CatalogModule.register({
-          config: options.config.catalog,
+        ReviewsModule.register({
           databaseUrl: options.config.databaseUrl,
-          redisUrl: options.config.redisUrl,
-          inventoryModule,
-          pricingModule,
-          mediaModule,
+          enabledLocales: options.config.catalog.enabledLocales,
+          ordersModule,
+          fulfilmentModule,
+          catalogModule,
         }),
         cartModule,
         ordersModule,

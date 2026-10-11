@@ -7,7 +7,7 @@ export type SitemapRevalidationInput = Readonly<{
 }>;
 
 export type CatalogRevalidationInput = Readonly<{
-  scope: 'catalog' | 'product' | 'category' | 'collection';
+  scope: 'catalog' | 'product' | 'category' | 'collection' | 'content';
   id?: string;
   correlationId: string;
 }>;

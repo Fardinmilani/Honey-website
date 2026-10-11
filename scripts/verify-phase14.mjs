@@ -148,7 +148,7 @@ assert.match(api, /v1\/payments/u);
 assert.match(api, /webhooks\/payments/u);
 assert.match(api, /Cache-Control.*no-store|private, no-store/u);
 assert.match(api, /PAYMENT_CARD_OR_MONEY_FIELD_FORBIDDEN/u);
-assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|reviews|notifications|queues)/u);
+assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|queues)/u);
 await verifyAdminBoundary(root);
 assert.match(paymentProxy, /headers\.set\(\s*env\.csrfHeaderName/u);
 assert.match(web, /payments\.payNow|t\('payments\.payNow'\)/u);

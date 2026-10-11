@@ -599,6 +599,110 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/content/{kind}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read bounded editorial content and translation completeness
+     * @description Read bounded editorial content and translation completeness.
+     */
+    get: operations['listAdminContent'];
+    put?: never;
+    /**
+     * Create an audited editorial draft
+     * @description Create an audited editorial draft.
+     */
+    post: operations['createAdminContent'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/content/{kind}/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read private editorial content
+     * @description Read private editorial content.
+     */
+    get: operations['getAdminContent'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/content/{kind}/{id}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive editorial content and invalidate public surfaces
+     * @description Archive editorial content and invalidate public surfaces.
+     */
+    post: operations['archiveContent'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/content/{kind}/{id}/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Publish only complete enabled-locale editorial content
+     * @description Publish only complete enabled-locale editorial content.
+     */
+    post: operations['publishContent'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/content/{kind}/{id}/translations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Save a validated plain-text block translation
+     * @description Save a validated plain-text block translation.
+     */
+    put: operations['saveContentTranslation'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/customers': {
     parameters: {
       query?: never;
@@ -1021,6 +1125,50 @@ export interface paths {
      * @description Consumes the owner-bound intent, verifies stored bytes by magic number, processes images, and persists only trusted metadata.
      */
     post: operations['completeMediaUpload'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/notifications/templates': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read bounded per-locale templates
+     * @description Read bounded per-locale templates.
+     */
+    get: operations['listNotificationTemplates'];
+    /**
+     * Save an audited template with explicit allowed placeholders
+     * @description Save an audited template with explicit allowed placeholders.
+     */
+    put: operations['saveNotificationTemplate'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/notifications/templates/preview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Render safe synthetic preview without sending a message
+     * @description Render safe synthetic preview without sending a message.
+     */
+    post: operations['previewNotificationTemplate'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1493,6 +1641,66 @@ export interface paths {
      * @description Update a supplier.
      */
     patch: operations['adminUpdateSupplier'];
+    trace?: never;
+  };
+  '/v1/admin/reviews': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read the bounded moderation queue with safe product context
+     * @description Read the bounded moderation queue with safe product context.
+     */
+    get: operations['listPendingReviews'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/reviews/{id}/approve': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Approve a pending review after publication-policy checks
+     * @description Approve a pending review after publication-policy checks.
+     */
+    post: operations['approveReview'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/reviews/{id}/reject': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reject a pending review without rewriting customer text
+     * @description Reject a pending review without rewriting customer text.
+     */
+    post: operations['rejectReview'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   '/v1/admin/shipping/configuration': {
@@ -2335,6 +2543,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/content/{kind}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read published content in the requested locale without fallback
+     * @description Read published content in the requested locale without fallback.
+     */
+    get: operations['listPublishedContent'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/content/{kind}/{slug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Resolve a published locale slug
+     * @description Resolve a published locale slug.
+     */
+    get: operations['getPublishedContent'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me': {
     parameters: {
       query?: never;
@@ -2347,6 +2595,46 @@ export interface paths {
      * @description Returns only the safe account and effective authorization summary for the current principal.
      */
     get: operations['getMe'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/reviews': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Submit one immutable pending review with server-verified purchase linkage
+     * @description Submit one immutable pending review with server-verified purchase linkage.
+     */
+    post: operations['submitProductReview'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/reviews/eligibility': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Check the authenticated customer’s own fully delivered purchase
+     * @description Check the authenticated customer’s own fully delivered purchase.
+     */
+    get: operations['getReviewEligibility'];
     put?: never;
     post?: never;
     delete?: never;
@@ -2409,6 +2697,66 @@ export interface paths {
      * @description Raises the current staff session's trust level for a short window; consumed by other modules (e.g. refunds) that require recent re-authentication rather than a bare session.
      */
     post: operations['requestStepUp'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/newsletter/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Explicitly consume an expiring newsletter-only confirmation token
+     * @description Explicitly consume an expiring newsletter-only confirmation token.
+     */
+    post: operations['confirmNewsletterSubscription'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/newsletter/subscribe': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Request explicit-consent double opt-in with a generic response
+     * @description Request explicit-consent double opt-in with a generic response.
+     */
+    post: operations['requestNewsletterSubscription'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/newsletter/unsubscribe': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Explicit idempotent newsletter opt-out with a secure token
+     * @description Explicit idempotent newsletter opt-out with a secure token.
+     */
+    post: operations['unsubscribeNewsletter'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2515,6 +2863,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/products/{productId}/reviews': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read approved reviews and their exact approved-only aggregate
+     * @description Read approved reviews and their exact approved-only aggregate.
+     */
+    get: operations['listApprovedProductReviews'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/webhooks/payments/{provider}': {
     parameters: {
       query?: never;
@@ -2539,6 +2907,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    AcceptedDto: {
+      /** @enum {boolean} */
+      accepted: true;
+    };
     AcceptedResponseDto: {
       /** @example true */
       accepted: boolean;
@@ -2559,6 +2931,21 @@ export interface components {
        */
       id: string;
       position: number;
+    };
+    AdminContentDto: {
+      id: string;
+      key: string;
+      /** @enum {string} */
+      kind: 'page' | 'article' | 'faq';
+      publishedAt: string | null;
+      /** @enum {string} */
+      status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      translations: components['schemas']['TranslationDto'][];
+      updatedAt: string;
+    };
+    AdminContentPageDto: {
+      items: components['schemas']['AdminContentDto'][];
+      nextCursor: string | null;
     };
     AdminMediaAttachmentDto: {
       altTextByLocale: {
@@ -2662,6 +3049,23 @@ export interface components {
       reason: string;
       status: string;
     };
+    AdminReviewDto: {
+      body: string;
+      createdAt: string;
+      id: string;
+      locale: string;
+      /** Format: uuid */
+      productId: string;
+      productNames: {
+        [key: string]: string;
+      };
+      rating: number;
+      /** @enum {string} */
+      status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      title: string;
+      /** @enum {boolean} */
+      verifiedPurchase: true;
+    };
     AdminTaxonomyDto: {
       id: string;
       parentId: string | null;
@@ -2712,6 +3116,10 @@ export interface components {
       id: string;
       locale: string;
       name: string;
+    };
+    AggregateDto: {
+      average: number;
+      count: number;
     };
     AllocationPageDto: {
       items: components['schemas']['AllocationQueryItemDto'][];
@@ -2948,6 +3356,9 @@ export interface components {
       /** Format: uri */
       url: string;
     };
+    EligibilityDto: {
+      eligible: boolean;
+    };
     HealthResponseDto: {
       /**
        * @example ok
@@ -3025,6 +3436,15 @@ export interface components {
     MetaDto: {
       locale: string;
       requestId: string;
+    };
+    ModeratedDto: {
+      id: string;
+      /** @enum {string} */
+      status: 'APPROVED' | 'REJECTED';
+    };
+    ModerationPageDto: {
+      items: components['schemas']['AdminReviewDto'][];
+      nextCursor: string | null;
     };
     MoneyDto: {
       /** @example 125000 */
@@ -3166,6 +3586,17 @@ export interface components {
         | 'REFUNDED'
         | 'PARTIALLY_REFUNDED';
     };
+    PreviewDto: {
+      allowedVariables: string[];
+      /** @enum {string} */
+      direction: 'rtl' | 'ltr';
+      /** @enum {string} */
+      locale: 'fa' | 'en';
+      /** @enum {boolean} */
+      smsEnabled: false;
+      subject: string | null;
+      text: string;
+    };
     PricePageDto: {
       items: components['schemas']['VariantPriceResponseDto'][];
       nextCursor: string | null;
@@ -3241,6 +3672,39 @@ export interface components {
       slug: string;
       sortWeight: number;
     };
+    PublicContentDto: {
+      blocks: Record<string, never>[];
+      id: string;
+      /** @enum {string} */
+      kind: 'page' | 'article' | 'faq';
+      locale: string;
+      media: {
+        altTextByLocale?: {
+          [key: string]: string;
+        };
+        height?: number | null;
+        id?: string;
+        kind?: string;
+        url?: string;
+        width?: number | null;
+      }[];
+      metaDescription: string | null;
+      metaTitle: string | null;
+      publishedAt: string;
+      slug: string;
+      slugs: {
+        [key: string]: string;
+      };
+      title: string;
+      updatedAt: string;
+    };
+    PublicContentPageDto: {
+      items: components['schemas']['PublicContentDto'][];
+      meta: {
+        locale?: string;
+      };
+      nextCursor: string | null;
+    };
     PublicProductDto: {
       brandLine: string | null;
       description: string | null;
@@ -3313,6 +3777,23 @@ export interface components {
       /** @enum {string} */
       status: 'REQUESTED' | 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
     };
+    ReviewDto: {
+      body: string;
+      createdAt: string;
+      id: string;
+      locale: string;
+      /** Format: uuid */
+      productId: string;
+      rating: number;
+      title: string;
+      /** @enum {boolean} */
+      verifiedPurchase: true;
+    };
+    ReviewPageDto: {
+      aggregate: components['schemas']['AggregateDto'] | null;
+      items: components['schemas']['ReviewDto'][];
+      nextCursor: string | null;
+    };
     SafeUserDto: {
       displayName: string | null;
       /** Format: email */
@@ -3342,6 +3823,7 @@ export interface components {
         | 'content:write'
         | 'content:publish'
         | 'review:moderate'
+        | 'review:submit'
         | 'settings:read'
         | 'settings:write'
         | 'role:grant'
@@ -3413,6 +3895,11 @@ export interface components {
       items: components['schemas']['StockLocationDto'][];
       nextCursor: string | null;
     };
+    SubmittedDto: {
+      id: string;
+      /** @enum {string} */
+      status: 'PENDING';
+    };
     TaxPageDto: {
       items: components['schemas']['TaxRateResponseDto'][];
       nextCursor: string | null;
@@ -3426,6 +3913,44 @@ export interface components {
       isInclusive: boolean;
       rateBps: number;
       region: string | null;
+    };
+    TemplateListRecordDto: {
+      allowedVariables: string[];
+      body: string;
+      /** @enum {string} */
+      channel: 'EMAIL' | 'SMS';
+      /** @enum {string} */
+      code: 'shipment-shipped' | 'shipment-delivered' | 'newsletter-confirm' | 'newsletter-welcome';
+      complete: boolean;
+      id: string;
+      /** @enum {string} */
+      locale: 'fa' | 'en';
+      subject: string | null;
+      updatedAt: string;
+    };
+    TemplatePageDto: {
+      items: components['schemas']['TemplateListRecordDto'][];
+      nextCursor: string | null;
+    };
+    TemplateRecordDto: {
+      body: string;
+      /** @enum {string} */
+      channel: 'EMAIL' | 'SMS';
+      /** @enum {string} */
+      code: 'shipment-shipped' | 'shipment-delivered' | 'newsletter-confirm' | 'newsletter-welcome';
+      id: string;
+      /** @enum {string} */
+      locale: 'fa' | 'en';
+      subject: string | null;
+      updatedAt: string;
+    };
+    TranslationDto: {
+      blocks: Record<string, never>[];
+      locale: string;
+      metaDescription: string | null;
+      metaTitle: string | null;
+      slug: string;
+      title: string;
     };
     ValidationIssueDto: {
       /** @example INVALID_VALUE */
@@ -4173,6 +4698,136 @@ export interface operations {
       };
     };
   };
+  listAdminContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminContentPageDto'];
+        };
+      };
+    };
+  };
+  createAdminContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminContentDto'];
+        };
+      };
+    };
+  };
+  getAdminContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminContentDto'];
+        };
+      };
+    };
+  };
+  archiveContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminContentDto'];
+        };
+      };
+    };
+  };
+  publishContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminContentDto'];
+        };
+      };
+    };
+  };
+  saveContentTranslation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminContentDto'];
+        };
+      };
+    };
+  };
   lookupAdminCustomers: {
     parameters: {
       query?: never;
@@ -4845,6 +5500,63 @@ export interface operations {
       };
     };
   };
+  listNotificationTemplates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TemplatePageDto'];
+        };
+      };
+    };
+  };
+  saveNotificationTemplate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TemplateRecordDto'];
+        };
+      };
+    };
+  };
+  previewNotificationTemplate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PreviewDto'];
+        };
+      };
+    };
+  };
   listAdminOrders: {
     parameters: {
       query?: never;
@@ -5455,6 +6167,67 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  listPendingReviews: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ModerationPageDto'];
+        };
+      };
+    };
+  };
+  approveReview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ModeratedDto'];
+        };
+      };
+    };
+  };
+  rejectReview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ModeratedDto'];
+        };
       };
     };
   };
@@ -6589,6 +7362,49 @@ export interface operations {
       };
     };
   };
+  listPublishedContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicContentPageDto'];
+        };
+      };
+    };
+  };
+  getPublishedContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+        kind: 'page' | 'article' | 'faq';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicContentDto'];
+        };
+      };
+    };
+  };
   getMe: {
     parameters: {
       query?: never;
@@ -6620,6 +7436,44 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  submitProductReview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SubmittedDto'];
+        };
+      };
+    };
+  };
+  getReviewEligibility: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EligibilityDto'];
         };
       };
     };
@@ -6749,6 +7603,63 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  confirmNewsletterSubscription: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AcceptedDto'];
+        };
+      };
+    };
+  };
+  requestNewsletterSubscription: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AcceptedDto'];
+        };
+      };
+    };
+  };
+  unsubscribeNewsletter: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AcceptedDto'];
         };
       };
     };
@@ -6900,6 +7811,27 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
+  listApprovedProductReviews: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        productId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReviewPageDto'];
         };
       };
     };

@@ -36,6 +36,7 @@ const schema = z
     LOG_LEVEL: z.enum(LOG_LEVEL_VALUES),
     TRUST_PROXY: z.string().min(1),
     API_ALLOWED_ORIGINS: z.string(),
+    PUBLIC_SITE_URL: z.string().url().optional(),
     API_BODY_LIMIT_BYTES: positiveInteger.max(1_048_576),
     API_SHUTDOWN_GRACE_MS: positiveInteger.max(120_000),
     API_READINESS_TIMEOUT_MS: positiveInteger.max(30_000),
@@ -130,6 +131,7 @@ export type ApiConfig = Readonly<{
   logLevel: (typeof LOG_LEVEL_VALUES)[number];
   trustProxy: false | string[];
   allowedOrigins: readonly string[];
+  notificationSiteOrigin: string;
   bodyLimitBytes: number;
   shutdownGraceMs: number;
   readinessTimeoutMs: number;
@@ -315,6 +317,19 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
 
   const trustProxy = parseTrustProxy(parsed.data.TRUST_PROXY);
   const allowedOrigins = parseOrigins(parsed.data.API_ALLOWED_ORIGINS);
+  const siteOrigin = new URL(
+    parsed.data.PUBLIC_SITE_URL ?? allowedOrigins[0] ?? 'http://localhost:3000',
+  );
+  if (
+    !['http:', 'https:'].includes(siteOrigin.protocol) ||
+    siteOrigin.username !== '' ||
+    siteOrigin.password !== '' ||
+    siteOrigin.pathname !== '/' ||
+    siteOrigin.search !== '' ||
+    siteOrigin.hash !== '' ||
+    (parsed.data.NODE_ENV === 'production' && siteOrigin.protocol !== 'https:')
+  )
+    throw new Error('Invalid API environment configuration: PUBLIC_SITE_URL.');
   const uploadAllowedOrigins = parseOrigins(parsed.data.MEDIA_UPLOAD_ALLOWED_ORIGINS);
   const enabledLocales = parsed.data.CATALOG_ENABLED_LOCALES.split(',')
     .map((locale) => locale.trim().toLowerCase())
@@ -425,6 +440,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     logLevel: parsed.data.LOG_LEVEL,
     trustProxy,
     allowedOrigins,
+    notificationSiteOrigin: siteOrigin.origin,
     bodyLimitBytes: parsed.data.API_BODY_LIMIT_BYTES,
     shutdownGraceMs: parsed.data.API_SHUTDOWN_GRACE_MS,
     readinessTimeoutMs: parsed.data.API_READINESS_TIMEOUT_MS,

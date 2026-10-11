@@ -45,6 +45,14 @@ export class AuthorizationGuard implements CanActivate {
     }
     this.identity.authorize(principal, permissions);
     if (
+      principal.kind === 'CUSTOMER' &&
+      request.url.split('?')[0] === '/v1/me/reviews' &&
+      request.method === 'POST'
+    ) {
+      const result = await this.adminWrites.consume(`review:${principal.userId}`, Date.now());
+      if (!result.allowed) throw rateLimitError(result);
+    }
+    if (
       principal.kind === 'STAFF' &&
       request.url.split('?')[0]?.startsWith('/v1/admin/') &&
       !['GET', 'HEAD', 'OPTIONS'].includes(request.method)

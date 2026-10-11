@@ -28,7 +28,10 @@ export class SitemapRevalidationService {
     if (input.scope === 'catalog') {
       if (input.id !== undefined) throw new TypeError('Catalog-wide revalidation has no ID.');
     } else if (
-      (input.scope !== 'product' && input.scope !== 'category' && input.scope !== 'collection') ||
+      (input.scope !== 'product' &&
+        input.scope !== 'category' &&
+        input.scope !== 'collection' &&
+        input.scope !== 'content') ||
       input.id === undefined ||
       !UUID.test(input.id)
     ) {

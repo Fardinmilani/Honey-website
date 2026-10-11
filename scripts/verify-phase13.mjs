@@ -194,7 +194,7 @@ assert.match(ordersUi, /UNPAID|paymentStatus/u);
 assert.doesNotMatch(web, /from\s+['"]@honey\/backend['"]/u);
 assert.doesNotMatch(web, /from\s+['"]@honey\/db['"]/u);
 assert.doesNotMatch(web, /from\s+['"]@prisma\/client['"]/u);
-assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|reviews|notifications|queues)/u);
+assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|queues)/u);
 await verifyAdminBoundary(root);
 
 assert.match(webBff, /v1\/checkout/u);

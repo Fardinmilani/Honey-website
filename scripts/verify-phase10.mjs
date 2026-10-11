@@ -174,7 +174,9 @@ const productBuilder = await readFile(
   'utf8',
 );
 assert.match(productBuilder, /buildProductJsonLd/u);
-assert.doesNotMatch(productBuilder, /aggregateRating/u);
+// Phase 18 adds only an authoritative positive approved-review aggregate.
+assert.match(productBuilder, /input\.aggregate\.count > 0/u);
+assert.match(productBuilder, /ratingValue: input\.aggregate\.average/u);
 assert.doesNotMatch(productBuilder, /\breview\b/u);
 
 const seoBuildersDir = await files('apps/web/src/lib/seo/builders');
@@ -231,10 +233,7 @@ assert.match(sitemapXml, /xhtml:link/u);
 assert.match(sitemapXml, /x-default/u);
 
 // Completed phases have their own gates. Phase 18 entry points remain absent.
-for (const absent of [
-  'apps/web/src/app/[locale]/(admin)/admin/(staff)/reviews/page.tsx',
-  'apps/web/src/app/[locale]/(admin)/admin/(staff)/cms/page.tsx',
-]) {
+for (const absent of ['apps/web/src/app/[locale]/(admin)/admin/(staff)/cms/page.tsx']) {
   await assert.rejects(access(resolve(root, absent)), undefined, `${absent} must not exist`);
 }
 

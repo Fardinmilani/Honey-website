@@ -341,3 +341,11 @@ are audited in CI against the route table.
 - [ ] `prefers-reduced-motion` path verified
 - [ ] Both locales crawlable end to end with no orphan pages
 - [ ] Search Console verified for both locale directories
+# Phase 18 editorial and rating SEO
+
+Published pages/articles have reciprocal locale slugs, canonical metadata and
+dedicated sitemap partitions. Article structured data comes from the displayed
+published row; FAQPage contains visible published FAQ entries. Product
+aggregateRating is present only for a positive approved-review count and uses the
+same server projection as visible ratings. Admin, draft, archived and newsletter
+token pages stay excluded. JSON-LD uses the existing safe serializer.

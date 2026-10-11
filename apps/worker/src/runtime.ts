@@ -5,6 +5,8 @@ import { Queue, UnrecoverableError, Worker, type Job } from 'bullmq';
 
 import {
   FulfilmentService,
+  ContentCacheInvalidationService,
+  NotificationsService,
   InventoryService,
   JOB_NAMES,
   type BackupVerificationService,
@@ -113,6 +115,8 @@ export class WorkerRuntime {
   #inventory: InventoryService | undefined;
   #payments: PaymentsService | undefined;
   #fulfilment: FulfilmentService | undefined;
+  #notifications: NotificationsService | undefined;
+  #contentCache: ContentCacheInvalidationService | undefined;
   #sitemap: SitemapRevalidationService | undefined;
   #requestContext: RequestContextPort | undefined;
   #dispatcher: OutboxDispatcher | undefined;
@@ -137,6 +141,8 @@ export class WorkerRuntime {
       this.#inventory = this.#app.get(InventoryService);
       this.#payments = this.#app.get(PaymentsService);
       this.#fulfilment = this.#app.get(FulfilmentService);
+      this.#notifications = this.#app.get(NotificationsService);
+      this.#contentCache = this.#app.get(ContentCacheInvalidationService);
       this.#sitemap = this.#app.get(SitemapRevalidationService);
       this.#requestContext = this.#app.get<RequestContextPort>(REQUEST_CONTEXT);
       for (const name of QUEUE_NAMES) {
@@ -333,6 +339,7 @@ export class WorkerRuntime {
       case JOB_NAMES.paymentReconcile:
         return 'payments';
       case JOB_NAMES.fulfilmentEmail:
+      case JOB_NAMES.newsletterEmail:
         return 'email';
       case JOB_NAMES.catalogRevalidate:
         return 'cache';
@@ -399,11 +406,23 @@ export class WorkerRuntime {
           this.config.paymentBatchSize,
         );
       case JOB_NAMES.fulfilmentEmail:
-        return this.#require(this.#fulfilment).sendNotificationForSystem(
+        return this.#require(this.#notifications).sendShipmentForSystem(
           { kind: 'SYSTEM', source: 'WORKER', correlationId: jobCorrelation(envelope) },
           envelope.payload,
+          this.#require(this.#fulfilment),
+        );
+      case JOB_NAMES.newsletterEmail:
+        return this.#require(this.#notifications).sendNewsletterForSystem(
+          { kind: 'SYSTEM', source: 'WORKER', correlationId: jobCorrelation(envelope) },
+          envelope.payload.deliveryId,
         );
       case JOB_NAMES.catalogRevalidate:
+        if (envelope.payload.scope === 'content')
+          await this.#require(this.#contentCache).invalidateForSystem({
+            kind: 'SYSTEM',
+            source: 'WORKER',
+            correlationId: jobCorrelation(envelope),
+          });
         return this.#require(this.#sitemap).revalidateCatalog({
           ...envelope.payload,
           correlationId: jobCorrelation(envelope),

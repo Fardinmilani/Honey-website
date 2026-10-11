@@ -319,6 +319,21 @@ jobs:
       - name: Verify Phase 17 admin boundary and protected assets
         run: pnpm phase17:verify
 
+      - name: Run Phase 18 content, reviews and newsletter real PostgreSQL tests
+        run: pnpm --filter @honey/backend test -- --run test/phase18.unit.test.ts test/phase18.integration.test.ts test/phase18-cache.test.ts
+
+      - name: Run Phase 18 authorization, CSRF and public privacy tests
+        run: pnpm --filter @honey/api test -- --run test/phase18.test.ts
+
+      - name: Run Phase 18 worker routing and structured data tests
+        run: pnpm --filter @honey/worker test -- --run src/phase18.test.ts && pnpm --filter @honey/web test -- --run src/lib/seo/editorial.test.ts
+
+      - name: Run Phase 18 browser, axe, Redis worker and Mailpit integration
+        run: pnpm phase18:test:e2e
+
+      - name: Verify Phase 18 scope and protected assets
+        run: pnpm phase18:verify
+
       - name: Prove Hero media never entered object storage
         run: |
           for bucket in honey-media-ci honey-private-ci; do

@@ -155,6 +155,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     { id: identitySeedId(0x1110), code: 'role:grant' },
     { id: identitySeedId(0x1111), code: 'audit:read' },
     { id: identitySeedId(0x1114), code: 'order:note' },
+    { id: identitySeedId(0x1115), code: 'review:submit' },
   ] as const;
   for (const permission of permissions) {
     await client.permission.upsert({
@@ -165,12 +166,17 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
   }
 
   const bundles = new Map<string, readonly string[]>([
-    ['OWNER', permissions.map((permission) => permission.code)],
+    [
+      'OWNER',
+      permissions.map((permission) => permission.code).filter((code) => code !== 'review:submit'),
+    ],
     [
       'ADMIN',
       permissions
         .map((permission) => permission.code)
-        .filter((code) => code !== 'role:grant' && code !== 'settings:write'),
+        .filter(
+          (code) => code !== 'role:grant' && code !== 'settings:write' && code !== 'review:submit',
+        ),
     ],
     [
       'ORDER_MANAGER',
@@ -193,7 +199,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
       ],
     ],
     ['SUPPORT', ['order:read', 'customer:read', 'order:note']],
-    ['CUSTOMER', []],
+    ['CUSTOMER', ['review:submit']],
   ]);
   const permissionsByCode = new Map<string, (typeof permissions)[number]>(
     permissions.map((permission) => [permission.code, permission]),
@@ -210,6 +216,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     ['ADMIN:order:note', identitySeedId(0x2201)],
     ['ORDER_MANAGER:order:note', identitySeedId(0x2202)],
     ['SUPPORT:order:note', identitySeedId(0x2203)],
+    ['CUSTOMER:review:submit', identitySeedId(0x2300)],
   ]);
   let assignmentNumber = 0x2000;
   for (const role of roles) {

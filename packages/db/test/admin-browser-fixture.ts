@@ -26,15 +26,18 @@ try {
   const totp = new Rfc6238Totp();
   const users = [];
   let customerId = '';
-  for (let index = 0; index < 10; index += 1) {
+  let phase18CustomerId = '';
+  const phase18 = process.argv.includes('--phase18');
+  for (let index = 0; index < (phase18 ? 11 : 10); index += 1) {
     const password = randomBytes(24).toString('base64url');
     const secret = totp.generateSecret();
     const encrypted = cipher.encrypt(secret);
-    const isStaff = index !== 4;
-    const roleCode = index === 3 ? 'SUPPORT' : index === 4 ? 'CUSTOMER' : 'OWNER';
+    const isStaff = index !== 4 && index !== 10;
+    const roleCode = index === 3 ? 'SUPPORT' : !isStaff ? 'CUSTOMER' : 'OWNER';
     const role = await prisma.role.findUniqueOrThrow({ where: { code: roleCode } });
     const id = randomUUID();
-    if (!isStaff) customerId = id;
+    if (index === 4) customerId = id;
+    if (index === 10) phase18CustomerId = id;
     const email = `phase17-browser-${index}@example.invalid`;
     await prisma.user.create({
       data: {
@@ -69,22 +72,48 @@ try {
   const orderLineId = randomUUID();
   const paymentId = randomUUID();
   const cancelOrderId = randomUUID();
+  const phase18FaOrderId = randomUUID();
+  const phase18FaOrderLineId = randomUUID();
   for (const fixture of [
-    { orderId, orderLineId, paymentId, number: 'HNY-PHASE17-BROWSER' },
+    {
+      orderId,
+      orderLineId,
+      paymentId,
+      number: 'HNY-PHASE17-BROWSER',
+      locale: 'en',
+      userId: customerId,
+      email: 'phase17-browser-4@example.invalid',
+    },
     {
       orderId: cancelOrderId,
       orderLineId: randomUUID(),
       paymentId: randomUUID(),
       number: 'HNY-PHASE17-CANCEL',
+      locale: 'en',
+      userId: customerId,
+      email: 'phase17-browser-4@example.invalid',
     },
+    ...(phase18
+      ? [
+          {
+            orderId: phase18FaOrderId,
+            orderLineId: phase18FaOrderLineId,
+            paymentId: randomUUID(),
+            number: 'HNY-PHASE18-FA',
+            locale: 'fa',
+            userId: phase18CustomerId,
+            email: 'phase17-browser-10@example.invalid',
+          },
+        ]
+      : []),
   ]) {
     await prisma.order.create({
       data: {
         id: fixture.orderId,
-        userId: customerId,
+        userId: fixture.userId,
         number: fixture.number,
-        email: 'phase17-browser-4@example.invalid',
-        localeAtPurchase: 'en',
+        email: fixture.email,
+        localeAtPurchase: fixture.locale,
         currency: 'IRR',
         status: 'PAID',
         paymentStatus: 'PAID',
@@ -165,7 +194,14 @@ try {
     databaseUrl: database.databaseUrl,
     encryptionKey,
     users,
-    ids: { ...seedIds, orderId, orderLineId, paymentId, cancelOrderId },
+    ids: {
+      ...seedIds,
+      orderId,
+      orderLineId,
+      paymentId,
+      cancelOrderId,
+      ...(phase18 ? { phase18FaOrderId, phase18FaOrderLineId } : {}),
+    },
   });
   await new Promise<void>((resolve) => {
     process.once('message', () => resolve());

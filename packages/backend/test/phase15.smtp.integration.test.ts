@@ -155,12 +155,27 @@ class LocalSmtpServer {
 }
 
 function textBody(message: string): string {
+  const part = message
+    .split(/\r\n--[^\r\n]+\r\n/u)
+    .find((value) => /^Content-Type: text\/plain/imu.test(value));
+  if (part !== undefined) message = part;
   const separator = message.indexOf('\r\n\r\n');
   if (separator < 0) throw new Error('SMTP message body is missing.');
   const headers = message.slice(0, separator);
   const body = message.slice(separator + 4);
   if (/^Content-Transfer-Encoding: base64$/imu.test(headers)) {
     return Buffer.from(body.replaceAll(/\s/gu, ''), 'base64').toString('utf8');
+  }
+  if (/^Content-Transfer-Encoding: quoted-printable$/imu.test(headers)) {
+    const bytes = body
+      .replaceAll(/=\r\n/gu, '')
+      .split(/(=[A-F0-9]{2})/gu)
+      .flatMap((piece) =>
+        /^=[A-F0-9]{2}$/u.test(piece)
+          ? [Number.parseInt(piece.slice(1), 16)]
+          : [...Buffer.from(piece, 'utf8')],
+      );
+    return Buffer.from(bytes).toString('utf8');
   }
   return body;
 }

@@ -6,6 +6,7 @@ export type ProductJsonLdInput = {
   readonly category?: string;
   readonly inLanguage: string;
   readonly url: string;
+  readonly aggregate?: Readonly<{ count: number; average: number }> | null;
   /**
    * Current public catalog pricing for one product variant. The caller must
    * supply this only from the authoritative catalog response.
@@ -46,6 +47,13 @@ export type ProductJsonLd = {
   readonly inLanguage: string;
   readonly url: string;
   readonly offers?: ProductOfferJsonLd;
+  readonly aggregateRating?: Readonly<{
+    '@type': 'AggregateRating';
+    ratingValue: number;
+    reviewCount: number;
+    bestRating: 5;
+    worstRating: 1;
+  }>;
 };
 
 /**
@@ -73,6 +81,23 @@ export function buildProductJsonLd(input: ProductJsonLdInput): ProductJsonLd {
     ...jsonLd,
     ...(input.category !== undefined ? { category: input.category } : {}),
     ...(offer !== null ? { offers: offer } : {}),
+    ...(input.aggregate !== undefined &&
+    input.aggregate !== null &&
+    Number.isSafeInteger(input.aggregate.count) &&
+    input.aggregate.count > 0 &&
+    Number.isFinite(input.aggregate.average) &&
+    input.aggregate.average >= 1 &&
+    input.aggregate.average <= 5
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating' as const,
+            ratingValue: input.aggregate.average,
+            reviewCount: input.aggregate.count,
+            bestRating: 5 as const,
+            worstRating: 1 as const,
+          },
+        }
+      : {}),
   };
 }
 

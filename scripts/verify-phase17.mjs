@@ -36,13 +36,13 @@ const sections = [
 for (const section of sections) await access(resolve(root, `${staff}/${section}/page.tsx`));
 await access(resolve(root, 'apps/web/src/app/[locale]/(admin)/admin/sign-in/page.tsx'));
 const boundary = await verifyAdminBoundary(root);
-assert.equal(boundary.controllers, 14);
-assert.equal(boundary.operations, 101);
+assert.equal(boundary.controllers, 17);
+assert.equal(boundary.operations, 113);
 assert.equal(
   (await files('apps/web/src/app/[locale]/(admin)/admin')).filter((path) =>
     path.endsWith('/page.tsx'),
   ).length,
-  18,
+  22,
 );
 const layout = await read('apps/web/src/app/[locale]/(admin)/layout.tsx');
 assert.match(layout, /index:\s*false/u);
@@ -74,7 +74,7 @@ for (const proof of [
 ])
   assert.ok(bff.includes(proof), `Missing BFF proof ${proof}.`);
 const bffFiles = await files('apps/web/src/app/api/bff/admin');
-assert.equal(bffFiles.length, 88, 'Every explicit admin BFF route must remain present.');
+assert.equal(bffFiles.length, 104, 'Every explicit admin BFF route must remain present.');
 for (const path of bffFiles) {
   assert.doesNotMatch(path, /\[\.{3}/u, 'A catch-all admin proxy is forbidden.');
   const source = await read(path);
@@ -98,15 +98,7 @@ assert.doesNotMatch(
   /\b(?:sellerId|vendorId|merchantId|commission|moisture|diastase|therapeutic|labVerified)\b/iu,
 );
 assert.doesNotMatch(ui, /@ts-ignore|\bTODO\b|\bas any\b/u);
-for (const future of [
-  'analytics',
-  'reviews',
-  'cms',
-  'notifications',
-  'jobs',
-  'queues',
-  'database',
-]) {
+for (const future of ['analytics', 'cms', 'jobs', 'queues', 'database']) {
   assert.ok(!navigation.includes(`path: '${future}'`));
   await assert.rejects(access(resolve(root, `${staff}/${future}/page.tsx`)));
 }

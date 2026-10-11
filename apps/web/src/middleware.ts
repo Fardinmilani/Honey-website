@@ -100,6 +100,11 @@ export function middleware(request: NextRequest) {
 
   const rewritten = maybeRewriteLocalizedPath(request);
   const response = rewritten ?? NextResponse.next();
+  if (segments[1] === 'newsletter') {
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    response.headers.set('Referrer-Policy', 'no-referrer');
+  }
   response.cookies.set(LOCALE_COOKIE_NAME, first, {
     path: '/',
     sameSite: 'lax',

@@ -1,4 +1,5 @@
 import type { MessageCatalog } from '../types.js';
+import { editorial } from './editorial.js';
 import { admin } from './admin.js';
 import { accessibility } from './accessibility.js';
 import { catalog } from './catalog.js';
@@ -13,6 +14,7 @@ import { search } from './search.js';
 import { seo } from './seo.js';
 
 export const faCatalog = {
+  editorial,
   admin,
   common,
   navigation,

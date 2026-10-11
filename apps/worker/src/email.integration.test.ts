@@ -155,12 +155,29 @@ class LocalSmtpServer {
 }
 
 function textBody(message: string): string {
+  // Phase 18's conservative renderer sends multipart text + HTML. Verify both
+  // real MIME parts rather than inspecting only the former text-only envelope.
+  const part = message
+    .split(/\r\n--[^\r\n]+\r\n/u)
+    .find((value) => /^Content-Type: text\/plain/imu.test(value));
+  if (part !== undefined) message = part;
   const separator = message.indexOf('\r\n\r\n');
   if (separator < 0) throw new Error('SMTP message body is missing.');
   const headers = message.slice(0, separator);
   const body = message.slice(separator + 4);
   if (/^Content-Transfer-Encoding: base64$/imu.test(headers)) {
     return Buffer.from(body.replaceAll(/\s/gu, ''), 'base64').toString('utf8');
+  }
+  if (/^Content-Transfer-Encoding: quoted-printable$/imu.test(headers)) {
+    const bytes = body
+      .replaceAll(/=\r\n/gu, '')
+      .split(/(=[A-F0-9]{2})/gu)
+      .flatMap((piece) =>
+        /^=[A-F0-9]{2}$/u.test(piece)
+          ? [Number.parseInt(piece.slice(1), 16)]
+          : [...Buffer.from(piece, 'utf8')],
+      );
+    return Buffer.from(bytes).toString('utf8');
   }
   return body;
 }
@@ -332,12 +349,12 @@ describe('Phase 16 committed shipment outbox to SMTP delivery', () => {
           lease_until: Date | null;
           attempt_count: number;
         }>(
-          'SELECT event_type, sent_at, lease_until, attempt_count FROM fulfilment_email_delivery WHERE shipment_id = $1::uuid',
-          [fixture.shipmentId],
+          "SELECT template_code AS event_type, sent_at, lease_until, attempt_count FROM notification_delivery WHERE dedupe_key = $1 AND status = 'SENT'",
+          [`fulfilment:${fixture.shipmentId}:${fixture === shipped ? 'SHIPPED' : 'DELIVERED'}`],
         );
         expect(delivery.rows).toEqual([
           expect.objectContaining({
-            event_type: fixture === shipped ? 'SHIPPED' : 'DELIVERED',
+            event_type: fixture === shipped ? 'shipment-shipped' : 'shipment-delivered',
             sent_at: expect.any(Date),
             lease_until: null,
             attempt_count: 1,
@@ -365,8 +382,8 @@ describe('Phase 16 committed shipment outbox to SMTP delivery', () => {
       await replay.waitUntilFinished(emailEvents, 15_000);
       expect(smtp.messages).toHaveLength(2);
       const replayDelivery = await sql.query<{ attempt_count: number }>(
-        "SELECT attempt_count FROM fulfilment_email_delivery WHERE shipment_id = $1::uuid AND event_type = 'SHIPPED'",
-        [shipped.shipmentId],
+        "SELECT attempt_count FROM notification_delivery WHERE dedupe_key = $1 AND status = 'SENT'",
+        [`fulfilment:${shipped.shipmentId}:SHIPPED`],
       );
       expect(replayDelivery.rows[0]?.attempt_count).toBe(1);
 

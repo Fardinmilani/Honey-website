@@ -198,6 +198,7 @@ export function AdminForm({
   idempotent = false,
   danger = false,
   onSuccess,
+  controlledVersion,
 }: FormContext & {
   path: string;
   method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -207,6 +208,7 @@ export function AdminForm({
   idempotent?: boolean;
   danger?: boolean;
   onSuccess?: (result: unknown) => void;
+  controlledVersion?: unknown;
 }) {
   const m = getNamespace(locale, 'admin');
   const router = useRouter();
@@ -225,6 +227,13 @@ export function AdminForm({
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [mode, setMode] = useState<'confirm' | 'step-up' | null>(null);
+  const previousVersion = useRef(controlledVersion);
+  useEffect(() => {
+    if (previousVersion.current === controlledVersion) return;
+    previousVersion.current = controlledVersion;
+    setDirty(true);
+    setSaved(false);
+  }, [controlledVersion]);
   useEffect(() => {
     if (mode !== null) dialog.current?.showModal();
     else dialog.current?.close();

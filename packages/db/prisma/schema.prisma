@@ -301,6 +301,8 @@ enum PublishStatus {
 }
 
 model User {
+  productReviews     ProductReview[]      @relation("ReviewAuthor")
+  moderatedReviews   ProductReview[]      @relation("ReviewModerator")
   id                 String               @id @db.Uuid
   email              String               @unique @db.Citext
   emailVerifiedAt    DateTime?            @map("email_verified_at") @db.Timestamptz(3)
@@ -514,6 +516,7 @@ model Product {
   collections        ProductCollection[]
   media              ProductMedia[]
   orderLines         OrderLine[]
+  reviews            ProductReview[]
 
   @@index([status, publishedAt(sort: Desc)])
   @@index([primaryCategoryId, status])
@@ -1341,6 +1344,7 @@ model Order {
   shipments               Shipment[]
   reservations            StockReservation[]
   couponRedemptions       CouponRedemption[]
+  reviews                 ProductReview[]
 
   @@index([checkoutSessionId])
   @@index([userId, placedAt(sort: Desc)])
@@ -1510,30 +1514,30 @@ model PaymentTransaction {
 }
 
 model Refund {
-  id          String       @id @db.Uuid
-  orderId     String       @map("order_id") @db.Uuid
-  paymentId   String       @map("payment_id") @db.Uuid
-  amountMinor BigInt       @map("amount_minor")
-  reason      String
-  status      RefundStatus @default(REQUESTED)
-  requestedBy String?      @map("requested_by") @db.Uuid
-  providerRef String?      @map("provider_ref")
-  idempotencyKey String?   @map("idempotency_key")
-  requestHash String?      @map("request_hash")
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  completedAt DateTime?    @map("completed_at") @db.Timestamptz(3)
-  order       Order        @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  payment     Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  requester   User?        @relation(fields: [requestedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  id             String       @id @db.Uuid
+  orderId        String       @map("order_id") @db.Uuid
+  paymentId      String       @map("payment_id") @db.Uuid
+  amountMinor    BigInt       @map("amount_minor")
+  reason         String
+  status         RefundStatus @default(REQUESTED)
+  requestedBy    String?      @map("requested_by") @db.Uuid
+  providerRef    String?      @map("provider_ref")
+  idempotencyKey String?      @map("idempotency_key")
+  requestHash    String?      @map("request_hash")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(3)
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requester      User?        @relation(fields: [requestedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   createdBy String? @map("created_by") @db.Uuid
   updatedBy String? @map("updated_by") @db.Uuid
 
+  @@unique([paymentId, idempotencyKey])
   @@index([orderId])
   @@index([paymentId])
   @@index([requestedBy])
-  @@unique([paymentId, idempotencyKey])
   @@map("refund")
 }
 
@@ -1957,4 +1961,123 @@ model JobFailure {
   @@unique([queue, jobId, terminalCycle])
   @@index([queue, failedAt(sort: Desc)])
   @@map("job_failure")
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("review_status")
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+
+  @@map("notification_channel")
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  BOUNCED
+
+  @@map("notification_status")
+}
+
+enum NewsletterStatus {
+  PENDING
+  CONFIRMED
+  UNSUBSCRIBED
+
+  @@map("newsletter_status")
+}
+
+model ProductReview {
+  id          String       @id @db.Uuid
+  productId   String       @map("product_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  orderId     String       @map("order_id") @db.Uuid
+  rating      Int
+  title       String
+  body        String
+  locale      String
+  status      ReviewStatus @default(PENDING)
+  moderatedBy String?      @map("moderated_by") @db.Uuid
+  moderatedAt DateTime?    @map("moderated_at") @db.Timestamptz(3)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  user        User         @relation("ReviewAuthor", fields: [userId], references: [id], onDelete: Restrict)
+  moderator   User?        @relation("ReviewModerator", fields: [moderatedBy], references: [id], onDelete: Restrict)
+
+  @@unique([userId, productId])
+  @@index([orderId])
+  @@index([moderatedBy])
+  @@index([productId, status, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@map("product_review")
+}
+
+model NotificationTemplate {
+  id        String              @id @db.Uuid
+  code      String
+  locale    String
+  channel   NotificationChannel
+  subject   String?
+  body      String
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdBy String?             @map("created_by") @db.Uuid
+  updatedBy String?             @map("updated_by") @db.Uuid
+
+  @@unique([code, locale, channel])
+  @@map("notification_template")
+}
+
+model NotificationDelivery {
+  id             String                  @id @db.Uuid
+  dedupeKey      String                  @unique @map("dedupe_key")
+  templateCode   String                  @map("template_code")
+  channel        NotificationChannel
+  recipientHash  String                  @map("recipient_hash")
+  locale         String
+  status         NotificationStatus      @default(QUEUED)
+  providerRef    String?                 @map("provider_ref")
+  sentAt         DateTime?               @map("sent_at") @db.Timestamptz(3)
+  leaseToken     String?                 @map("lease_token") @db.Uuid
+  leaseUntil     DateTime?               @map("lease_until") @db.Timestamptz(3)
+  attemptCount   Int                     @default(0) @map("attempt_count")
+  subscriptionId String?                 @map("subscription_id") @db.Uuid
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  subscription   NewsletterSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  @@index([subscriptionId])
+  @@index([status, createdAt])
+  @@map("notification_delivery")
+}
+
+model NewsletterSubscription {
+  id                     String                 @id @db.Uuid
+  email                  String                 @unique @db.Citext
+  locale                 String
+  status                 NewsletterStatus       @default(PENDING)
+  confirmedAt            DateTime?              @map("confirmed_at") @db.Timestamptz(3)
+  unsubscribedAt         DateTime?              @map("unsubscribed_at") @db.Timestamptz(3)
+  confirmationHash       String?                @unique @map("confirmation_hash")
+  confirmationExpiresAt  DateTime?              @map("confirmation_expires_at") @db.Timestamptz(3)
+  confirmationConsumedAt DateTime?              @map("confirmation_consumed_at") @db.Timestamptz(3)
+  unsubscribeHash        String?                @unique @map("unsubscribe_hash")
+  unsubscribeExpiresAt   DateTime?              @map("unsubscribe_expires_at") @db.Timestamptz(3)
+  requestId              String                 @map("request_id") @db.Uuid
+  createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deliveries             NotificationDelivery[]
+
+  @@index([status])
+  @@map("newsletter_subscription")
 }

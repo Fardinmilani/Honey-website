@@ -11,11 +11,49 @@ import {
   type PublicProduct,
 } from '../catalog/api';
 import { absoluteUrl } from '../seo/absolute-url';
+import { allContent } from '../editorial/api';
 
 import { buildAlternatesForPaths, toLastmod, type SitemapUrlEntry } from './xml';
 
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 50;
+
+export async function buildContentSitemapEntries(
+  type: 'pages' | 'articles',
+): Promise<SitemapUrlEntry[]> {
+  const kind = type === 'pages' ? 'page' : 'article';
+  const path = type === 'pages' ? '/pages/[slug]' : '/articles/[slug]';
+  const rows = [...(await allContent(kind, 'fa')), ...(await allContent(kind, 'en'))];
+  const seen = new Set<string>();
+  const result: SitemapUrlEntry[] = [];
+  for (const row of rows) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    const paths: Partial<Record<Locale, string>> = {};
+    for (const locale of locales) {
+      const published = rows.find((item) => item.id === row.id && item.locale === locale);
+      if (published !== undefined)
+        paths[locale] = localizedHref(path, locale, { slug: published.slug });
+    }
+    const canonical = paths.en ?? paths.fa;
+    if (canonical !== undefined)
+      result.push({
+        loc: absoluteUrl(canonical),
+        lastmod: row.updatedAt,
+        alternates: buildAlternatesForPaths(paths),
+      });
+  }
+  if (type === 'articles') {
+    result.push({
+      loc: absoluteUrl(localizedHref('/articles', 'en')),
+      alternates: buildAlternatesForPaths({
+        fa: localizedHref('/articles', 'fa'),
+        en: localizedHref('/articles', 'en'),
+      }),
+    });
+  }
+  return result;
+}
 
 async function fetchAllProducts(locale: Locale): Promise<readonly PublicProduct[]> {
   const products: PublicProduct[] = [];
@@ -60,6 +98,13 @@ export async function buildStaticSitemapEntries(): Promise<SitemapUrlEntry[]> {
     {
       loc: absoluteUrl(localizedHref('/', 'en')),
       alternates,
+    },
+    {
+      loc: absoluteUrl(localizedHref('/faq', 'en')),
+      alternates: buildAlternatesForPaths({
+        fa: localizedHref('/faq', 'fa'),
+        en: localizedHref('/faq', 'en'),
+      }),
     },
   ];
 }
@@ -193,10 +238,14 @@ export async function buildCollectionSitemapEntries(): Promise<SitemapUrlEntry[]
 
 export async function buildLocaleTypeSitemapEntries(
   locale: Locale,
-  type: 'static' | 'products' | 'categories' | 'collections',
+  type: 'static' | 'products' | 'categories' | 'collections' | 'pages' | 'articles',
 ): Promise<SitemapUrlEntry[]> {
   let entries: SitemapUrlEntry[];
   switch (type) {
+    case 'pages':
+    case 'articles':
+      entries = await buildContentSitemapEntries(type);
+      break;
     case 'static':
       entries = await buildStaticSitemapEntries();
       break;

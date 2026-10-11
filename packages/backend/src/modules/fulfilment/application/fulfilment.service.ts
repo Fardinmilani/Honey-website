@@ -378,6 +378,21 @@ export class FulfilmentService {
     return result.shipment;
   }
 
+  async verifyReviewDelivery(
+    orderId: string,
+    lines: readonly Readonly<{ id: string; quantity: number }>[],
+    transaction?: TransactionContext,
+  ): Promise<boolean> {
+    const shipments = await this.repository.listByOrder(uuid(orderId, 'orderId'), transaction);
+    const delivered = new Map<string, number>();
+    for (const shipment of shipments) {
+      if (shipment.status !== 'DELIVERED') continue;
+      for (const line of shipment.lines)
+        delivered.set(line.orderLineId, (delivered.get(line.orderLineId) ?? 0) + line.quantity);
+    }
+    return lines.length > 0 && lines.every((line) => delivered.get(line.id) === line.quantity);
+  }
+
   async markDelivered(
     principal: AuthenticatedPrincipal,
     shipmentIdInput: string,
@@ -409,10 +424,10 @@ export class FulfilmentService {
   }
 
   /** Called by the worker for a committed shipment event; the job carries no recipient PII. */
-  async sendNotificationForSystem(
+  async notificationForSystem(
     context: Readonly<{ kind: 'SYSTEM'; source: 'WORKER'; correlationId: string }>,
     input: Readonly<{ shipmentId: string; kind: FulfilmentNotificationKind }>,
-  ): Promise<void> {
+  ): Promise<FulfilmentNotification> {
     if (
       context.kind !== 'SYSTEM' ||
       context.source !== 'WORKER' ||
@@ -435,7 +450,14 @@ export class FulfilmentService {
       this.orders.lockForFulfilment(shipment.orderId, transaction),
     );
     if (order === null) throw new NotFoundAppError();
-    const notification = notificationFor(order, shipment);
+    return notificationFor(order, shipment);
+  }
+
+  async sendNotificationForSystem(
+    context: Readonly<{ kind: 'SYSTEM'; source: 'WORKER'; correlationId: string }>,
+    input: Readonly<{ shipmentId: string; kind: FulfilmentNotificationKind }>,
+  ): Promise<void> {
+    const notification = await this.notificationForSystem(context, input);
     if (input.kind === 'SHIPPED') {
       await this.notifications.sendShipped(notification);
     } else {
@@ -502,3 +524,4 @@ export class FulfilmentService {
     });
   }
 }
+import type { TransactionContext } from '../../../platform/domain/transaction.js';

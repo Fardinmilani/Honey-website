@@ -170,3 +170,12 @@ packages/
 The allowed dependency direction is enforced twice: by ESLint restrictions and
 by the zero-dependency checker in `tools/boundaries/`. See
 `docs/module-boundaries.md` and `AGENTS.md` before making changes.
+
+Phase 18 adds published bilingual pages/articles/FAQ, verified-purchase moderated
+reviews, localized shipment templates and double-opt-in newsletter. See
+[development and policy details](docs/content-reviews-notifications-development.md)
+and [ADR 0047](docs/adr/0047-content-reviews-localized-notifications.md).
+Admin workspaces are `/[locale]/admin/content`, `/[locale]/admin/reviews` and
+`/[locale]/admin/notifications`. Run `pnpm phase18:test:e2e` for disposable
+PostgreSQL/Redis/MinIO/Mailpit/worker browsers and `pnpm phase18:verify` for scope
+and integrity gates. No campaign or real SMS sending is included.

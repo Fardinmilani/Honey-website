@@ -377,3 +377,12 @@ Not now, and not on intuition. A module may become its own deployable only when
 Until then the modular monolith stands
 ([ADR-0002](adr/0002-modular-monolith.md)). Clean boundaries mean that extraction
 stays cheap, which is exactly why we do not need to do it early.
+# Phase 18 application seams
+
+Content owns the existing editorial tables and accesses public images through
+MediaService. Reviews owns ProductReview and uses Orders' ReviewPurchaseService,
+Fulfilment's delivery proof and Catalog's public product context. Notifications
+owns templates, deliveries and newsletter subscriptions; order mail values arrive
+through Fulfilment/Orders immutable projections. Worker processors validate shared
+job envelopes and invoke these application seams. No module queries another
+module's tables. See ADR 0047 and the Phase 18 development guide.

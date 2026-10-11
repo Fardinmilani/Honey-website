@@ -4,3 +4,4 @@ export * from './infrastructure/prisma-orders.repository.js';
 export * from './orders.module.js';
 export * from './application/admin-orders.service.js';
 export type * from './domain/admin-orders.js';
+export * from './application/review-purchase.service.js';

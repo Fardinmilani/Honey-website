@@ -7,6 +7,7 @@ import '@honey/ui/styles.css';
 
 import { getWebEnv } from '../../lib/env';
 import '../../styles/global.css';
+import '../../styles/editorial.css';
 
 type LocaleLayoutProps = {
   children: ReactNode;

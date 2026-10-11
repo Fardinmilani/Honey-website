@@ -1,4 +1,7 @@
 export const adminSections = [
+  { path: 'content', permission: 'content:read' },
+  { path: 'reviews', permission: 'review:moderate' },
+  { path: 'notifications', permission: 'content:read' },
   { path: 'catalog', permission: 'catalog:read' },
   { path: 'media', permission: 'content:write' },
   { path: 'pricing', permission: 'pricing:read' },

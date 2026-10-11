@@ -20,6 +20,7 @@ export const JOB_NAMES = {
   inventoryReconcile: 'inventory.reconcile.v1',
   paymentReconcile: 'payments.reconcile.v1',
   fulfilmentEmail: 'email.fulfilment-notify.v1',
+  newsletterEmail: 'email.newsletter-notify.v1',
   catalogRevalidate: 'cache.catalog-revalidate.v1',
   sitemapRegenerate: 'maintenance.sitemap-regenerate.v1',
   backupVerify: 'maintenance.backup-verify.v1',
@@ -38,6 +39,7 @@ export const JOB_QUEUES: Readonly<Record<JobName, QueueName>> = {
   [JOB_NAMES.inventoryReconcile]: 'inventory',
   [JOB_NAMES.paymentReconcile]: 'payments',
   [JOB_NAMES.fulfilmentEmail]: 'email',
+  [JOB_NAMES.newsletterEmail]: 'email',
   [JOB_NAMES.catalogRevalidate]: 'cache',
   [JOB_NAMES.sitemapRegenerate]: 'maintenance',
   [JOB_NAMES.backupVerify]: 'maintenance',
@@ -54,6 +56,7 @@ export type JobEnvelopeV1<TName extends JobName = JobName, TPayload = unknown> =
 }>;
 
 export type JobPayload =
+  | Readonly<{ type: typeof JOB_NAMES.newsletterEmail; payload: Readonly<{ deliveryId: string }> }>
   | Readonly<{ type: typeof JOB_NAMES.outboxDispatch; payload: Readonly<Record<string, never>> }>
   | Readonly<{ type: typeof JOB_NAMES.reservationSweep; payload: Readonly<Record<string, never>> }>
   | Readonly<{
@@ -71,7 +74,7 @@ export type JobPayload =
   | Readonly<{
       type: typeof JOB_NAMES.catalogRevalidate;
       payload: Readonly<{
-        scope: 'catalog' | 'product' | 'category' | 'collection';
+        scope: 'catalog' | 'product' | 'category' | 'collection' | 'content';
         id?: string;
       }>;
     }>
@@ -198,6 +201,13 @@ export function decodeJobEnvelope(input: unknown, expectedName?: JobName): Valid
         UUID.test(payload['shipmentId']) &&
         (payload['kind'] === 'SHIPPED' || payload['kind'] === 'DELIVERED');
       break;
+    case JOB_NAMES.newsletterEmail:
+      valid =
+        record(payload) &&
+        exactKeys(payload, ['deliveryId']) &&
+        typeof payload['deliveryId'] === 'string' &&
+        UUID.test(payload['deliveryId']);
+      break;
     case JOB_NAMES.catalogRevalidate:
       valid =
         record(payload) &&
@@ -205,6 +215,7 @@ export function decodeJobEnvelope(input: unknown, expectedName?: JobName): Valid
         (payload['scope'] === 'catalog' ||
           payload['scope'] === 'product' ||
           payload['scope'] === 'category' ||
+          payload['scope'] === 'content' ||
           payload['scope'] === 'collection') &&
         (payload['id'] === undefined ||
           (typeof payload['id'] === 'string' && UUID.test(payload['id']))) &&
@@ -266,6 +277,10 @@ export function decodeJobEnvelope(input: unknown, expectedName?: JobName): Valid
         payload: { shipmentId: payload['shipmentId'], kind: payload['kind'] },
       };
     }
+    case JOB_NAMES.newsletterEmail:
+      if (!record(payload) || typeof payload['deliveryId'] !== 'string')
+        throw new InvalidJobPayloadError('MALFORMED_JOB');
+      return { ...shared, type, payload: { deliveryId: payload['deliveryId'] } };
     case JOB_NAMES.catalogRevalidate: {
       if (!record(payload)) throw new InvalidJobPayloadError('MALFORMED_JOB');
       const scope = payload['scope'];
@@ -273,6 +288,7 @@ export function decodeJobEnvelope(input: unknown, expectedName?: JobName): Valid
         scope !== 'catalog' &&
         scope !== 'product' &&
         scope !== 'category' &&
+        scope !== 'content' &&
         scope !== 'collection'
       ) {
         throw new InvalidJobPayloadError('MALFORMED_JOB');

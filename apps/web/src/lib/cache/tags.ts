@@ -18,6 +18,7 @@ export const catalogTags = {
 } as const;
 
 export const ALLOWED_REVALIDATE_SCOPES = [
+  'content',
   'catalog',
   'products',
   'categories',
@@ -45,6 +46,10 @@ export function resolveRevalidateTags(input: {
 }): string[] {
   const tags = new Set<string>([catalogTags.catalog]);
   switch (input.scope) {
+    case 'content':
+      tags.add('content');
+      if (input.id) tags.add(`content:${input.id}`);
+      break;
     case 'catalog':
       tags.add(catalogTags.products);
       tags.add(catalogTags.categories);

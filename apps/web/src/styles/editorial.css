@@ -1,0 +1,142 @@
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.site-footer nav a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+}
+
+.editorial-page,
+.editorial-reviews {
+  max-inline-size: 48rem;
+  margin-inline: auto;
+  padding-block: 3rem;
+  overflow-wrap: anywhere;
+}
+
+.editorial-prose,
+.editorial-preserve {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.editorial-prose > * {
+  margin-block: 1.5rem;
+}
+
+.editorial-prose img {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+.editorial-prose figure {
+  margin-inline: 0;
+}
+
+.editorial-prose blockquote {
+  margin-inline: 0;
+  padding-inline-start: 1.25rem;
+  border-inline-start: 3px solid var(--color-ink);
+}
+
+.editorial-list,
+.editorial-review-list {
+  display: grid;
+  gap: 1.5rem;
+  padding-inline-start: 1.25rem;
+}
+
+.editorial-faq {
+  padding-block: 1rem;
+  border-block-end: 1px solid var(--color-ink);
+}
+
+.editorial-faq summary {
+  cursor: pointer;
+  min-block-size: 2.75rem;
+}
+
+.editorial-newsletter {
+  max-inline-size: 32rem;
+  margin-block: 2rem;
+}
+
+.editorial-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.editorial-form input:not([type='checkbox'], [type='radio']),
+.editorial-form textarea,
+.editorial-form button {
+  min-block-size: 2.75rem;
+  max-inline-size: 100%;
+  inline-size: 100%;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.editorial-form input:not([type='checkbox'], [type='radio']),
+.editorial-form textarea {
+  border: 1px solid var(--color-ink);
+  border-radius: 0.25rem;
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+.editorial-form textarea {
+  min-block-size: 8rem;
+  resize: vertical;
+}
+
+.editorial-form button {
+  border: 1px solid var(--color-ink);
+  border-radius: 0.25rem;
+  background: var(--color-ink);
+  color: var(--color-bg);
+  cursor: pointer;
+}
+
+.editorial-form button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.editorial-check {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  padding-block: 0.75rem;
+}
+
+.editorial-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-block-size: 2.75rem;
+  margin-inline-end: 0.5rem;
+}
+
+.editorial-form :focus-visible,
+.editorial-faq summary:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+.editorial-block-editor {
+  display: grid;
+  gap: 0.75rem;
+  border-block-end: 1px solid currentcolor;
+  padding-block: 1rem;
+}
+
+.editorial-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-inline-size: 100%;
+  font: inherit;
+}

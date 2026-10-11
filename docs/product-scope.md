@@ -89,6 +89,11 @@ Staff roles are defined in [`security-model.md`](security-model.md): `OWNER`,
 - Origin block: region, apiary, harvest season, floral source, harvest batch.
 - Availability and price, both server-computed.
 - Related products.
+- Moderated plain-text reviews from authenticated customers with a fully
+  delivered purchase of the product. One review per customer and product;
+  guest purchases, cancelled orders, and purchases with refunds cannot qualify
+  for a new review. Existing approved reviews remain after a refund. Public
+  authors are identified only by the localized verified-buyer label.
 
 ### 3.4 Cart and checkout
 - Persistent cart for both guests and signed-in customers.
@@ -108,6 +113,10 @@ Staff roles are defined in [`security-model.md`](security-model.md): `OWNER`,
 - Static/editorial pages: about, our apiaries, sourcing story, shipping,
   returns, privacy, terms, contact, FAQ.
 - All content localized per locale.
+- Optional newsletter signup with explicit consent, double opt-in, expiring
+  single-use confirmation, and a secure localized unsubscribe flow. Signup does
+  not activate marketing consent. No campaigns, broadcasts, segmentation, or
+  email tracking are included in Phase 18.
 
 ### 3.7 Cross-cutting
 - Persian (RTL) and English (LTR) with locale-prefixed URLs.
@@ -132,6 +141,7 @@ by `apps/api`.
 | Orders | Search, detail, status transitions, fulfilment, shipment creation, refunds, cancellation, notes |
 | Content | Pages, articles, FAQ, homepage arrangement, per-locale editing |
 | Reviews | Moderation queue (approve / reject) |
+| Notifications | Per-locale EMAIL/SMS template editing, allowlisted placeholders, and safe synthetic preview; no arbitrary test-send or SMS provider selection |
 | Customers | Search, detail, order history, address history — read-mostly |
 | Settings | Shipping zones/methods/rates, tax configuration, locale enablement, store profile |
 | Audit | Immutable log of privileged actions |

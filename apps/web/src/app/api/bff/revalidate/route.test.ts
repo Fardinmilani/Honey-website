@@ -34,13 +34,17 @@ describe('authenticated sitemap revalidation', () => {
   it.each(['fa', 'en'] as const)('revalidates only fixed %s sitemap paths', async (locale) => {
     const response = await POST(request({ scope: 'sitemap', locale }));
     expect(response.status).toBe(200);
-    expect(revalidatePath).toHaveBeenCalledTimes(5);
+    expect(revalidatePath).toHaveBeenCalledTimes(7);
+    expect(revalidatePath).toHaveBeenCalledWith(`/sitemaps/${locale}/pages`);
+    expect(revalidatePath).toHaveBeenCalledWith(`/sitemaps/${locale}/articles`);
     expect(revalidatePath).toHaveBeenCalledWith(`/sitemaps/${locale}/static`);
     expect(revalidatePath).toHaveBeenCalledWith(`/sitemaps/${locale}/products`);
     expect(revalidatePath).toHaveBeenCalledWith(`/sitemaps/${locale}/categories`);
     expect(revalidatePath).toHaveBeenCalledWith(`/sitemaps/${locale}/collections`);
     expect(revalidatePath).toHaveBeenCalledWith('/sitemap.xml');
-    expect(revalidateTag).toHaveBeenCalledExactlyOnceWith(`locale:${locale}`, { expire: 0 });
+    expect(revalidateTag).toHaveBeenCalledTimes(2);
+    expect(revalidateTag).toHaveBeenCalledWith(`locale:${locale}`, { expire: 0 });
+    expect(revalidateTag).toHaveBeenCalledWith('content', { expire: 0 });
   });
 
   it('rejects an invalid secret before touching caches', async () => {
@@ -75,6 +79,6 @@ describe('authenticated sitemap revalidation', () => {
   it('is safe to repeat the same fixed invalidation', async () => {
     expect((await POST(request({ scope: 'sitemap', locale: 'en' }))).status).toBe(200);
     expect((await POST(request({ scope: 'sitemap', locale: 'en' }))).status).toBe(200);
-    expect(revalidatePath).toHaveBeenCalledTimes(10);
+    expect(revalidatePath).toHaveBeenCalledTimes(14);
   });
 });

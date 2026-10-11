@@ -26,13 +26,118 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 14 | Payments | ✅ Complete; committed as `66e1fe3` | 2026-10-04 |
 | 15 | Shipping & Fulfilment | ✅ Complete; committed as `5887e7f` | 2026-10-05 |
 | 16 | Background Jobs | ✅ Complete; committed as `5ff4e90` | 2026-10-10 |
-| 17 | Admin Console | COMPLETE; working tree only, awaiting human review | 2026-10-11 |
-| 18 | Content, Reviews & Notifications | CURRENT; NOT STARTED | — |
-| 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
+| 17 | Admin Console | COMPLETE; committed by human as e25d3f1 | 2026-10-11 |
+| 18 | Content, Reviews & Notifications | COMPLETE; unstaged for human review | 2026-10-11 |
+| 19 | Observability, Caching & Performance | CURRENT; NOT STARTED | — |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 18 — Content, Reviews & Notifications (**CURRENT; NOT STARTED**).
-**Previous phase:** Phase 17 — Admin Console (**COMPLETE 2026-10-11; unstaged changes awaiting human review**).
+**Current phase:** Phase 19 — Observability, Caching & Performance (**CURRENT; NOT STARTED**).
+**Previous phase:** Phase 18 — Content, Reviews & Notifications (**COMPLETE 2026-10-11; unstaged**).
+
+## Phase 18 — Content, Reviews & Notifications (completed)
+
+The initial clean-tree preflight passed. Phase 17 exists in HEAD `e25d3f1`;
+the staging area is empty, `.env` is untracked, and Hero status/diff are empty.
+The prompt's four review/notification/newsletter skeleton models were absent;
+two forward migrations add them and the customer-only review capability,
+reusing the six existing content tables.
+No historical migration or dependency lockfile has been changed.
+
+### Human approvals
+
+- 2026-10-11: only an authenticated customer with an own, fully delivered,
+  paid, unrefunded purchase may submit one review per customer/product.
+  Guest purchases cannot qualify. Cancelled or refunded purchases cannot
+  qualify for a new review. Existing approved reviews remain after a refund.
+  Public author identity is only the localized verified-buyer label.
+- 2026-10-11: synchronize product scope with bounded double-opt-in newsletter
+  and EMAIL/SMS template administration; no broadcasts/campaigns or SMS vendor.
+- 2026-10-11: resubscribe requires fresh explicit consent and a new confirmation
+  email; all previous confirmation/unsubscribe links become invalid atomically.
+
+### Files and decisions
+
+The [completion report](phase18-completion-report.md) lists all 98 created and
+74 modified files, with each modified file's purpose. No dependency or lockfile
+change was made. [ADR-0047](adr/0047-content-reviews-localized-notifications.md)
+records flat content/publication, review policy, safe localized delivery and
+newsletter consent/token lifecycle. [ADR-0048](adr/0048-customer-review-submission-permission.md)
+records `review:submit`, granted only to CUSTOMER without granting staff order
+access. All existing grants and historical migrations are preserved.
+
+Content reuses Page/Article/FAQ translations, validates bounded plain-text
+blocks/public media, and requires complete FA/EN before publication. Drafts,
+archived content and private metadata cannot reach public projections. Redis
+resolution hits reread authoritative publication state; atomic outbox events
+invalidate web tags/sitemaps through the existing worker.
+
+Reviews are immutable PENDING submissions with server-derived purchase proof;
+STAFF `review:moderate` approves/rejects with claim guidance and deterministic
+publication checks. Only APPROVED rows contribute to public lists and aggregates;
+zero reviews omit JSON-LD aggregateRating. Private eligibility stays outside
+cached product HTML. Newsletter confirmation/unsubscribe use explicit POST;
+fresh consent invalidates all old-cycle links and queued intents.
+
+Notification templates and delivery records live in the DB. Shipment rendering
+uses frozen `Order.localeAtPurchase`, even when staff/user preferences differ.
+The existing email queue and fenced delivery authority preserve replay behavior;
+successful legacy delivery identities are backfilled. SMS is honestly disabled.
+All new protected operations use explicit server permissions and CSRF writes;
+privileged state, audit and useful outbox intent commit atomically.
+
+### Verification results
+
+- `pnpm db:format`, `db:validate`, `db:generate`, `db:migrate`,
+  `db:migrate:status`, `db:test`: exit 0 on disposable PostgreSQL. All 14 migrations
+  applied; 79 tables, 35 enums, 35 real rejection proofs; seeds stable twice.
+- `pnpm format`, `format:check`, `lint`, `stylelint`, `boundaries`, `typecheck`,
+  `test`, `build`, `i18n:validate`: exit 0. Workspace tests forced without cache:
+  backend 303, API 80, web 66, worker 40, i18n 29, contracts 3, UI 5 and boundaries
+  22 = 548 passed, 0 failed, 0 skipped. Core/utils have zero tests.
+- Phase 18 backend tests: 43 unit + 11 real DB + 1 Redis-outage regression = 55;
+  API 6, worker 7, web structured data 7 + anonymous eligibility BFF 2. Existing
+  revalidation tests also pass. No required test is skipped.
+- OpenAPI generate/check/lint/forbidden/types and breaking against committed
+  Phase 17 `HEAD`: exit 0; no warnings. All 15 Phase 4–18 verifiers pass.
+- Phase 18 browser: 7 passed, 0 failed, 0 skipped; 16 axe scans, zero serious or
+  critical violations; 65 viewport checks at 360/390/768/1280/1920.
+  Phase 17 admin browser: 10/0/0; full storefront: 101/0/0.
+- Real isolated worker completed 4 shipment and 8 newsletter jobs; Mailpit
+  received exactly 12 expected messages. Both opposite-admin/order locale cases
+  passed. 17 cache and 2 sitemap jobs completed; no rejected/dead-letter jobs.
+- Docker Compose validation/infrastructure verification and API/web/worker image
+  builds: exit 0. All images UID 1000, no `.env`; API readiness/new module boot,
+  protected admin routes, 5 localized web routes and worker Redis readiness pass.
+  API SIGTERM exits 0. Next 16.3 completes awaited cleanup then intentionally
+  exits 143; completion marker/no OOM/no forced kill verified. Active worker
+  sitemap job drains before SIGTERM exit 0.
+- Hero status/diff empty and all 8 hashes match HEAD; local and isolated MinIO
+  Hero-name scans have zero matches. Historical migrations and lock unchanged,
+  `.env` untracked, staging empty, `git diff --check` clean. Secret/token scan:
+  172 changed files and 39 built client files, no literal raw action tokens.
+  No configured non-placeholder secrets were available for literal comparison;
+  unavailable production-secret/subscriber validation is not claimed.
+
+Earlier failures and their fixes are documented in the completion report.
+No existing assertion, permission, validation, CSP or CI gate was weakened.
+Database/browser tests used disposable infrastructure; `honey_local` was not
+migrated, reset, repaired or seeded. No staging/commit/tag/push occurred.
+
+### Unresolved decisions
+
+No remaining Phase 18 human decision. Existing launch decisions retain their
+original phase boundaries. Phase 19 is CURRENT but NOT STARTED; no implementation
+or pre-wiring was added. Stop after this phase.
+
+### Risks
+
+SMTP acceptance followed by a crash before SENT persistence can duplicate mail;
+transport is not exactly-once. Claim filtering is deterministic and requires
+staff judgment. Missing locale templates fail closed and require an operational
+fix. Real Mailpit HTML/RTL checks passed; Gmail/Outlook visual QA was not executed.
+Production services, deployment, production secrets and subscriber data were not
+used. The two migrations still need normal human-reviewed deployment to the
+existing developer/production database; isolated migration verification passed.
 
 ## Phase 17 — Admin Console (completed)
 
@@ -2857,7 +2962,7 @@ Business decisions needed before the phases they block. Also listed in
 | 4 | Final production VAT applicability, rate, and inclusive/exclusive policy. Phase 13 uses an authoritative destination `TaxRate`; an explicit configured zero is valid and missing required configuration fails closed. | Production order activation / legal launch | Before accepting production orders |
 | ~~5~~ | ~~Guest checkout allowed, or account required?~~ | â€” | **Resolved 2026-09-12:** guest checkout is allowed with anonymous server-derived ownership and opaque high-entropy guest access; no account or fake user is created. |
 | 6 | Legal entity, statutory invoice format, and fields. The Phase 13 `HNY-YYYY-######` reference is not an invoice number. | Statutory invoicing / legal launch | Before issuing statutory invoices |
-| 7 | Are customer reviews in scope for launch? | Phase 18 | Before Phase 18 |
+| ~~7~~ | ~~Are customer reviews in scope for launch?~~ | — | **Resolved 2026-10-11:** verified-purchase, pending/moderated reviews with the human-approved eligibility, privacy and refund policy ([ADR-0047](adr/0047-content-reviews-localized-notifications.md)). |
 | ~~8~~ | ~~Hosting target~~ | â€” | **âœ… Resolved 2026-08-05** |
 | 9 | Production domain / apex vs `www` | Enabling `WEB_INDEXING_ENABLED=true`, production SEO launch, sitemap submission | Before production indexing |
 | 10 | Licensed Persian and Latin webfonts for the brand | Phase 9 polish | Open |
@@ -3044,3 +3149,4 @@ of that decision but does not make it.
 | 2026-08-05 | Initial deployment target: self-hosted Linux VPS with Docker Compose and a TLS reverse proxy | [ADR-0023](adr/0023-self-hosted-vps-deployment.md) |
 | 2026-08-05 | Phase 3 local environment completed with pinned PostgreSQL, Redis, MinIO, and Mailpit infrastructure | [Phase 3](#phase-3--local-environment) |
 | 2026-08-06 | Phase 6 identity and authorization completed with opaque sessions, permission-based authorization, mandatory staff TOTP, Redis lockout, and append-only audits | [Phase 6](#phase-6--identity--authorization) |
+| 2026-10-11 | Human-approved verified-review policy, bounded newsletter/template scope and fresh-consent resubscribe; Phase 18 completed with customer-only review permission | [ADR-0047](adr/0047-content-reviews-localized-notifications.md), [ADR-0048](adr/0048-customer-review-submission-permission.md) |

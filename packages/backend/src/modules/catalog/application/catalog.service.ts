@@ -163,6 +163,15 @@ function normalizeAltText(
 }
 
 export class CatalogService {
+  async publicReviewContext(
+    id: string,
+  ): Promise<Readonly<{ published: boolean; names: Readonly<Record<string, string>> }>> {
+    const product = await this.repository.getAdminProduct(id);
+    return {
+      published: product?.status === 'PUBLISHED',
+      names: Object.fromEntries(product?.translations.map((t) => [t.locale, t.name]) ?? []),
+    };
+  }
   readonly #config: CatalogConfig;
 
   constructor(

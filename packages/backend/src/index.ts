@@ -14,3 +14,6 @@ export * from './modules/pricing/index.js';
 export * from './modules/sourcing/index.js';
 export * from './modules/shipping/index.js';
 export * from './platform/index.js';
+export * from './modules/content/index.js';
+export * from './modules/reviews/index.js';
+export * from './modules/notifications/index.js';

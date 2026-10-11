@@ -67,9 +67,13 @@ function visit(schema, seen, path, errors, forbidden) {
 const errors = [];
 for (const [path, operations] of Object.entries(document.paths ?? {})) {
   if (path.startsWith('/v1/admin/')) continue;
-  const forbidden = path.startsWith('/v1/catalog/')
-    ? new RegExp(`${privateForbidden.source}|${catalogCommerceForbidden.source}`, 'iu')
-    : privateForbidden;
+  const editorialPrivate =
+    /^(?:userId|orderId|moderatedBy|moderator|recipientHash|confirmationHash|unsubscribeHash|providerRef|templateCode|createdBy)$/iu;
+  const forbidden = /^\/v1\/(?:content|products|newsletter)\//u.test(path)
+    ? new RegExp(`${privateForbidden.source}|${editorialPrivate.source}`, 'iu')
+    : path.startsWith('/v1/catalog/')
+      ? new RegExp(`${privateForbidden.source}|${catalogCommerceForbidden.source}`, 'iu')
+      : privateForbidden;
   for (const [method, operation] of Object.entries(operations)) {
     if (!['get', 'post', 'put', 'patch', 'delete'].includes(method)) continue;
     for (const [status, response] of Object.entries(operation.responses ?? {})) {

@@ -394,3 +394,12 @@ syntax error, or a non-reciprocal hreflang pair.
 No migration. No schema change. No component change. No domain change.
 If any step in a future locale addition requires one of those, the abstraction has
 leaked and it is a bug to fix rather than a cost to absorb.
+# Phase 18 locale sources
+
+Editorial UI labels belong to the parity-checked editorial namespace. Content and
+notification translations belong in Postgres; reviews remain customer text.
+Shipment email uses immutable Order.localeAtPurchase, regardless of admin/browser
+or later customer preference. Newsletter uses stored consent-cycle locale.
+Missing templates fail closed, never silently fall back. FA markup uses RTL and
+EN uses LTR; operational identifiers have bidi isolation. Newsletter token path
+segments stay stable across locales; Page/Article/FAQ use the existing pathname map.
