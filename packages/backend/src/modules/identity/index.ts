@@ -1,4 +1,6 @@
 export * from './application/identity.service.js';
+export * from './application/admin-identity.service.js';
+export type * from './domain/admin-identity.js';
 export * from './domain/identity.js';
 export type * from './domain/ports.js';
 export * from './identity.module.js';

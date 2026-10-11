@@ -52,6 +52,9 @@ const sharedWebEnv = {
  */
 export default defineConfig({
   testDir: './e2e',
+  // The admin suite provisions fresh staff credentials and its own temporary database.
+  // CI runs it separately through phase17:test:e2e, in addition to this storefront suite.
+  testIgnore: 'admin-console.spec.ts',
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),

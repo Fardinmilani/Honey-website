@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { buildAdminContentSecurityPolicy } from './lib/security-headers';
 
 import {
   isLocale,
@@ -81,6 +82,20 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = `/unsupported-locale`;
     return NextResponse.rewrite(url);
+  }
+
+  if (segments[1] === 'admin') {
+    const nonceBytes = crypto.getRandomValues(new Uint8Array(24));
+    const nonce = btoa(String.fromCharCode(...nonceBytes));
+    const csp = buildAdminContentSecurityPolicy(nonce);
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-nonce', nonce);
+    requestHeaders.set('content-security-policy', csp);
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set('Content-Security-Policy', csp);
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return response;
   }
 
   const rewritten = maybeRewriteLocalizedPath(request);

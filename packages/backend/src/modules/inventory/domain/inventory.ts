@@ -371,7 +371,7 @@ export type InventoryRepository = {
   runInTransaction<Result>(
     work: (transaction: TransactionContext) => Promise<Result>,
   ): Promise<Result>;
-  listLocations(): Promise<readonly StockLocationRecord[]>;
+  listLocations(query?: AdminPageInput): Promise<readonly StockLocationRecord[]>;
   getLocation(id: string): Promise<StockLocationRecord | null>;
   getLocationByCode(code: string): Promise<StockLocationRecord | null>;
   createLocation(input: LocationInput, actor: InventoryActorContext): Promise<StockLocationRecord>;
@@ -553,3 +553,4 @@ export type InventoryRepository = {
   ): Promise<void>;
   close(): Promise<void>;
 };
+import type { AdminPageInput } from '../../../platform/domain/admin-page.js';

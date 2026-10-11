@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { createPrismaClient, type PrismaClient } from '@honey/db';
+import { createPrismaClient, type Prisma, type PrismaClient } from '@honey/db';
 
 import { PrismaTransactionContext } from '../../../platform/infrastructure/prisma-platform.adapter.js';
 import type { TransactionContext } from '../../../platform/domain/transaction.js';
@@ -112,10 +112,14 @@ export class PrismaSourcingRepository implements SourcingRepository {
     return this.#client.$transaction((client) => work(new PrismaTransactionContext(client)));
   }
 
-  async listApiaries(): Promise<readonly ApiaryRecord[]> {
+  async listApiaries(query?: AdminPageInput): Promise<readonly ApiaryRecord[]> {
+    const orderBy: Prisma.ApiaryOrderByWithRelationInput =
+      query === undefined ? { code: 'asc' } : { id: 'desc' };
     const rows = await this.#client.apiary.findMany({
       include: apiaryInclude,
-      orderBy: { code: 'asc' },
+      orderBy,
+      where: query?.cursor === undefined ? {} : { id: { lt: query.cursor } },
+      ...(query === undefined ? {} : { take: query.limit ?? 26 }),
     });
     return rows.map(mapApiary);
   }
@@ -323,10 +327,19 @@ export class PrismaSourcingRepository implements SourcingRepository {
     });
   }
 
-  async listAllocations(harvestBatchId: string): Promise<readonly BatchAllocationRecord[]> {
+  async listAllocations(
+    harvestBatchId: string,
+    query?: AdminPageInput,
+  ): Promise<readonly BatchAllocationRecord[]> {
+    const orderBy: Prisma.BatchAllocationOrderByWithRelationInput =
+      query === undefined ? { packedAt: 'desc' } : { id: 'desc' };
     const rows = await this.#client.batchAllocation.findMany({
-      where: { harvestBatchId },
-      orderBy: { packedAt: 'desc' },
+      where: {
+        harvestBatchId,
+        ...(query?.cursor === undefined ? {} : { id: { lt: query.cursor } }),
+      },
+      orderBy,
+      ...(query === undefined ? {} : { take: query.limit ?? 26 }),
     });
     return rows.map((row) => ({
       id: row.id,
@@ -397,3 +410,4 @@ export class PrismaSourcingRepository implements SourcingRepository {
     await this.#client.$disconnect();
   }
 }
+import type { AdminPageInput } from '../../../platform/domain/admin-page.js';

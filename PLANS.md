@@ -1,8 +1,8 @@
 # PLANS.md — Delivery Plan
 
 **Project:** Honey Website — single-seller luxury honey e-commerce store
-**Current phase:** Phase 17 — Admin Console (**CURRENT; NOT STARTED**)
-**Completed phase:** Phase 16 — Background Jobs (**complete 2026-10-10; changes left unstaged for review**)
+**Current phase:** Phase 18 — Content, Reviews & Notifications (**CURRENT; NOT STARTED**)
+**Completed phase:** Phase 17 — Admin Console (**COMPLETE 2026-10-11; working tree only, awaiting human review**)
 
 > Agents: read [`AGENTS.md`](AGENTS.md) before doing anything. Implement only the
 > phase you were asked for, then stop.
@@ -78,8 +78,8 @@ Full definitions, scope ceilings, and acceptance criteria live in
 | 14 | Payments | **Complete 2026-10-04** — Zarinpal adapter, `applyPaymentOutcome`, fake provider, reconciliation |
 | 15 | Shipping & Fulfilment | **Complete 2026-10-05** — manual-flat provider, zones and rates, fulfilment, physical stock movement, tracking |
 | 16 | Background Jobs | **Complete 2026-10-10** — worker composition root, queues, scheduling, retries, dead letters; backup verification orchestration is capability-gated |
-| 17 | Admin Console | **CURRENT; NOT STARTED** — catalog, inventory, orders, procurement, content administration |
-| 18 | Content, Reviews & Notifications | CMS pages, moderated reviews, transactional messaging |
+| 17 | Admin Console | **COMPLETE 2026-10-11** — catalog, media, inventory, sourcing, procurement, orders, customers, supported settings, audit; Phase 18 CMS excluded |
+| 18 | Content, Reviews & Notifications | **CURRENT; NOT STARTED** — CMS pages, moderated reviews, transactional messaging |
 | 19 | Observability & Performance | Tracing, metrics, caching layers, Core Web Vitals budget |
 | 20 | Hardening & Launch Readiness | Security review, backups, restore drill, runbooks |
 

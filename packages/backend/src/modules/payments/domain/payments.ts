@@ -299,6 +299,8 @@ export type CreateRefundInput = Readonly<{
   reason: string;
   requestedBy: string;
   actorUserId: string;
+  idempotencyKey?: string;
+  requestHash?: string;
 }>;
 
 export type RefundLockSnapshot = Readonly<{
@@ -314,6 +316,11 @@ export type RefundLockSnapshot = Readonly<{
 }>;
 
 export interface PaymentsRepository {
+  findRefundByKey(
+    paymentId: string,
+    key: string,
+    transaction: TransactionContext,
+  ): Promise<Readonly<{ refund: RefundRecord; requestHash: string }> | null>;
   findPayableOrder(orderNumber: string, owner: PaymentOwner): Promise<PayableOrder | null>;
   lockOrderForPayment(
     orderId: string,

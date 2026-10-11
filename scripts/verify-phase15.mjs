@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { access, readFile, readdir } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { verifyAdminBoundary } from './lib/verify-admin-boundary.mjs';
 
 const execute = promisify(execFile);
 const root = process.cwd();
@@ -171,7 +172,10 @@ assert.match(fulfilmentDomain + fulfilmentInfra, /idempotenc|Idempotenc/iu);
 assert.match(fulfilmentDomain, /FulfilmentNotificationPort/u);
 assert.match(fulfilmentService, /sendShipped\(/u);
 assert.match(fulfilmentService, /sendDelivered\(/u);
-assert.match(fulfilmentEmail, /fulfilmentEmailDelivery\.upsert/u);
+// The initial delivery row must be race-safe, while the fenced lease remains authoritative.
+assert.match(fulfilmentEmail, /fulfilmentEmailDelivery\.createMany/u);
+assert.match(fulfilmentEmail, /skipDuplicates:\s*true/u);
+assert.match(fulfilmentEmail, /fulfilmentEmailDelivery\.findUniqueOrThrow/u);
 assert.match(fulfilmentEmail, /fulfilmentEmailDelivery\.updateMany/u);
 assert.match(fulfilmentEmail, /sendMail\(/u);
 assert.match(fulfilmentEmail, /notification\.locale === 'fa'/u);
@@ -252,11 +256,7 @@ assert.equal(await git('status', '--porcelain', '--', hero), '', 'Hero media cha
 assert.equal(await git('diff', '--stat', 'HEAD', '--', hero), '', 'Hero media changed.');
 assert.equal(await git('ls-files', '.env'), '', '.env is tracked.');
 assert.equal(await git('diff', '--cached', '--name-only'), '', 'Staging area is not empty.');
-assert.equal(
-  await git('status', '--porcelain', '--', 'apps/web/src/app/[locale]/(admin)'),
-  '',
-  'Phase 17 admin UI changed.',
-);
+await verifyAdminBoundary(root);
 
 const packageJson = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
 assert.equal(packageJson.scripts['phase15:verify'], 'node scripts/verify-phase15.mjs');

@@ -11,6 +11,8 @@ export type ApiPresentationError = {
   readonly detail?: string;
   readonly type?: string;
   readonly code?: string;
+  readonly requestId?: string;
+  readonly errors?: readonly Readonly<{ path: string; code: string }>[];
 };
 
 export class ApiClientError extends Error {
@@ -40,6 +42,10 @@ export type ApiRequestOptions = {
   readonly withSession?: boolean;
   /** Forward CSRF header for unsafe cookie-authenticated writes. */
   readonly withCsrf?: boolean;
+  /** Server-only BFF cookie forwarding; never placed in client props. */
+  readonly cookieHeader?: string;
+  readonly csrfToken?: string;
+  readonly idempotencyKey?: string;
   readonly cache?: RequestCache;
   readonly next?: { revalidate?: number | false; tags?: string[] };
 };
@@ -77,7 +83,7 @@ function isProblemDetails(value: unknown): value is ProblemDetails {
     typeof value === 'object' &&
     value !== null &&
     'title' in value &&
-    typeof (value as { title: unknown }).title === 'string'
+    typeof value.title === 'string'
   );
 }
 
@@ -89,6 +95,17 @@ function toPresentation(status: number, payload: unknown): ApiPresentationError 
       ...(payload.detail !== undefined ? { detail: payload.detail } : {}),
       ...(payload.type !== undefined ? { type: payload.type } : {}),
       ...('code' in payload && typeof payload.code === 'string' ? { code: payload.code } : {}),
+      ...('requestId' in payload && typeof payload.requestId === 'string'
+        ? { requestId: payload.requestId }
+        : {}),
+      ...(Array.isArray(payload.errors)
+        ? {
+            errors: payload.errors
+              .slice(0, 100)
+              .filter((issue) => typeof issue.path === 'string' && typeof issue.code === 'string')
+              .map((issue) => ({ path: issue.path, code: issue.code })),
+          }
+        : {}),
     };
   }
   return {
@@ -101,7 +118,9 @@ function toPresentation(status: number, payload: unknown): ApiPresentationError 
  * Server-only HTTP client for the versioned Honey API.
  * Does not expose a generic browser proxy.
  */
-export async function apiFetch<T>(options: ApiRequestOptions): Promise<T> {
+export async function apiRequest(
+  options: ApiRequestOptions,
+): Promise<Readonly<{ payload: unknown; status: number; cookies: readonly string[] }>> {
   assertAllowlisted(options.path);
   const env = getWebEnv();
   const method = options.method ?? 'GET';
@@ -135,6 +154,14 @@ export async function apiFetch<T>(options: ApiRequestOptions): Promise<T> {
       const csrfPair = `${env.csrfCookieName}=${csrf}`;
       headers.set('cookie', existing ? `${existing}; ${csrfPair}` : csrfPair);
     }
+  }
+
+  if (options.cookieHeader !== undefined) headers.set('cookie', options.cookieHeader);
+  if (options.csrfToken !== undefined) headers.set(env.csrfHeaderName, options.csrfToken);
+  if (options.idempotencyKey !== undefined) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/u.test(options.idempotencyKey))
+      throw new Error('Invalid idempotency key');
+    headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
   let body: string | undefined;
@@ -178,7 +205,7 @@ export async function apiFetch<T>(options: ApiRequestOptions): Promise<T> {
       throw new ApiClientError(toPresentation(response.status, payload));
     }
 
-    return payload as T;
+    return { payload, status: response.status, cookies: response.headers.getSetCookie() };
   } catch (error) {
     if (error instanceof ApiClientError) {
       throw error;
@@ -190,4 +217,9 @@ export async function apiFetch<T>(options: ApiRequestOptions): Promise<T> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function apiFetch<T>(options: ApiRequestOptions): Promise<T> {
+  const result = await apiRequest(options);
+  return result.payload as T;
 }

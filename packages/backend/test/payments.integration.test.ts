@@ -305,6 +305,54 @@ describe('Phase 14 payments on PostgreSQL', () => {
     );
   });
 
+  it('replays a persisted staff refund key without a second provider call or financial effect', async () => {
+    const userId = randomUUID();
+    await prisma.user.create({
+      data: { id: userId, email: `phase17-refund-${userId}@example.invalid`, isStaff: true },
+    });
+    const seeded = await seedGuestOrder(randomUUID(), { userId });
+    const context = { userId, anonymousId: null };
+    const started = await service.start(context, seeded.number, 'phase17-refund-start-key');
+    provider.setOutcome(FakePaymentProvider.providerRefFor(started.payment.id), {
+      status: 'PAID',
+      providerTxnRef: 'txn-phase17-idempotency',
+    });
+    await service.verifyReturn(context, started.payment.id);
+    const principal = {
+      userId,
+      sessionId: randomUUID(),
+      kind: 'STAFF' as const,
+      permissions: ['order:refund'] as const,
+    };
+    const request = { amountMinor: '10000', reason: 'Phase 17 retry verification' };
+    const first = await service.requestStaffRefund(
+      principal,
+      started.payment.id,
+      request,
+      'phase17-refund-stable-key',
+    );
+    const replay = await service.requestStaffRefund(
+      principal,
+      started.payment.id,
+      request,
+      'phase17-refund-stable-key',
+    );
+    expect(replay.id).toBe(first.id);
+    expect(await prisma.refund.count({ where: { paymentId: started.payment.id } })).toBe(1);
+    expect(
+      (await prisma.order.findUniqueOrThrow({ where: { id: seeded.orderId } })).refundedTotalMinor,
+    ).toBe(10_000n);
+    await expect(
+      service.requestStaffRefund(
+        principal,
+        started.payment.id,
+        { ...request, amountMinor: '20000' },
+        'phase17-refund-stable-key',
+      ),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    expect(await prisma.stockLedgerEntry.count()).toBe(0);
+  });
+
   it('caps concurrent refunds at the remaining amount', async () => {
     const userId = randomUUID();
     await prisma.user.create({

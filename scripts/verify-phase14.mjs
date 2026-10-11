@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { access, readFile, readdir } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { verifyAdminBoundary } from './lib/verify-admin-boundary.mjs';
 
 const execute = promisify(execFile);
 const root = process.cwd();
@@ -147,7 +148,8 @@ assert.match(api, /v1\/payments/u);
 assert.match(api, /webhooks\/payments/u);
 assert.match(api, /Cache-Control.*no-store|private, no-store/u);
 assert.match(api, /PAYMENT_CARD_OR_MONEY_FIELD_FORBIDDEN/u);
-assert.doesNotMatch(webAdmin, /refund|payment/iu);
+assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|reviews|notifications|queues)/u);
+await verifyAdminBoundary(root);
 assert.match(paymentProxy, /headers\.set\(\s*env\.csrfHeaderName/u);
 assert.match(web, /payments\.payNow|t\('payments\.payNow'\)/u);
 assert.doesNotMatch(web, /autocomplete=['"]cc-number['"]/u);

@@ -2,6 +2,7 @@ export * from './application/health.service.js';
 export * from './application/backup-verification.service.js';
 export * from './application/sitemap-revalidation.service.js';
 export * from './domain/backup-verification.port.js';
+export * from './domain/admin-page.js';
 export * from './domain/config.js';
 export * from './domain/database-health.port.js';
 export * from './domain/graceful-resource.js';

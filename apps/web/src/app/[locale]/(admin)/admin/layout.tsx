@@ -6,8 +6,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Structural admin layout. No admin pages exist in Phase 9 — visiting
- * `/[locale]/admin` without a child page yields Next.js not-found.
+ * Shared admin structure; the staff child group owns the session UX guard.
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return <div data-admin-shell="true">{children}</div>;

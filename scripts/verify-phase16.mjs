@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { access, readFile, readdir } from 'node:fs/promises';
 import { extname, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { verifyAdminBoundary } from './lib/verify-admin-boundary.mjs';
 
 const execute = promisify(execFile);
 const root = process.cwd();
@@ -224,11 +225,7 @@ for (const path of heroPaths) {
 }
 assert.equal(await git('ls-files', '.env'), '', '.env must be untracked.');
 assert.equal(await git('diff', '--cached', '--name-only'), '', 'Staging must be empty.');
-assert.equal(
-  await git('status', '--porcelain', '--', 'apps/web/src/app/[locale]/(admin)'),
-  '',
-  'Phase 17 admin console changed.',
-);
+await verifyAdminBoundary(root);
 assert.equal(
   await git('diff', '--name-only', 'HEAD', '--', 'packages/db/prisma/migrations'),
   '',

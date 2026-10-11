@@ -32,6 +32,10 @@ export async function createOpenApiDocument(app: NestFastifyApplication): Promis
     .addTag('Cart', 'Private server-priced customer cart operations.')
     .addTag('Checkout', 'Owner-scoped checkout start, read, reservation extend, and confirm.')
     .addTag('Orders', 'Owner-scoped customer order list and detail.')
+    .addTag('Admin orders', 'Staff order queries and internal notes with explicit permissions.')
+    .addTag('Admin customers', 'Audited staff lookup of safe customer records.')
+    .addTag('Admin audit', 'Read-only filtered staff audit metadata.')
+    .addTag('Admin payments', 'Staff read-only safe payment and refund capability projections.')
     .addTag('Shipping', 'Staff-only shipping zone, method, and rate configuration.')
     .addTag('Fulfilment', 'Staff-only shipment preparation, dispatch, delivery, and cancellation.')
     .addTag(

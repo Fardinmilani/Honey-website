@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { access, readFile, readdir } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { verifyAdminBoundary } from './lib/verify-admin-boundary.mjs';
 
 const execute = promisify(execFile);
 const root = process.cwd();
@@ -118,9 +119,12 @@ assert.doesNotMatch(worker, /inventory processor|Worker\(/u);
 // service/session type) or the Phase-16-owned expiry sweep/scheduler.
 assert.doesNotMatch(inventory, /reservation sweeper|StockReservationService|CheckoutSession/u);
 assert.doesNotMatch(
-  (await files('apps/web/src/app')).join('\n'),
+  (await files('apps/web/src/app'))
+    .filter((path) => !/\(admin\)|[/\\]api[/\\]bff[/\\]admin[/\\]/u.test(path))
+    .join('\n'),
   /admin\/suppliers|admin\/procurement|admin\/inventory/u,
 );
+await verifyAdminBoundary(root);
 
 for (const path of ['apps/web/src/app/[locale]/(admin)/admin/suppliers']) {
   await assert.rejects(access(resolve(root, path)));

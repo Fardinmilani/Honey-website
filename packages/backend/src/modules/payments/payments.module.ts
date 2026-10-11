@@ -10,6 +10,8 @@ import { ForbiddenAppError } from '../../errors/index.js';
 import { TRANSACTION_RUNNER } from '../../platform/domain/tokens.js';
 import type { TransactionRunner } from '../../platform/domain/transaction.js';
 import { PaymentsService, type StepUpPort } from './application/payments.service.js';
+import { AdminPaymentsService } from './application/admin-payments.service.js';
+import { PrismaAdminPaymentsRepository } from './infrastructure/prisma-admin-payments.repository.js';
 import type { PaymentProvider, PaymentsRepository } from './domain/payments.js';
 import { IdentityStepUpAdapter } from './infrastructure/identity-step-up.adapter.js';
 import { PrismaPaymentsRepository } from './infrastructure/prisma-payments.repository.js';
@@ -80,7 +82,12 @@ class PaymentsShutdownLifecycle implements OnApplicationShutdown {
 export class PaymentsModule {
   static register(options: PaymentsModuleOptions): DynamicModule {
     const { ownedRepository, repository, providers } = createPaymentDependencies(options);
+    const administration = new PrismaAdminPaymentsRepository(options.databaseUrl);
     const providersList: Provider[] = [
+      {
+        provide: AdminPaymentsService,
+        useValue: new AdminPaymentsService(administration, providers),
+      },
       {
         provide: PaymentsService,
         useFactory: (transactions: TransactionRunner, identity: IdentityService) =>
@@ -99,6 +106,7 @@ export class PaymentsModule {
         provide: PaymentsShutdownLifecycle,
         useValue: new PaymentsShutdownLifecycle(async () => {
           await ownedRepository?.close();
+          await administration.close();
         }),
       },
     ];
@@ -106,7 +114,7 @@ export class PaymentsModule {
       module: PaymentsModule,
       imports: [options.platformModule, options.identityModule],
       providers: providersList,
-      exports: [PaymentsService],
+      exports: [PaymentsService, AdminPaymentsService],
     };
   }
 

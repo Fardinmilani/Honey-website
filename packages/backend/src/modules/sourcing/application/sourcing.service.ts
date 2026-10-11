@@ -97,6 +97,28 @@ export class SourcingService {
     assertAdmin(principal, 'inventory:read');
     return this.repository.listApiaries();
   }
+  async listApiariesPage(principal: AuthenticatedPrincipal, query: AdminPageInput) {
+    assertAdmin(principal, 'inventory:read');
+    const page = adminPageInput(query);
+    return adminPage(
+      await this.repository.listApiaries({ ...page, limit: page.limit + 1 }),
+      page.limit,
+    );
+  }
+  async listAllocationsPage(
+    principal: AuthenticatedPrincipal,
+    batchId: string,
+    query: AdminPageInput,
+  ) {
+    assertAdmin(principal, 'inventory:read');
+    adminIdentifier(batchId, 'batchId');
+    const page = adminPageInput(query);
+    if ((await this.repository.getHarvestBatch(batchId)) === null) throw new NotFoundAppError();
+    return adminPage(
+      await this.repository.listAllocations(batchId, { ...page, limit: page.limit + 1 }),
+      page.limit,
+    );
+  }
 
   async getApiary(principal: AuthenticatedPrincipal, id: string): Promise<ApiaryRecord> {
     assertAdmin(principal, 'inventory:read');
@@ -417,3 +439,9 @@ export class SourcingService {
     throw error;
   }
 }
+import {
+  adminIdentifier,
+  adminPage,
+  adminPageInput,
+  type AdminPageInput,
+} from '../../../platform/domain/admin-page.js';

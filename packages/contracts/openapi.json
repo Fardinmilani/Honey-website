@@ -6,18 +6,108 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "AdminCategoryAssignmentDto": {
+        "properties": {
+          "deletedAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "id": {
+            "description": "Assigned category identifier.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id", "deletedAt"],
+        "type": "object"
+      },
+      "AdminCollectionAssignmentDto": {
+        "properties": {
+          "id": {
+            "description": "Assigned collection identifier.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "position": { "type": "number" }
+        },
+        "required": ["id", "position"],
+        "type": "object"
+      },
+      "AdminMediaAttachmentDto": {
+        "properties": {
+          "altTextByLocale": {
+            "additionalProperties": { "maxLength": 300, "type": "string" },
+            "type": "object"
+          },
+          "id": { "format": "uuid", "type": "string" },
+          "mediaAssetId": { "format": "uuid", "type": "string" },
+          "position": { "type": "number" },
+          "role": { "enum": ["GALLERY", "THUMBNAIL", "LIFESTYLE", "VIDEO"], "type": "string" },
+          "variantId": { "format": "uuid", "nullable": true, "type": "string" }
+        },
+        "required": ["mediaAssetId", "role", "position", "altTextByLocale", "id"],
+        "type": "object"
+      },
+      "AdminPaymentDto": {
+        "properties": {
+          "amountMinor": { "type": "string" },
+          "canRefund": { "type": "boolean" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "currency": { "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "orderId": { "format": "uuid", "type": "string" },
+          "paidAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "partialRefund": { "type": "boolean" },
+          "provider": { "type": "string" },
+          "refunds": {
+            "items": { "$ref": "#/components/schemas/AdminRefundDto" },
+            "type": "array"
+          },
+          "remainingRefundableMinor": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "orderId",
+          "provider",
+          "status",
+          "currency",
+          "amountMinor",
+          "remainingRefundableMinor",
+          "canRefund",
+          "partialRefund",
+          "refunds",
+          "createdAt",
+          "paidAt"
+        ],
+        "type": "object"
+      },
+      "AdminPaymentPageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/AdminPaymentDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
       "AdminProductDto": {
         "properties": {
           "apiaryId": { "format": "uuid", "nullable": true, "type": "string" },
           "brandLine": { "nullable": true, "type": "string" },
-          "categories": { "items": { "type": "object" }, "type": "array" },
-          "collections": { "items": { "type": "object" }, "type": "array" },
+          "categories": {
+            "items": { "$ref": "#/components/schemas/AdminCategoryAssignmentDto" },
+            "type": "array"
+          },
+          "collections": {
+            "items": { "$ref": "#/components/schemas/AdminCollectionAssignmentDto" },
+            "type": "array"
+          },
           "defaultVariantId": { "format": "uuid", "nullable": true, "type": "string" },
           "floralSources": { "items": { "type": "string" }, "type": "array" },
           "harvestSeason": { "nullable": true, "type": "string" },
           "honeyVarietal": { "nullable": true, "type": "string" },
           "id": { "format": "uuid", "type": "string" },
-          "media": { "items": { "type": "object" }, "type": "array" },
+          "media": {
+            "items": { "$ref": "#/components/schemas/AdminMediaAttachmentDto" },
+            "type": "array"
+          },
           "originAltitudeBand": { "nullable": true, "type": "string" },
           "originRegion": { "nullable": true, "type": "string" },
           "primaryCategoryId": { "format": "uuid", "nullable": true, "type": "string" },
@@ -26,8 +116,14 @@
           "sortWeight": { "type": "number" },
           "sourcingType": { "enum": ["OWN_PRODUCTION", "SELECTED_SUPPLIER"], "type": "string" },
           "status": { "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "type": "string" },
-          "translations": { "items": { "type": "object" }, "type": "array" },
-          "variants": { "items": { "type": "object" }, "type": "array" }
+          "translations": {
+            "items": { "$ref": "#/components/schemas/AdminProductTranslationDto" },
+            "type": "array"
+          },
+          "variants": {
+            "items": { "$ref": "#/components/schemas/AdminVariantDto" },
+            "type": "array"
+          }
         },
         "required": [
           "id",
@@ -51,6 +147,269 @@
           "collections",
           "media"
         ],
+        "type": "object"
+      },
+      "AdminProductPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/AdminProductSummaryDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "AdminProductSummaryDto": {
+        "properties": {
+          "id": { "type": "string" },
+          "sku": { "nullable": true, "type": "string" },
+          "status": { "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "type": "string" },
+          "translations": {
+            "items": { "$ref": "#/components/schemas/AdminTranslationSummaryDto" },
+            "type": "array"
+          },
+          "updatedAt": { "format": "date-time", "type": "string" }
+        },
+        "required": ["id", "sku", "status", "updatedAt", "translations"],
+        "type": "object"
+      },
+      "AdminProductTranslationDto": {
+        "properties": {
+          "description": { "nullable": true, "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "locale": { "type": "string" },
+          "metaDescription": { "nullable": true, "type": "string" },
+          "metaTitle": { "nullable": true, "type": "string" },
+          "name": { "type": "string" },
+          "pairingSuggestions": { "nullable": true, "type": "string" },
+          "shortDescription": { "nullable": true, "type": "string" },
+          "slug": { "type": "string" },
+          "storyHtml": { "nullable": true, "type": "string" },
+          "tastingNotes": { "nullable": true, "type": "string" }
+        },
+        "required": ["locale", "name", "slug", "id"],
+        "type": "object"
+      },
+      "AdminRefundDto": {
+        "properties": {
+          "amountMinor": { "type": "string" },
+          "completedAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "reason": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "required": ["id", "amountMinor", "reason", "status", "createdAt", "completedAt"],
+        "type": "object"
+      },
+      "AdminTaxonomyDto": {
+        "properties": {
+          "id": { "type": "string" },
+          "parentId": { "nullable": true, "type": "string" },
+          "path": { "nullable": true, "type": "string" },
+          "sortWeight": { "type": "number" },
+          "status": { "nullable": true, "type": "string" },
+          "translations": {
+            "items": { "$ref": "#/components/schemas/AdminTaxonomyTranslationDto" },
+            "type": "array"
+          }
+        },
+        "required": ["id", "parentId", "path", "status", "sortWeight", "translations"],
+        "type": "object"
+      },
+      "AdminTaxonomyPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/AdminTaxonomyDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "AdminTaxonomyTranslationDto": {
+        "properties": {
+          "description": { "nullable": true, "type": "string" },
+          "locale": { "type": "string" },
+          "metaDescription": { "nullable": true, "type": "string" },
+          "metaTitle": { "nullable": true, "type": "string" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" }
+        },
+        "required": ["locale", "name", "slug"],
+        "type": "object"
+      },
+      "AdminTranslationSummaryDto": {
+        "properties": {
+          "locale": { "type": "string" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" }
+        },
+        "required": ["locale", "name", "slug"],
+        "type": "object"
+      },
+      "AdminVariantDto": {
+        "properties": {
+          "barcode": { "nullable": true, "type": "string" },
+          "deletedAt": { "format": "date-time", "nullable": true, "type": "string" },
+          "dimensionsMm": {
+            "items": { "type": "number" },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "id": { "format": "uuid", "type": "string" },
+          "isDefault": { "type": "boolean" },
+          "jarSizeLabelKey": { "type": "string" },
+          "netWeightGrams": { "type": "number" },
+          "packagingTypeKey": { "type": "string" },
+          "position": { "type": "number" },
+          "productId": { "format": "uuid", "type": "string" },
+          "sku": { "type": "string" },
+          "status": { "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "type": "string" },
+          "translations": {
+            "items": { "$ref": "#/components/schemas/AdminVariantTranslationDto" },
+            "type": "array"
+          },
+          "weightGramsShipping": { "type": "number" }
+        },
+        "required": [
+          "sku",
+          "netWeightGrams",
+          "jarSizeLabelKey",
+          "packagingTypeKey",
+          "weightGramsShipping",
+          "dimensionsMm",
+          "position",
+          "id",
+          "productId",
+          "status",
+          "isDefault",
+          "deletedAt",
+          "translations"
+        ],
+        "type": "object"
+      },
+      "AdminVariantTranslationDto": {
+        "properties": {
+          "id": { "format": "uuid", "type": "string" },
+          "locale": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "required": ["locale", "name", "id"],
+        "type": "object"
+      },
+      "AllocationPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/AllocationQueryItemDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "AllocationQueryItemDto": {
+        "properties": {
+          "createdAt": { "format": "date-time", "type": "string" },
+          "harvestBatchId": { "format": "uuid", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "notes": { "nullable": true, "type": "string" },
+          "packedAt": { "format": "date-time", "type": "string" },
+          "quantityUnits": { "type": "number" },
+          "variantId": { "format": "uuid", "type": "string" }
+        },
+        "required": [
+          "id",
+          "harvestBatchId",
+          "variantId",
+          "quantityUnits",
+          "packedAt",
+          "notes",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ApiaryPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/ApiaryQueryItemDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "ApiaryQueryItemDto": {
+        "properties": {
+          "altitudeBand": { "nullable": true, "type": "string" },
+          "code": { "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "isOwnOperation": { "type": "boolean" },
+          "name": { "type": "string" },
+          "notes": { "nullable": true, "type": "string" },
+          "region": { "type": "string" },
+          "translations": {
+            "items": { "$ref": "#/components/schemas/ApiaryTranslationDto" },
+            "type": "array"
+          },
+          "updatedAt": { "format": "date-time", "type": "string" }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "region",
+          "altitudeBand",
+          "notes",
+          "isOwnOperation",
+          "translations",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "ApiaryTranslationDto": {
+        "properties": {
+          "description": { "nullable": true, "type": "string" },
+          "locale": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "required": ["locale", "name", "description"],
+        "type": "object"
+      },
+      "AuditEntryDto": {
+        "properties": {
+          "action": { "type": "string" },
+          "actorUserId": { "nullable": true, "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "type": "string" },
+          "requestId": { "nullable": true, "type": "string" },
+          "subjectId": { "type": "string" },
+          "subjectType": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "actorUserId",
+          "action",
+          "subjectType",
+          "subjectId",
+          "requestId",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "AuditPageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/AuditEntryDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
         "type": "object"
       },
       "AuthenticatedResponseDto": {
@@ -248,6 +607,17 @@
         "required": ["checkout", "orderNumber"],
         "type": "object"
       },
+      "CouponPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/CouponResponseDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
       "CouponResponseDto": {
         "properties": {
           "appliesTo": { "enum": ["ALL", "CATEGORY", "COLLECTION", "VARIANT"], "type": "string" },
@@ -283,6 +653,37 @@
         ],
         "type": "object"
       },
+      "CouponStatusResponseDto": {
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["DRAFT", "ACTIVE", "PAUSED", "EXPIRED"], "type": "string" }
+        },
+        "required": ["id", "status"],
+        "type": "object"
+      },
+      "CustomerDto": {
+        "properties": {
+          "createdAt": { "format": "date-time", "type": "string" },
+          "displayName": { "nullable": true, "type": "string" },
+          "email": { "type": "string" },
+          "emailVerified": { "type": "boolean" },
+          "id": { "type": "string" },
+          "phoneMasked": { "nullable": true, "type": "string" },
+          "preferredLocale": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "preferredLocale",
+          "status",
+          "emailVerified",
+          "phoneMasked",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "CustomerOrderResponseDto": {
         "properties": {
           "grandTotal": { "$ref": "#/components/schemas/MoneyDto" },
@@ -294,6 +695,14 @@
           "status": { "type": "string" }
         },
         "required": ["number", "status", "grandTotal"],
+        "type": "object"
+      },
+      "CustomerPageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/CustomerDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
         "type": "object"
       },
       "CustomerShipmentResponseDto": {
@@ -418,6 +827,14 @@
         ],
         "type": "object"
       },
+      "MediaLibraryPageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/MediaAssetDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
       "MediaUploadIntentDto": {
         "properties": {
           "assetId": { "format": "uuid", "type": "string" },
@@ -439,6 +856,174 @@
           "currency": { "example": "IRR", "type": "string" }
         },
         "required": ["amountMinor", "currency"],
+        "type": "object"
+      },
+      "NoteDto": {
+        "properties": {
+          "actorUserId": { "nullable": true, "type": "string" },
+          "body": { "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" }
+        },
+        "required": ["id", "body", "actorUserId", "createdAt"],
+        "type": "object"
+      },
+      "NotePageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/NoteDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "OrderDetailDto": {
+        "properties": {
+          "billingAddress": { "additionalProperties": true, "type": "object" },
+          "currency": { "type": "string" },
+          "customerId": { "nullable": true, "type": "string" },
+          "discountTotalMinor": { "type": "string" },
+          "email": { "type": "string" },
+          "fulfilmentStatus": { "type": "string" },
+          "grandTotalMinor": { "type": "string" },
+          "history": {
+            "items": { "$ref": "#/components/schemas/OrderHistoryDto" },
+            "type": "array"
+          },
+          "id": { "format": "uuid", "type": "string" },
+          "lines": { "items": { "$ref": "#/components/schemas/OrderLineDto" }, "type": "array" },
+          "localeAtPurchase": { "type": "string" },
+          "number": { "type": "string" },
+          "paymentStatus": { "type": "string" },
+          "phone": { "nullable": true, "type": "string" },
+          "placedAt": { "format": "date-time", "type": "string" },
+          "refundedTotalMinor": { "type": "string" },
+          "shippingAddress": { "additionalProperties": true, "type": "object" },
+          "shippingMethod": { "additionalProperties": true, "type": "object" },
+          "shippingTotalMinor": { "type": "string" },
+          "status": {
+            "enum": [
+              "PENDING_PAYMENT",
+              "PAID",
+              "PROCESSING",
+              "PARTIALLY_FULFILLED",
+              "FULFILLED",
+              "COMPLETED",
+              "CANCELLED",
+              "REFUNDED",
+              "PARTIALLY_REFUNDED",
+              "FAILED"
+            ],
+            "type": "string"
+          },
+          "subtotalMinor": { "type": "string" },
+          "taxTotalMinor": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "number",
+          "email",
+          "currency",
+          "status",
+          "paymentStatus",
+          "fulfilmentStatus",
+          "grandTotalMinor",
+          "placedAt",
+          "customerId",
+          "phone",
+          "localeAtPurchase",
+          "subtotalMinor",
+          "discountTotalMinor",
+          "taxTotalMinor",
+          "shippingTotalMinor",
+          "refundedTotalMinor",
+          "shippingAddress",
+          "billingAddress",
+          "shippingMethod",
+          "lines",
+          "history"
+        ],
+        "type": "object"
+      },
+      "OrderHistoryDto": {
+        "properties": {
+          "createdAt": { "format": "date-time", "type": "string" },
+          "fromStatus": { "nullable": true, "type": "string" },
+          "id": { "type": "string" },
+          "toStatus": { "type": "string" }
+        },
+        "required": ["id", "fromStatus", "toStatus", "createdAt"],
+        "type": "object"
+      },
+      "OrderLineDto": {
+        "properties": {
+          "discountMinor": { "type": "string" },
+          "id": { "type": "string" },
+          "productName": { "additionalProperties": true, "type": "object" },
+          "quantity": { "type": "number" },
+          "sku": { "type": "string" },
+          "taxMinor": { "type": "string" },
+          "totalMinor": { "type": "string" },
+          "unitPriceMinor": { "type": "string" },
+          "variantName": { "additionalProperties": true, "type": "object" }
+        },
+        "required": [
+          "id",
+          "sku",
+          "productName",
+          "variantName",
+          "quantity",
+          "unitPriceMinor",
+          "discountMinor",
+          "taxMinor",
+          "totalMinor"
+        ],
+        "type": "object"
+      },
+      "OrderPageDto": {
+        "properties": {
+          "items": { "items": { "$ref": "#/components/schemas/OrderSummaryDto" }, "type": "array" },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "OrderSummaryDto": {
+        "properties": {
+          "currency": { "type": "string" },
+          "email": { "type": "string" },
+          "fulfilmentStatus": { "type": "string" },
+          "grandTotalMinor": { "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "number": { "type": "string" },
+          "paymentStatus": { "type": "string" },
+          "placedAt": { "format": "date-time", "type": "string" },
+          "status": {
+            "enum": [
+              "PENDING_PAYMENT",
+              "PAID",
+              "PROCESSING",
+              "PARTIALLY_FULFILLED",
+              "FULFILLED",
+              "COMPLETED",
+              "CANCELLED",
+              "REFUNDED",
+              "PARTIALLY_REFUNDED",
+              "FAILED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "email",
+          "currency",
+          "status",
+          "paymentStatus",
+          "fulfilmentStatus",
+          "grandTotalMinor",
+          "placedAt"
+        ],
         "type": "object"
       },
       "PageDto": {
@@ -484,6 +1069,17 @@
           "createdAt",
           "paidAt"
         ],
+        "type": "object"
+      },
+      "PricePageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/VariantPriceResponseDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
         "type": "object"
       },
       "PrivateMediaUrlDto": {
@@ -742,6 +1338,7 @@
                 "procurement:write",
                 "order:read",
                 "order:write",
+                "order:note",
                 "order:refund",
                 "order:cancel",
                 "customer:read",
@@ -840,6 +1437,51 @@
           "expiresAt": { "format": "date-time", "type": "string" }
         },
         "required": ["accepted", "expiresAt"],
+        "type": "object"
+      },
+      "StockLocationDto": {
+        "properties": {
+          "code": { "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "format": "uuid", "type": "string" },
+          "isDefault": { "type": "boolean" },
+          "isSellable": { "type": "boolean" },
+          "name": { "type": "string" },
+          "type": { "enum": ["WAREHOUSE", "STUDIO", "EXTERNAL"], "type": "string" },
+          "updatedAt": { "format": "date-time", "type": "string" }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "type",
+          "isSellable",
+          "isDefault",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "StockLocationPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/StockLocationDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object"
+      },
+      "TaxPageDto": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/TaxRateResponseDto" },
+            "type": "array"
+          },
+          "nextCursor": { "nullable": true, "type": "string" }
+        },
+        "required": ["items", "nextCursor"],
         "type": "object"
       },
       "TaxRateResponseDto": {
@@ -954,7 +1596,43 @@
         "tags": ["Operations"]
       }
     },
+    "/v1/admin/audit": {
+      "get": {
+        "description": "STAFF audit:read query with keyset paging and validated actor, subject, action and date-range filters. Raw audit JSON and network metadata are omitted.",
+        "operationId": "listAdminAudit",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuditPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read safe filtered audit metadata without secret-bearing JSON",
+        "tags": ["Admin audit"]
+      }
+    },
     "/v1/admin/catalog/categories": {
+      "get": {
+        "description": "STAFF catalog:read query returning owned category hierarchy and all translations, optionally filtered by UUID.",
+        "operationId": "listAdminCategories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTaxonomyPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded category hierarchy and translations",
+        "tags": ["Catalog Admin"]
+      },
       "post": {
         "description": "Create a catalog category.",
         "operationId": "createCatalogCategory",
@@ -1032,6 +1710,24 @@
       }
     },
     "/v1/admin/catalog/collections": {
+      "get": {
+        "description": "STAFF catalog:read query returning collection publication state and translations, optionally filtered by UUID.",
+        "operationId": "listAdminCollections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTaxonomyPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded collections and translations",
+        "tags": ["Catalog Admin"]
+      },
       "post": {
         "description": "Create a draft catalog collection.",
         "operationId": "createCatalogCollection",
@@ -1127,6 +1823,24 @@
       }
     },
     "/v1/admin/catalog/products": {
+      "get": {
+        "description": "STAFF catalog:read query with bounded keyset pagination, SKU or localized-name search, and publication-state filtering.",
+        "operationId": "listAdminProducts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminProductPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read products of all publication states with locale completeness inputs",
+        "tags": ["Catalog Admin"]
+      },
       "post": {
         "description": "Create a draft catalog product.",
         "operationId": "createCatalogProduct",
@@ -1609,6 +2323,24 @@
         "tags": ["Catalog Admin"]
       }
     },
+    "/v1/admin/customers": {
+      "get": {
+        "description": "STAFF customer:read lookup excludes staff, credentials and sessions, masks phone numbers, and records only the result count in the audit.",
+        "operationId": "lookupAdminCustomers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CustomerPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Audited exact email or UUID customer lookup",
+        "tags": ["Admin customers"]
+      }
+    },
     "/v1/admin/fulfilment/orders/{orderId}": {
       "get": {
         "description": "Returns order lines and shipment state to staff with order:read permission.",
@@ -1905,6 +2637,26 @@
         "tags": ["Inventory Admin"]
       }
     },
+    "/v1/admin/inventory/locations/page": {
+      "get": {
+        "description": "Staff-only cursor query over inventory-owned locations.",
+        "operationId": "listAdminStockLocations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StockLocationPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded stock locations",
+        "tags": ["Inventory Admin"]
+      }
+    },
     "/v1/admin/inventory/reconciliation": {
       "post": {
         "description": "Detect and optionally repair inventory drift.",
@@ -1914,6 +2666,26 @@
         "security": [{ "sessionCookie": [] }],
         "summary": "Detect and optionally repair inventory drift",
         "tags": ["Inventory Admin"]
+      }
+    },
+    "/v1/admin/media": {
+      "get": {
+        "description": "Staff-only trusted metadata; private assets have no permanent public URL.",
+        "operationId": "listAdminMedia",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaLibraryPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read a bounded media library",
+        "tags": ["Media"]
       }
     },
     "/v1/admin/media/{assetId}": {
@@ -2188,6 +2960,146 @@
         "tags": ["Media"]
       }
     },
+    "/v1/admin/orders": {
+      "get": {
+        "description": "STAFF order:read query with exact order-number or customer-email filters and keyset pagination.",
+        "operationId": "listAdminOrders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/OrderPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read a bounded staff order page",
+        "tags": ["Admin orders"]
+      }
+    },
+    "/v1/admin/orders/{id}": {
+      "get": {
+        "description": "Reads frozen order lines, addresses and stored totals. Requires STAFF order:read.",
+        "operationId": "getAdminOrder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/OrderDetailDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read immutable staff order snapshots",
+        "tags": ["Admin orders"]
+      }
+    },
+    "/v1/admin/orders/{id}/notes": {
+      "get": {
+        "description": "Reads a bounded page of staff-only notes after checking the order exists.",
+        "operationId": "listAdminOrderNotes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/NotePageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read internal order notes",
+        "tags": ["Admin orders"]
+      },
+      "post": {
+        "description": "STAFF order:note write protected by CSRF. Stores bounded internal text and audit metadata in one transaction.",
+        "operationId": "addAdminOrderNote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/NoteDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Add one internal plain-text order note and audit atomically",
+        "tags": ["Admin orders"]
+      }
+    },
+    "/v1/admin/payments/{paymentId}/refund-requests": {
+      "post": {
+        "description": "The key is mandatory. Same-key retries return the persisted refund; altered input conflicts. Server-owned provider capabilities, refundable cap and verified payment outcomes remain authoritative.",
+        "operationId": "requestIdempotentAdminRefund",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/RefundResponseDto" } }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ProblemDetailsDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Request an idempotent staff refund with recent TOTP verification",
+        "tags": ["Payments"]
+      }
+    },
     "/v1/admin/payments/{paymentId}/refunds": {
       "post": {
         "description": "Rejects with a conflict unless the staff session has recently re-verified its TOTP via POST /v1/me/step-up. The server, not the caller, computes the refundable cap.",
@@ -2231,6 +3143,33 @@
         "tags": ["Payments"]
       }
     },
+    "/v1/admin/payments/orders/{id}": {
+      "get": {
+        "description": "Returns stored amounts, provider capabilities and bounded refund history without provider credentials or references. API authorization is authoritative.",
+        "operationId": "listAdminOrderPayments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminPaymentPageDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded safe payment and refund records",
+        "tags": ["Admin payments"]
+      }
+    },
     "/v1/admin/pricing/coupons": {
       "get": {
         "description": "List internal coupon records.",
@@ -2267,6 +3206,51 @@
         },
         "security": [{ "sessionCookie": [] }],
         "summary": "Create a validated coupon record",
+        "tags": ["Pricing Admin"]
+      }
+    },
+    "/v1/admin/pricing/coupons/{id}/status": {
+      "patch": {
+        "description": "Change coupon status with a concurrency check.",
+        "operationId": "setAdminCouponStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CouponStatusResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Change coupon status with a concurrency check",
+        "tags": ["Pricing Admin"]
+      }
+    },
+    "/v1/admin/pricing/coupons/page": {
+      "get": {
+        "description": "Read a bounded coupon page.",
+        "operationId": "pageAdminCoupons",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CouponPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read a bounded coupon page",
         "tags": ["Pricing Admin"]
       }
     },
@@ -2311,6 +3295,51 @@
         "tags": ["Pricing Admin"]
       }
     },
+    "/v1/admin/pricing/tax-rates/{id}": {
+      "put": {
+        "description": "Update a validated tax configuration record.",
+        "operationId": "updateAdminTaxRate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TaxRateResponseDto" }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Update a validated tax configuration record",
+        "tags": ["Pricing Admin"]
+      }
+    },
+    "/v1/admin/pricing/tax-rates/page": {
+      "get": {
+        "description": "Read a bounded tax configuration page.",
+        "operationId": "pageAdminTaxRates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TaxPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read a bounded tax configuration page",
+        "tags": ["Pricing Admin"]
+      }
+    },
     "/v1/admin/pricing/variant-prices": {
       "get": {
         "description": "List internal variant price records.",
@@ -2349,6 +3378,24 @@
         },
         "security": [{ "sessionCookie": [] }],
         "summary": "Create a validated variant price record",
+        "tags": ["Pricing Admin"]
+      }
+    },
+    "/v1/admin/pricing/variant-prices/page": {
+      "get": {
+        "description": "Read a bounded variant price page.",
+        "operationId": "pageAdminVariantPrices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PricePageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read a bounded variant price page",
         "tags": ["Pricing Admin"]
       }
     },
@@ -2715,6 +3762,24 @@
         "tags": ["Sourcing Admin"]
       }
     },
+    "/v1/admin/sourcing/apiaries/page": {
+      "get": {
+        "description": "Staff-only cursor query over sourcing-owned apiaries.",
+        "operationId": "listAdminApiaries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiaryPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded apiaries and translations",
+        "tags": ["Sourcing Admin"]
+      }
+    },
     "/v1/admin/sourcing/harvest-batches": {
       "get": {
         "description": "List harvest batches.",
@@ -2768,6 +3833,31 @@
         "responses": { "200": { "description": "" } },
         "security": [{ "sessionCookie": [] }],
         "summary": "List allocations for a harvest batch",
+        "tags": ["Sourcing Admin"]
+      }
+    },
+    "/v1/admin/sourcing/harvest-batches/{id}/allocations/page": {
+      "get": {
+        "description": "Staff-only cursor query that verifies the harvest batch exists.",
+        "operationId": "listAdminBatchAllocations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AllocationPageDto" } }
+            },
+            "description": ""
+          }
+        },
+        "security": [{ "sessionCookie": [] }],
+        "summary": "Read bounded packing allocations",
         "tags": ["Sourcing Admin"]
       }
     },
@@ -3872,6 +4962,16 @@
       "name": "Checkout"
     },
     { "description": "Owner-scoped customer order list and detail.", "name": "Orders" },
+    {
+      "description": "Staff order queries and internal notes with explicit permissions.",
+      "name": "Admin orders"
+    },
+    { "description": "Audited staff lookup of safe customer records.", "name": "Admin customers" },
+    { "description": "Read-only filtered staff audit metadata.", "name": "Admin audit" },
+    {
+      "description": "Staff read-only safe payment and refund capability projections.",
+      "name": "Admin payments"
+    },
     {
       "description": "Staff-only shipping zone, method, and rate configuration.",
       "name": "Shipping"

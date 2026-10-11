@@ -124,7 +124,7 @@ touching call sites.
 catalog:read  catalog:write  catalog:publish
 inventory:read  inventory:adjust
 procurement:read  procurement:write
-order:read  order:write  order:refund  order:cancel
+order:read  order:write  order:note  order:refund  order:cancel
 customer:read  customer:export
 content:read  content:write  content:publish
 review:moderate
@@ -134,6 +134,10 @@ role:grant  audit:read
 
 Sourcing admin APIs reuse `inventory:read` / `inventory:adjust`. No extra
 permission codes were added for Phase 11.
+
+Internal order notes require `order:note`, approved for Phase 17 by the human.
+SUPPORT retains read and note access without shipment or money permissions
+([ADR-0043](adr/0043-admin-order-note-permission.md)).
 
 Enforcement rules:
 

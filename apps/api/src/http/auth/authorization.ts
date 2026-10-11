@@ -5,6 +5,11 @@ import type { PermissionCode } from '@honey/backend';
 
 export const PUBLIC_ROUTE = Symbol('PUBLIC_ROUTE');
 export const REQUIRED_PERMISSIONS = Symbol('REQUIRED_PERMISSIONS');
+export const REQUIRED_STAFF_SESSION = Symbol('REQUIRED_STAFF_SESSION');
+
+export function RequireStaffSession(): ClassDecorator {
+  return SetMetadata(REQUIRED_STAFF_SESSION, true);
+}
 
 export function Public(): MethodDecorator {
   return SetMetadata(PUBLIC_ROUTE, true);

@@ -20,6 +20,7 @@ export const PERMISSION_CODES = [
   'procurement:write',
   'order:read',
   'order:write',
+  'order:note',
   'order:refund',
   'order:cancel',
   'customer:read',

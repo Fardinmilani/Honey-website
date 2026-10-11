@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Inject, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import {
+  ApiParam,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -29,12 +30,14 @@ import {
   COUPON_STATUSES,
   COUPON_TYPES,
   PricingService,
+  AdminPricingService,
   type CouponRecord,
   type TaxRateRecord,
   type VariantPriceRecord,
 } from '@honey/backend';
-import { RequirePermissions } from '../../http/auth/authorization.js';
+import { RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { requestMetadata, requestPrincipal } from '../../http/auth/request-principal.js';
+import { AdminIdParamDto, AdminPageQueryDto } from '../../http/admin/admin-query.dto.js';
 
 const MINOR_AMOUNT = /^(?:0|[1-9][0-9]*)$/u;
 const CURRENCY = /^[A-Z]{3}$/u;
@@ -263,10 +266,109 @@ function operation(operationId: string, summary: string) {
   return { operationId, summary, description: `${summary}.` };
 }
 
+class PricePageQueryDto extends AdminPageQueryDto {
+  @ApiPropertyOptional({ type: String, format: 'uuid' }) @IsOptional() @IsUUID() variantId?: string;
+}
+class CouponPageQueryDto extends AdminPageQueryDto {
+  @ApiPropertyOptional({ enum: COUPON_STATUSES })
+  @IsOptional()
+  @IsIn(COUPON_STATUSES)
+  status?: CouponRecord['status'];
+}
+class CouponStatusInputDto {
+  @ApiProperty({ enum: COUPON_STATUSES }) @IsIn(COUPON_STATUSES) status!: CouponRecord['status'];
+  @ApiProperty({ enum: COUPON_STATUSES })
+  @IsIn(COUPON_STATUSES)
+  expectedStatus!: CouponRecord['status'];
+}
+class CouponStatusResponseDto {
+  @ApiProperty({ type: String }) id!: string;
+  @ApiProperty({ enum: COUPON_STATUSES }) status!: CouponRecord['status'];
+}
+class PricePageDto {
+  @ApiProperty({ type: [VariantPriceResponseDto] }) items!: VariantPriceResponseDto[];
+  @ApiProperty({ type: String, nullable: true }) nextCursor!: string | null;
+}
+class CouponPageDto {
+  @ApiProperty({ type: [CouponResponseDto] }) items!: CouponResponseDto[];
+  @ApiProperty({ type: String, nullable: true }) nextCursor!: string | null;
+}
+class TaxPageDto {
+  @ApiProperty({ type: [TaxRateResponseDto] }) items!: TaxRateResponseDto[];
+  @ApiProperty({ type: String, nullable: true }) nextCursor!: string | null;
+}
+
+class TaxPageQueryDto extends AdminPageQueryDto {}
+class PricingIdParamDto extends AdminIdParamDto {}
 @ApiTags('Pricing Admin')
+@RequireStaffSession()
 @Controller('v1/admin/pricing')
 export class AdminPricingController {
-  constructor(@Inject(PricingService) private readonly pricing: PricingService) {}
+  constructor(
+    @Inject(PricingService) private readonly pricing: PricingService,
+    @Inject(AdminPricingService) private readonly administration: AdminPricingService,
+  ) {}
+
+  @Get('variant-prices/page')
+  @RequirePermissions('pricing:read')
+  @ApiOperation(operation('pageAdminVariantPrices', 'Read a bounded variant price page'))
+  @ApiOkResponse({ type: PricePageDto })
+  async pricePage(@Query() query: PricePageQueryDto, @Req() request: FastifyRequest) {
+    const page = await this.administration.prices(requestPrincipal(request), query);
+    return { ...page, items: page.items.map(serializeVariantPrice) };
+  }
+  @Get('coupons/page')
+  @RequirePermissions('pricing:read')
+  @ApiOperation(operation('pageAdminCoupons', 'Read a bounded coupon page'))
+  @ApiOkResponse({ type: CouponPageDto })
+  async couponPage(@Query() query: CouponPageQueryDto, @Req() request: FastifyRequest) {
+    const page = await this.administration.coupons(requestPrincipal(request), query);
+    return { ...page, items: page.items.map(serializeCoupon) };
+  }
+  @Get('tax-rates/page')
+  @RequirePermissions('pricing:read')
+  @ApiOperation(operation('pageAdminTaxRates', 'Read a bounded tax configuration page'))
+  @ApiOkResponse({ type: TaxPageDto })
+  async taxPage(@Query() query: TaxPageQueryDto, @Req() request: FastifyRequest) {
+    const page = await this.administration.taxes(requestPrincipal(request), query);
+    return { ...page, items: page.items.map(serializeTaxRate) };
+  }
+  @Patch('coupons/:id/status')
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @RequirePermissions('pricing:write')
+  @ApiOperation(operation('setAdminCouponStatus', 'Change coupon status with a concurrency check'))
+  @ApiOkResponse({ type: CouponStatusResponseDto })
+  status(
+    @Param() params: PricingIdParamDto,
+    @Body() body: CouponStatusInputDto,
+    @Req() request: FastifyRequest,
+  ) {
+    return this.administration.setCouponStatus(
+      requestPrincipal(request),
+      params.id,
+      body.expectedStatus,
+      body.status,
+      requestMetadata(request),
+    );
+  }
+  @Put('tax-rates/:id')
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @RequirePermissions('pricing:write')
+  @ApiOperation(operation('updateAdminTaxRate', 'Update a validated tax configuration record'))
+  @ApiOkResponse({ type: TaxRateResponseDto })
+  async updateTax(
+    @Param() params: PricingIdParamDto,
+    @Body() body: CreateTaxRateDto,
+    @Req() request: FastifyRequest,
+  ) {
+    return serializeTaxRate(
+      await this.administration.updateTax(
+        requestPrincipal(request),
+        { ...body, id: params.id, region: body.region ?? null },
+        requestMetadata(request),
+      ),
+    );
+  }
 
   @Get('variant-prices')
   @RequirePermissions('pricing:read')

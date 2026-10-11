@@ -40,7 +40,7 @@ import {
   SUPPLIER_STATUSES,
   ValidationAppError,
 } from '@honey/backend';
-import { RequirePermissions } from '../../http/auth/authorization.js';
+import { RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { requestMetadata, requestPrincipal } from '../../http/auth/request-principal.js';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
 
@@ -149,6 +149,7 @@ function operation(operationId: string, summary: string) {
 }
 
 @ApiTags('Procurement Admin')
+@RequireStaffSession()
 @Controller('v1/admin/procurement')
 export class AdminProcurementController {
   constructor(@Inject(ProcurementService) private readonly procurement: ProcurementService) {}

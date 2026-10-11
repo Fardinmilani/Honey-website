@@ -25,14 +25,149 @@ for phase definitions and [`AGENTS.md`](../AGENTS.md) for the working rules.
 | 13 | Checkout, Reservations & Orders | ✅ Complete | 2026-09-25 |
 | 14 | Payments | ✅ Complete; committed as `66e1fe3` | 2026-10-04 |
 | 15 | Shipping & Fulfilment | ✅ Complete; committed as `5887e7f` | 2026-10-05 |
-| 16 | Background Jobs | ✅ Complete; changes unstaged for review | 2026-10-10 |
-| 17 | Admin Console | CURRENT; not started | — |
-| 18 | Content, Reviews & Notifications | â¬œ Not started | â€” |
+| 16 | Background Jobs | ✅ Complete; committed as `5ff4e90` | 2026-10-10 |
+| 17 | Admin Console | COMPLETE; working tree only, awaiting human review | 2026-10-11 |
+| 18 | Content, Reviews & Notifications | CURRENT; NOT STARTED | — |
 | 19 | Observability, Caching & Performance | â¬œ Not started | â€” |
 | 20 | Hardening & Launch Readiness | â¬œ Not started | â€” |
 
-**Current phase:** Phase 17 — Admin Console (**CURRENT; NOT STARTED**).
-**Previous phase:** Phase 16 — Background Jobs (**complete 2026-10-10; unstaged for review**).
+**Current phase:** Phase 18 — Content, Reviews & Notifications (**CURRENT; NOT STARTED**).
+**Previous phase:** Phase 17 — Admin Console (**COMPLETE 2026-10-11; unstaged changes awaiting human review**).
+
+## Phase 17 — Admin Console (completed)
+
+**Completed:** 2026-10-11. All required release gates passed. Phase 18 is marked
+current only in documentation and has not been started. No staging, commit, tag
+or push was performed; HEAD remains the Phase 16 commit `5ff4e90`.
+
+The clean-tree preflight passed on 2026-10-10. Hero status/diff and staging were
+empty, `.env` was untracked, and Phase 16 was present in HEAD. The stale Phase 16
+status wording above is corrected from observed Git history.
+
+The capability audit and explicit browser-policy proposal are recorded in
+[`admin-console-development.md`](admin-console-development.md).
+
+### Human approvals
+
+- 2026-10-10: the human approved dedicated `order:note` for internal notes; SUPPORT must
+  not receive shipment or money permissions ([ADR-0043](adr/0043-admin-order-note-permission.md)).
+- 2026-10-10: the human approved localized admin CSP for only the configured storage upload
+  origin and media preview origin; replace admin script `unsafe-inline` with a
+  per-request nonce. Other policies, storefront rendering, CSRF, cookies, and
+  MinIO's explicit CORS origins remain unchanged. This is the explicit approval
+  required by AGENTS.md §4.6 for the narrowly scoped policy expansion.
+
+### Files created and modified
+
+The exact inventory is in [the completion report](phase17-completion-report.md):
+179 new files and 78 modified files, with one-line purposes for each modified
+path. It includes 18 localized pages, 88 explicit BFF route files, module-owned
+admin services/DTOs, FA/EN messages, functional UI, real-infrastructure fixtures,
+tests, structural/CI gates, two forward migrations and four new ADRs. No
+dependency was added or upgraded; `pnpm-lock.yaml` is unchanged.
+
+### Decisions and implementation
+
+- [ADR-0043](adr/0043-admin-order-note-permission.md) records the limited note
+  grant. SUPPORT has exactly `order:read`, `customer:read`, `order:note`; shipment,
+  cancellation and refund permissions remain absent.
+- [ADR-0044](adr/0044-admin-query-and-browser-boundary.md) records owning-module
+  bounded queries, atomic audit writes, fixed browser transports and nonce CSP.
+- [ADR-0045](adr/0045-admin-refund-retry-idempotency.md) adds a durable payment/key
+  identity for console refund retries. [ADR-0046](adr/0046-admin-refund-http-compatibility.md)
+  preserves the old HTTP contract by adding the mandatory-key console operation
+  at `/refund-requests` and mapping the fixed BFF transport to it.
+- Forward migrations `20261010120000_phase17_order_note_permission` and
+  `20261010123000_phase17_refund_idempotency` are applied locally and in isolated
+  tests. All old migrations remain unchanged. Affected previous STAFF sessions
+  are revoked by the note migration; those staff must sign in again.
+- UI/UX Pro Max guidance is implemented through existing warm stone/amber
+  tokens, system fonts, semantic tables/forms, 44px controls and logical RTL CSS.
+  Real catalog/media, pricing/coupons, inventory/ledger, sourcing, procurement,
+  orders/notes/fulfilment/refunds, exact customer lookup, typed shipping/tax
+  settings and safe read-only audit workflows are present in both locales.
+- Real regression findings fixed within these workflows: shipping transaction
+  locks use executable SQL without deserializing PostgreSQL `void`; concurrent
+  fulfilment email identity uses atomic insert-or-read before its existing lease.
+  API/backend test pools use two workers while retaining every assertion and
+  timeout. The full storefront runner now uses an isolated migrated database.
+  No developer dataset was reset to make a test pass.
+
+### Threat-model and acceptance results
+
+All 101 admin operations in 14 controllers require fresh STAFF authentication
+and an explicit permission at the API. Direct anonymous/customer/permission
+bypass, revoked sessions, CSRF, tampered inputs, missing recent TOTP and mutation
+limits are tested. Page guards and hidden navigation remain UX only. Console
+refund replay/concurrency preserves one domain/provider effect and frozen money;
+refunds never restock. Customer/audit projections exclude authentication and raw
+secret-bearing metadata; notes are bounded plain text and HTML-shaped notes are
+rendered literally. No generic proxy, DB console or secret-settings editor exists.
+
+Admin pages are dynamic, private/no-store, noindex/nofollow and excluded from
+public SEO. Nonce scripts hydrate in both locales without script `unsafe-inline`
+or `unsafe-eval`; global/storefront policies remain unchanged. Actual media is
+processed in MinIO and requires the existing publication/alt-text gates. Hero
+assets stay outside the media library. No supplier detail leaks to public
+contracts; no forbidden claim, invented feature, analytics, Phase 18 CMS or other
+later-phase entry point was added. Optional CSV export lacks an existing seam and
+is not implemented; its formula-injection check is inapplicable.
+
+Every Phase 17 acceptance item is met in the completion report. There were 5
+admin and 17 storefront axe scans with zero serious/critical findings. Admin
+layouts were checked at 360, 390, 768, 1280 and 1920px; English desktop and Persian
+mobile screenshots were visually inspected.
+
+### Verification actually executed
+
+- `pnpm format:check`, `pnpm lint`, `pnpm boundaries`, `pnpm typecheck`,
+  `pnpm test`, `pnpm build`, `pnpm stylelint`, `pnpm i18n:validate`: exit 0.
+  Root test: 17 successful tasks with real PostgreSQL/Redis/MinIO/SMTP enabled.
+  Backend 248/0/0, API 74/0/0, web 57/0/0, worker 33/0/0; boundary checker
+  22/0/0, i18n 29/0/0, UI 5/0/0, contracts 3/0/0 (passed/failed/skipped).
+  Core and utils have zero tests, not skipped tests.
+- Database integration: 75 tables, 31 enums, 35 real rejection proofs; seeds
+  identical across two runs. `pnpm db:validate`, `pnpm db:generate`,
+  `pnpm db:migrate:status`: exit 0; all 12 migrations applied.
+- OpenAPI check/types, lint, public forbidden-field reachability and
+  `pnpm api:openapi:breaking --base-ref HEAD`: exit 0. All Phase 4–17 verifiers
+  pass; phase 17 proves the 101-operation STAFF boundary and 88 fixed BFF routes.
+- `pnpm phase17:test:e2e`: 10 passed, 0 failed, 0 skipped against isolated real
+  services. `pnpm test:e2e --workers=2`: full existing storefront suite,
+  101 passed, 0 failed, 0 skipped, including visual/Hero and performance checks.
+- `pnpm docker:verify` and all three API/web/worker image builds: exit 0.
+  Final images run as UID 1000 without `.env`; API ready 200, anonymous admin
+  401/private/no-store, worker real Redis readiness. API/worker contain no Hero.
+  `pnpm worker:smoke:sigterm`: active sitemap job completed, worker exited 0.
+- `git diff --check`, Hero status/diff, HEAD hash comparison, tracked `.env`
+  and staging checks pass. All 8 Hero hashes equal HEAD; old migrations and lock
+  unchanged. Both local MinIO buckets were scanned: 1 object, 0 Hero-name matches.
+  Source/client scan: 296 files, 0 recognized secret patterns or private client
+  variables. No qualifying configured secret values were available for literal
+  comparison; no unavailable production-secret validation is claimed. The
+  pre-existing ignored `.env` was not rewritten, tracked or baked into images.
+
+Earlier failed and environment-skipped runs, their causes and the exact final
+counts are retained in the [verification report](phase17-completion-report.md).
+No assertion, validation, permission, timeout or CI gate was weakened.
+
+### Risks
+
+The old developer inventory dataset produced reservation drift; it was left
+untouched and needs separate domain investigation before reuse. The existing
+mutation limiter is per process; multi-replica aggregate limiting remains an
+existing deployment concern. An interrupted in-progress provider refund needs
+reconciliation rather than blind replay, and the original HTTP refund operation
+retains its prior retry limitations. Existing runtime warnings and storefront
+stream-close output are documented; every required final test passed. Production
+PSP/cloud deployment and unavailable production-secret checks were not requested
+or performed.
+
+### Unresolved decisions
+
+No Phase 17 decision awaits a human. Existing launch decisions remain at their
+original phase boundaries. Phase 17 is complete and ready for review; Phase 18 is
+CURRENT but NOT STARTED. Stop here; do not implement the next phase.
 
 ## Phase 16 — Background Jobs (completed)
 

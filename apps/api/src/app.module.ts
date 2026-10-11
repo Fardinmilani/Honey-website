@@ -41,6 +41,12 @@ import {
 } from './modules/payments/payments.controller.js';
 import { AdminFulfilmentController } from './modules/fulfilment/fulfilment.controller.js';
 import { AdminShippingController } from './modules/shipping/shipping.controller.js';
+import { AdminOrdersController } from './modules/orders/admin-orders.controller.js';
+import {
+  AdminCustomersController,
+  AdminAuditController,
+} from './modules/identity/admin-identity.controller.js';
+import { AdminCatalogQueryController } from './modules/catalog/admin-catalog-query.controller.js';
 import { ValidationProbeController } from './testing/validation-probe.controller.js';
 import { AuthorizationGuard } from './http/auth/authorization.guard.js';
 import type { ControllerClass } from './http/auth/route-policy-verifier.js';
@@ -71,9 +77,14 @@ export class AppModule {
           OrdersController,
           PaymentsController,
           AdminPaymentsController,
+          AdminPaymentQueryController,
           PaymentWebhooksController,
           AdminFulfilmentController,
           AdminShippingController,
+          AdminOrdersController,
+          AdminCustomersController,
+          AdminAuditController,
+          AdminCatalogQueryController,
           ValidationProbeController,
         ]
       : [
@@ -91,9 +102,14 @@ export class AppModule {
           OrdersController,
           PaymentsController,
           AdminPaymentsController,
+          AdminPaymentQueryController,
           PaymentWebhooksController,
           AdminFulfilmentController,
           AdminShippingController,
+          AdminOrdersController,
+          AdminCustomersController,
+          AdminAuditController,
+          AdminCatalogQueryController,
         ];
   }
 
@@ -108,9 +124,19 @@ export class AppModule {
     const inventoryModule = InventoryModule.register({
       databaseUrl: options.config.databaseUrl,
     });
+    const identityModule = IdentityModule.register({
+      config: options.config.identity.config,
+      databaseUrl: options.config.databaseUrl,
+      redisUrl: options.config.redisUrl,
+      totpEncryptionKey: options.config.identity.totpEncryptionKey,
+      breachedPasswordEndpoint: options.config.identity.breachedPasswordEndpoint,
+      breachedPasswordTimeoutMs: options.config.identity.breachedPasswordTimeoutMs,
+      smtp: options.config.identity.smtp,
+    });
     const pricingModule = PricingModule.register({
       databaseUrl: options.config.databaseUrl,
       config: { enabledCurrencies: options.config.cart.enabledCurrencies },
+      identityModule,
     });
     const mediaModule = MediaModule.register({
       config: options.config.media.config,
@@ -131,15 +157,6 @@ export class AppModule {
       mediaModule,
     });
     const ordersModule = OrdersModule.register({ databaseUrl: options.config.databaseUrl });
-    const identityModule = IdentityModule.register({
-      config: options.config.identity.config,
-      databaseUrl: options.config.databaseUrl,
-      redisUrl: options.config.redisUrl,
-      totpEncryptionKey: options.config.identity.totpEncryptionKey,
-      breachedPasswordEndpoint: options.config.identity.breachedPasswordEndpoint,
-      breachedPasswordTimeoutMs: options.config.identity.breachedPasswordTimeoutMs,
-      smtp: options.config.identity.smtp,
-    });
     const checkoutModule = CheckoutModule.register({
       databaseUrl: options.config.databaseUrl,
       standardShipping: options.config.checkout.standardShipping,
@@ -209,3 +226,4 @@ export class AppModule {
     };
   }
 }
+import { AdminPaymentQueryController } from './modules/payments/admin-payments.controller.js';

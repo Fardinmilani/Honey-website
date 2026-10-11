@@ -13,3 +13,5 @@ export { InMemoryUploadIntentAdapter } from './infrastructure/in-memory-upload-i
 export { MagicContentInspector } from './infrastructure/magic-content-inspector.js';
 export { S3StorageAdapter, type S3StorageConfig } from './infrastructure/s3-storage.adapter.js';
 export { SharpMediaProcessor } from './infrastructure/sharp-media-processor.js';
+export * from './application/admin-media.service.js';
+export type * from './domain/admin-media.js';

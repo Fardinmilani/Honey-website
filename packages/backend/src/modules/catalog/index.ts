@@ -9,3 +9,5 @@ export type * from './domain/catalog-repository.port.js';
 export { InMemoryCatalogCache } from './infrastructure/in-memory-catalog-cache.adapter.js';
 export { PricingCatalogAdapter } from './infrastructure/pricing-catalog.adapter.js';
 export * from './module.meta.js';
+export * from './application/admin-catalog.service.js';
+export type * from './domain/admin-catalog.js';

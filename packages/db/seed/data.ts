@@ -154,6 +154,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     { id: identitySeedId(0x110f), code: 'settings:write' },
     { id: identitySeedId(0x1110), code: 'role:grant' },
     { id: identitySeedId(0x1111), code: 'audit:read' },
+    { id: identitySeedId(0x1114), code: 'order:note' },
   ] as const;
   for (const permission of permissions) {
     await client.permission.upsert({
@@ -173,7 +174,7 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
     ],
     [
       'ORDER_MANAGER',
-      ['order:read', 'order:write', 'order:refund', 'order:cancel', 'customer:read'],
+      ['order:read', 'order:write', 'order:refund', 'order:cancel', 'customer:read', 'order:note'],
     ],
     [
       'INVENTORY_MANAGER',
@@ -191,40 +192,44 @@ export async function seedDatabase(client: PrismaClient, options: SeedOptions): 
         'review:moderate',
       ],
     ],
-    ['SUPPORT', ['order:read', 'customer:read']],
+    ['SUPPORT', ['order:read', 'customer:read', 'order:note']],
     ['CUSTOMER', []],
   ]);
   const permissionsByCode = new Map<string, (typeof permissions)[number]>(
     permissions.map((permission) => [permission.code, permission]),
   );
-  // Existing local databases use the sequential legacy IDs below. Pricing
-  // permissions arrived later, so their grants must not shift or collide with
+  // Existing local databases use the sequential legacy IDs below. Later
+  // permissions must not shift or collide with
   // those already-persisted role-permission IDs during an upgrade seed.
-  const pricingGrantIds = new Map<string, string>([
+  const laterGrantIds = new Map<string, string>([
     ['OWNER:pricing:read', identitySeedId(0x2100)],
     ['OWNER:pricing:write', identitySeedId(0x2101)],
     ['ADMIN:pricing:read', identitySeedId(0x2102)],
     ['ADMIN:pricing:write', identitySeedId(0x2103)],
+    ['OWNER:order:note', identitySeedId(0x2200)],
+    ['ADMIN:order:note', identitySeedId(0x2201)],
+    ['ORDER_MANAGER:order:note', identitySeedId(0x2202)],
+    ['SUPPORT:order:note', identitySeedId(0x2203)],
   ]);
   let assignmentNumber = 0x2000;
   for (const role of roles) {
     for (const permissionCode of bundles.get(role.code) ?? []) {
       const permission = permissionsByCode.get(permissionCode);
       if (permission === undefined) throw new Error(`Unknown seeded permission ${permissionCode}.`);
-      const pricingGrantId = pricingGrantIds.get(`${role.code}:${permission.code}`);
+      const laterGrantId = laterGrantIds.get(`${role.code}:${permission.code}`);
       const existing = await client.rolePermission.findUnique({
         where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
       });
       if (existing === null) {
         await client.rolePermission.create({
           data: {
-            id: pricingGrantId ?? identitySeedId(assignmentNumber),
+            id: laterGrantId ?? identitySeedId(assignmentNumber),
             roleId: role.id,
             permissionId: permission.id,
           },
         });
       }
-      if (pricingGrantId === undefined) assignmentNumber += 1;
+      if (laterGrantId === undefined) assignmentNumber += 1;
     }
   }
 

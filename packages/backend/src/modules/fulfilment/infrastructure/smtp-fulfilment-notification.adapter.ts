@@ -107,16 +107,20 @@ export class SmtpFulfilmentNotificationAdapter implements FulfilmentNotification
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(notification.email)) {
       throw new FulfilmentEmailError('FULFILMENT_EMAIL_RECIPIENT_INVALID');
     }
-    const delivery = await this.#database.fulfilmentEmailDelivery.upsert({
-      where: {
-        shipmentId_eventType: { shipmentId: notification.shipmentId, eventType: kind },
-      },
-      create: {
+    // Compound upsert can race its initial insert. ON CONFLICT preserves the
+    // unique delivery row before the existing fenced lease claims one sender.
+    await this.#database.fulfilmentEmailDelivery.createMany({
+      data: {
         id: randomUUID(),
         shipmentId: notification.shipmentId,
         eventType: kind,
       },
-      update: {},
+      skipDuplicates: true,
+    });
+    const delivery = await this.#database.fulfilmentEmailDelivery.findUniqueOrThrow({
+      where: {
+        shipmentId_eventType: { shipmentId: notification.shipmentId, eventType: kind },
+      },
       select: { id: true, sentAt: true },
     });
     if (delivery.sentAt !== null) return;

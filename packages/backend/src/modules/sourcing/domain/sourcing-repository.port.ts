@@ -1,4 +1,5 @@
 import type { TransactionContext } from '../../../platform/domain/transaction.js';
+import type { AdminPageInput } from '../../../platform/domain/admin-page.js';
 import type {
   SourcingActorContext,
   AllocationInput,
@@ -14,7 +15,7 @@ export type SourcingRepository = {
   runInTransaction<Result>(
     work: (transaction: TransactionContext) => Promise<Result>,
   ): Promise<Result>;
-  listApiaries(): Promise<readonly ApiaryRecord[]>;
+  listApiaries(query?: AdminPageInput): Promise<readonly ApiaryRecord[]>;
   getApiary(id: string): Promise<ApiaryRecord | null>;
   createApiary(input: ApiaryInput, actor: SourcingActorContext): Promise<ApiaryRecord>;
   updateApiary(
@@ -48,7 +49,10 @@ export type SourcingRepository = {
     input: Partial<HarvestBatchInput>,
     actor: SourcingActorContext,
   ): Promise<HarvestBatchRecord | null>;
-  listAllocations(harvestBatchId: string): Promise<readonly BatchAllocationRecord[]>;
+  listAllocations(
+    harvestBatchId: string,
+    query?: AdminPageInput,
+  ): Promise<readonly BatchAllocationRecord[]>;
   getAllocation(id: string): Promise<BatchAllocationRecord | null>;
   createAllocation(
     input: AllocationInput,

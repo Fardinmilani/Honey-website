@@ -39,7 +39,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { FulfilmentService, ValidationAppError } from '@honey/backend';
 import { requestPrincipal } from '../../http/auth/request-principal.js';
-import { RequirePermissions } from '../../http/auth/authorization.js';
+import { RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
 
 class OrderIdParamDto {
@@ -116,6 +116,7 @@ function noStore(reply: FastifyReply): void {
 }
 
 @ApiTags('Fulfilment')
+@RequireStaffSession()
 @Controller('v1/admin/fulfilment')
 export class AdminFulfilmentController {
   constructor(@Inject(FulfilmentService) private readonly fulfilment: FulfilmentService) {}

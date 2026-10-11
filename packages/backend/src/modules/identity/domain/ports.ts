@@ -1,3 +1,4 @@
+import type { TransactionContext } from '../../../platform/domain/transaction.js';
 import type {
   AuthenticationUser,
   EncryptedValue,
@@ -142,7 +143,7 @@ export interface IdentityTransactionPort {
 }
 
 export interface AuditWriterPort {
-  appendAudit(input: AuditInput): Promise<void>;
+  appendAudit(input: AuditInput, transaction?: TransactionContext): Promise<void>;
 }
 
 export interface IdentityRepositoryPort extends AuditWriterPort {

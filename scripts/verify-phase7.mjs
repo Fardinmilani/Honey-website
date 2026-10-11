@@ -95,7 +95,9 @@ for (const route of [
   assert.ok(controller.includes(route), `Media route ${route} is missing.`);
 }
 assert.match(controller, /@Delete\(':assetId'\)/u);
-assert.equal((controller.match(/@RequirePermissions\('content:write'\)/gu) ?? []).length, 6);
+// Phase 17 adds the bounded library read; every media route retains its permission.
+assert.equal((controller.match(/@RequirePermissions\('content:write'\)/gu) ?? []).length, 7);
+assert.match(controller, /@RequireStaffSession\(\)/u);
 assert.doesNotMatch(controller, /ProductMedia|catalog|product.*attach/iu);
 assert.doesNotMatch(controller, /@Body\(\).*storageKey|@Body\(\).*bucket/iu);
 

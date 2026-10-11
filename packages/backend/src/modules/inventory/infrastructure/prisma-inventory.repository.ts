@@ -178,8 +178,14 @@ export class PrismaInventoryRepository implements InventoryRepository {
     return this.#client.$transaction((client) => work(new PrismaTransactionContext(client)));
   }
 
-  async listLocations(): Promise<readonly StockLocationRecord[]> {
-    const rows = await this.#client.stockLocation.findMany({ orderBy: { code: 'asc' } });
+  async listLocations(query?: AdminPageInput): Promise<readonly StockLocationRecord[]> {
+    const orderBy: Prisma.StockLocationOrderByWithRelationInput =
+      query === undefined ? { code: 'asc' } : { id: 'desc' };
+    const rows = await this.#client.stockLocation.findMany({
+      orderBy,
+      where: query?.cursor === undefined ? {} : { id: { lt: query.cursor } },
+      ...(query === undefined ? {} : { take: query.limit ?? 26 }),
+    });
     return rows.map(mapLocation);
   }
 
@@ -1040,3 +1046,4 @@ export class PrismaInventoryRepository implements InventoryRepository {
 }
 
 export type { TransactionClient };
+import type { AdminPageInput } from '../../../platform/domain/admin-page.js';

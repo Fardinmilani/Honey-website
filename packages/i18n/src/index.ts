@@ -80,6 +80,7 @@ export {
 } from './messages/index.js';
 
 export type {
+  AdminMessages,
   AccessibilityMessages,
   CatalogMessages,
   CheckoutMessages,

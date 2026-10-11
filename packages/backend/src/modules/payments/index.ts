@@ -12,3 +12,5 @@ export {
   ZarinpalPaymentProvider,
   type ZarinpalConfig,
 } from './infrastructure/providers/zarinpal/zarinpal-payment-provider.js';
+export { AdminPaymentsService } from './application/admin-payments.service.js';
+export type { AdminPayment, AdminRefund } from './domain/admin-payments.js';

@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { access, readFile, readdir } from 'node:fs/promises';
 import { extname, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { verifyAdminBoundary } from './lib/verify-admin-boundary.mjs';
 
 const execute = promisify(execFile);
 const root = process.cwd();
@@ -229,18 +230,32 @@ const sitemapXml = await readFile(resolve(root, 'apps/web/src/lib/sitemap/xml.ts
 assert.match(sitemapXml, /xhtml:link/u);
 assert.match(sitemapXml, /x-default/u);
 
-// `.../(storefront)/checkout` was asserted absent here while it was still
-// Phase 13 scope; Phase 13 is now complete (see `scripts/verify-phase13.mjs`),
-// so only the still-future admin console (Phase 17) is asserted absent.
-for (const absent of ['apps/web/src/app/[locale]/(admin)/admin/page.tsx']) {
+// Completed phases have their own gates. Phase 18 entry points remain absent.
+for (const absent of [
+  'apps/web/src/app/[locale]/(admin)/admin/(staff)/reviews/page.tsx',
+  'apps/web/src/app/[locale]/(admin)/admin/(staff)/cms/page.tsx',
+]) {
   await assert.rejects(access(resolve(root, absent)), undefined, `${absent} must not exist`);
 }
 
-assert.doesNotMatch(webSourceText, /\bprocurement\b/iu);
-assert.doesNotMatch(webSourceText, /\binventory\b/iu);
-assert.doesNotMatch(webSourceText, /\bpurchaseOrder\b/u);
-assert.doesNotMatch(webSourceText, /\bstockLedger\b/u);
-assert.doesNotMatch(webSourceText, /\bgoodsReceipt\b/u);
+await verifyAdminBoundary(root);
+const storefrontSourceText = (
+  await Promise.all(
+    webSources
+      .filter(
+        (path) =>
+          !/\/(?:components\/admin|lib\/admin|api\/bff\/admin)\/|\/\(admin\)\/|\/styles\/admin\.css$/u.test(
+            path,
+          ),
+      )
+      .map((path) => readFile(resolve(root, path), 'utf8')),
+  )
+).join('\n');
+assert.doesNotMatch(storefrontSourceText, /\bprocurement\b/iu);
+assert.doesNotMatch(storefrontSourceText, /\binventory\b/iu);
+assert.doesNotMatch(storefrontSourceText, /\bpurchaseOrder\b/u);
+assert.doesNotMatch(storefrontSourceText, /\bstockLedger\b/u);
+assert.doesNotMatch(storefrontSourceText, /\bgoodsReceipt\b/u);
 
 const catalogE2e = await readFile(resolve(root, 'apps/web/e2e/catalog.spec.ts'), 'utf8');
 assert.match(catalogE2e, /robots/u);

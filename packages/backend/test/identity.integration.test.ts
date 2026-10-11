@@ -143,8 +143,13 @@ async function seedIdentity(passwordHash: string): Promise<void> {
   const ownerRoleId = roleIds.get('OWNER');
   if (ownerRoleId === undefined) throw new Error('OWNER role seed failed.');
   for (const code of PERMISSION_CODES) {
-    const permissionId = uuidV7();
-    await prisma.permission.create({ data: { id: permissionId, code } });
+    // Phase 17's forward migration already creates order:note on a fresh database.
+    const permission = await prisma.permission.upsert({
+      where: { code },
+      create: { id: uuidV7(), code },
+      update: {},
+    });
+    const permissionId = permission.id;
     await prisma.rolePermission.create({
       data: { id: uuidV7(), roleId: ownerRoleId, permissionId },
     });

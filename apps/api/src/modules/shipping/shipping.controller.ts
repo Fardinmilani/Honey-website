@@ -29,7 +29,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ShippingSettingsService } from '@honey/backend';
 import { requestPrincipal } from '../../http/auth/request-principal.js';
-import { RequirePermissions } from '../../http/auth/authorization.js';
+import { RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
 
 class ConfigIdParamDto {
@@ -161,6 +161,7 @@ function noStore(reply: FastifyReply): void {
 }
 
 @ApiTags('Shipping')
+@RequireStaffSession()
 @Controller('v1/admin/shipping')
 export class AdminShippingController {
   constructor(

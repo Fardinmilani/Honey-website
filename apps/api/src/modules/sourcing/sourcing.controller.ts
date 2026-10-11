@@ -8,6 +8,8 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
+import { AdminPageQueryDto } from '../../http/admin/admin-query.dto.js';
+import { ApiaryPageDto, AllocationPageDto } from '../../http/admin/stock-query.dto.js';
 import {
   ArrayMaxSize,
   IsArray,
@@ -24,7 +26,7 @@ import {
 import type { FastifyRequest } from 'fastify';
 
 import { SourcingService } from '@honey/backend';
-import { RequirePermissions } from '../../http/auth/authorization.js';
+import { RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { requestMetadata, requestPrincipal } from '../../http/auth/request-principal.js';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
 
@@ -93,14 +95,48 @@ class PageQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsString() limit?: string;
 }
 
+class SourcingPageQueryDto extends AdminPageQueryDto {}
 function operation(operationId: string, summary: string) {
   return { operationId, summary, description: `${summary}.` };
 }
 
 @ApiTags('Sourcing Admin')
+@RequireStaffSession()
 @Controller('v1/admin/sourcing')
 export class AdminSourcingController {
   constructor(@Inject(SourcingService) private readonly sourcing: SourcingService) {}
+
+  @Get('apiaries/page')
+  @RequirePermissions('inventory:read')
+  @ApiOperation({
+    operationId: 'listAdminApiaries',
+    summary: 'Read bounded apiaries and translations',
+    description: 'Staff-only cursor query over sourcing-owned apiaries.',
+  })
+  @ApiOkResponse({ type: ApiaryPageDto })
+  apiaryPage(
+    @Query() query: SourcingPageQueryDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ApiaryPageDto> {
+    return this.sourcing.listApiariesPage(requestPrincipal(request), query);
+  }
+
+  @Get('harvest-batches/:id/allocations/page')
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @RequirePermissions('inventory:read')
+  @ApiOperation({
+    operationId: 'listAdminBatchAllocations',
+    summary: 'Read bounded packing allocations',
+    description: 'Staff-only cursor query that verifies the harvest batch exists.',
+  })
+  @ApiOkResponse({ type: AllocationPageDto })
+  allocationPage(
+    @Param() params: IdParamDto,
+    @Query() query: SourcingPageQueryDto,
+    @Req() request: FastifyRequest,
+  ): Promise<AllocationPageDto> {
+    return this.sourcing.listAllocationsPage(requestPrincipal(request), params.id, query);
+  }
 
   @Get('apiaries')
   @RequirePermissions('inventory:read')

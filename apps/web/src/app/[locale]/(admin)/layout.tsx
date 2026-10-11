@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import '@/styles/admin.css';
 
 /**
- * Admin route-group access-boundary foundation only.
- * No admin screens ship in Phase 9. Authorization remains API-side.
+ * Phase 17 admin surface. Staff guards are inside the protected child group;
+ * the sign-in page uses the same noindex boundary. API authorization is authoritative.
  */
 export const metadata: Metadata = {
   robots: {

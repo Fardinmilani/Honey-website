@@ -34,7 +34,7 @@ import {
   type PaymentProjection,
 } from '@honey/backend';
 import type { ApiConfig } from '../../config/api-config.js';
-import { Public, RequirePermissions } from '../../http/auth/authorization.js';
+import { Public, RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
 import { requestPrincipal } from '../../http/auth/request-principal.js';
 
@@ -259,6 +259,7 @@ export class PaymentsController {
 }
 
 @ApiTags('Payments')
+@RequireStaffSession()
 @Controller('v1/admin/payments')
 export class AdminPaymentsController {
   constructor(@Inject(PaymentsService) private readonly payments: PaymentsService) {}
@@ -288,6 +289,41 @@ export class AdminPaymentsController {
       params.paymentId,
       { amountMinor: body.amountMinor ?? null, reason: body.reason },
       { userId: principal.userId, sessionId: principal.sessionId },
+    );
+    reply.header('Cache-Control', 'private, no-store');
+    return refund;
+  }
+
+  @Post(':paymentId/refund-requests')
+  @RequirePermissions('order:refund')
+  @HttpCode(200)
+  @ApiOperation({
+    operationId: 'requestIdempotentAdminRefund',
+    summary: 'Request an idempotent staff refund with recent TOTP verification',
+    description:
+      'The key is mandatory. Same-key retries return the persisted refund; altered input conflicts. Server-owned provider capabilities, refundable cap and verified payment outcomes remain authoritative.',
+  })
+  @ApiParam({ name: 'paymentId', type: String, format: 'uuid' })
+  @ApiHeader({ name: 'Idempotency-Key', required: true })
+  @ApiOkResponse({ type: RefundResponseDto })
+  @ApiConflictResponse({ type: ProblemDetailsDto })
+  @ApiNotFoundResponse({ type: ProblemDetailsDto })
+  @ApiUnprocessableEntityResponse({ type: ProblemDetailsDto })
+  async requestIdempotentRefund(
+    @Param() params: AdminPaymentIdParamDto,
+    @Body() body: RefundRequestDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<RefundResponseDto> {
+    const principal = requestPrincipal(request);
+    if (idempotencyKey === undefined)
+      throw new ValidationAppError([{ path: 'idempotencyKey', code: 'IDEMPOTENCY_KEY_REQUIRED' }]);
+    const refund = await this.payments.requestStaffRefund(
+      principal,
+      params.paymentId,
+      { amountMinor: body.amountMinor ?? null, reason: body.reason },
+      idempotencyKey,
     );
     reply.header('Cache-Control', 'private, no-store');
     return refund;

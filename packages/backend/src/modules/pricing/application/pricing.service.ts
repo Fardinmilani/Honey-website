@@ -34,6 +34,13 @@ export type PricingConfig = Readonly<{
   enabledCurrencies: readonly string[];
 }>;
 
+export interface PricingStepUpPort {
+  requireStepUp(sessionId: string): Promise<void>;
+}
+const denyMissingStepUp: PricingStepUpPort = {
+  requireStepUp: () => Promise.reject(new ForbiddenAppError({ code: 'STEP_UP_REQUIRED' })),
+};
+
 export type CouponLookupResult = Readonly<{
   coupon: CouponRecord | null;
   evaluation: CouponEvaluation | null;
@@ -115,6 +122,7 @@ export class PricingService {
   constructor(
     private readonly repository: PricingRepository,
     private readonly config: PricingConfig,
+    private readonly stepUp: PricingStepUpPort = denyMissingStepUp,
   ) {}
 
   async resolvePrices(
@@ -346,6 +354,7 @@ export class PricingService {
     metadata: RequestMetadata,
   ): Promise<VariantPriceRecord> {
     assertAdmin(principal, 'pricing:write');
+    await this.stepUp.requireStepUp(principal.sessionId);
     const exists = await this.repository.existingVariantIds([input.variantId]);
     if (!exists.has(input.variantId)) throw validation('variantId', 'PRICING_VARIANT_NOT_FOUND');
     let price: VariantPriceRecord;

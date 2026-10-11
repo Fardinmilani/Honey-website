@@ -1518,6 +1518,8 @@ model Refund {
   status      RefundStatus @default(REQUESTED)
   requestedBy String?      @map("requested_by") @db.Uuid
   providerRef String?      @map("provider_ref")
+  idempotencyKey String?   @map("idempotency_key")
+  requestHash String?      @map("request_hash")
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   completedAt DateTime?    @map("completed_at") @db.Timestamptz(3)
@@ -1531,6 +1533,7 @@ model Refund {
   @@index([orderId])
   @@index([paymentId])
   @@index([requestedBy])
+  @@unique([paymentId, idempotencyKey])
   @@map("refund")
 }
 

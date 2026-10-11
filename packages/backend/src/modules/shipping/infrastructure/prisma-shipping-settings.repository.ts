@@ -117,7 +117,7 @@ export class PrismaShippingSettingsRepository implements ShippingSettingsReposit
     actor: ShippingSettingsActor,
   ): Promise<{ id: string }> {
     return this.#client.$transaction(async (transaction) => {
-      await transaction.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(150015)`);
+      await transaction.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(150015)`);
       const existing = await transaction.shippingZone.findMany({
         where: { id: { not: input.id } },
         select: { countries: true, provinces: true, priority: true },
@@ -162,7 +162,7 @@ export class PrismaShippingSettingsRepository implements ShippingSettingsReposit
     actor: ShippingSettingsActor,
   ): Promise<{ id: string }> {
     return this.#client.$transaction(async (transaction) => {
-      await transaction.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(150015)`);
+      await transaction.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(150015)`);
       const zone = await transaction.shippingZone.findUnique({
         where: { id: input.zoneId },
         select: { id: true },
@@ -229,7 +229,7 @@ export class PrismaShippingSettingsRepository implements ShippingSettingsReposit
     actor: ShippingSettingsActor,
   ): Promise<{ id: string }> {
     return this.#client.$transaction(async (transaction) => {
-      await transaction.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(150015)`);
+      await transaction.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(150015)`);
       const method = await transaction.shippingMethod.findUnique({
         where: { id: input.methodId },
         select: { id: true },

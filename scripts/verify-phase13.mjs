@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { access, readFile, readdir } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { verifyAdminBoundary } from './lib/verify-admin-boundary.mjs';
 
 const execute = promisify(execFile);
 const root = process.cwd();
@@ -193,7 +194,8 @@ assert.match(ordersUi, /UNPAID|paymentStatus/u);
 assert.doesNotMatch(web, /from\s+['"]@honey\/backend['"]/u);
 assert.doesNotMatch(web, /from\s+['"]@honey\/db['"]/u);
 assert.doesNotMatch(web, /from\s+['"]@prisma\/client['"]/u);
-assert.doesNotMatch(webAdmin, /checkout|orders/iu);
+assert.doesNotMatch(webAdmin, /\/admin\/(?:cms|reviews|notifications|queues)/u);
+await verifyAdminBoundary(root);
 
 assert.match(webBff, /v1\/checkout/u);
 assert.match(webBff, /v1\/orders/u);

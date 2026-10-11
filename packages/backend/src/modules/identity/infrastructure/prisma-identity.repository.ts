@@ -1,5 +1,7 @@
 import { createPrismaClient, uuidV7 } from '@honey/db';
 import type { Prisma, PrismaClient, TransactionClient } from '@honey/db';
+import type { TransactionContext } from '../../../platform/domain/transaction.js';
+import { asPrismaTransaction } from '../../../platform/infrastructure/prisma-platform.adapter.js';
 
 import {
   PERMISSION_CODES,
@@ -500,8 +502,9 @@ export class PrismaIdentityRepository implements IdentityRepositoryPort {
     });
   }
 
-  async appendAudit(input: AuditInput): Promise<void> {
-    await this.#client.auditLog.create({ data: auditData(input) });
+  async appendAudit(input: AuditInput, transaction?: TransactionContext): Promise<void> {
+    const client = transaction === undefined ? this.#client : asPrismaTransaction(transaction);
+    await client.auditLog.create({ data: auditData(input) });
   }
 
   async assignRole(input: Parameters<IdentityRepositoryPort['assignRole']>[0]): Promise<boolean> {

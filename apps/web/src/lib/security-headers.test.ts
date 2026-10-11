@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSecurityHeaders, shouldEmitHsts } from './security-headers';
+import {
+  buildAdminContentSecurityPolicy,
+  buildSecurityHeaders,
+  shouldEmitHsts,
+} from './security-headers';
 
 describe('shouldEmitHsts', () => {
   it('is false for local HTTP / non-TLS public site URLs', () => {
@@ -49,6 +53,42 @@ describe('shouldEmitHsts', () => {
         NEXT_PUBLIC_SITE_URL: 'not-a-url',
       }),
     ).toBe(false);
+  });
+});
+
+describe('Phase 17 admin CSP', () => {
+  const nonce = 'abcdefghijklmnopqrstuvwx01234567';
+  it('limits direct uploads and previews to configured origins and nonces scripts', () => {
+    const csp = buildAdminContentSecurityPolicy(nonce, {
+      S3_BROWSER_ENDPOINT: 'http://localhost:9000',
+      PUBLIC_MEDIA_BASE_URL: 'http://localhost:9000/honey-public',
+    });
+    expect(csp).toContain("connect-src 'self' http://localhost:9000");
+    expect(csp).toContain(`script-src 'self' 'nonce-${nonce}'`);
+    expect(csp.split('; ').find((directive) => directive.startsWith('script-src'))).not.toMatch(
+      /unsafe-inline|unsafe-eval|\*/u,
+    );
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("form-action 'self'");
+    expect(buildAdminContentSecurityPolicy('differentfreshnonce0123456789', {})).not.toBe(csp);
+  });
+  it.each([
+    'javascript:alert(1)',
+    'https://name:password@storage.example',
+    'https://storage.example?token=test',
+    'https://storage.example/#unsafe',
+  ])('rejects unsafe configured origins: %s', (origin) => {
+    expect(() => buildAdminContentSecurityPolicy(nonce, { S3_BROWSER_ENDPOINT: origin })).toThrow();
+  });
+  it('rejects HTTP storage on an HTTPS site and nonce injection', () => {
+    expect(() =>
+      buildAdminContentSecurityPolicy(nonce, {
+        PUBLIC_SITE_URL: 'https://honey.example',
+        S3_BROWSER_ENDPOINT: 'http://storage.example',
+      }),
+    ).toThrow();
+    expect(() => buildAdminContentSecurityPolicy("nonce' unsafe-inline", {})).toThrow();
+    expect(buildAdminContentSecurityPolicy(nonce, {})).toContain("connect-src 'self';");
   });
 });
 

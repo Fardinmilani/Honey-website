@@ -9,6 +9,8 @@ import { MediaModule, MediaService } from '../media/index.js';
 import { InventoryService } from '../inventory/index.js';
 import { PricingService } from '../pricing/index.js';
 import { CatalogService } from './application/catalog.service.js';
+import { AdminCatalogService } from './application/admin-catalog.service.js';
+import { PrismaAdminCatalogRepository } from './infrastructure/prisma-admin-catalog.repository.js';
 import type { CatalogAvailabilityPort } from './domain/catalog-availability.port.js';
 import type { CatalogCache } from './domain/catalog-cache.port.js';
 import type { CatalogMediaPort } from './domain/catalog-media.port.js';
@@ -71,7 +73,9 @@ export class CatalogModule {
     if (options.overrides?.pricing === undefined && options.pricingModule !== undefined) {
       inject.push(PricingService);
     }
+    const adminRepository = new PrismaAdminCatalogRepository(options.databaseUrl);
     const providers: Provider[] = [
+      { provide: AdminCatalogService, useValue: new AdminCatalogService(adminRepository) },
       {
         provide: CatalogService,
         inject,
@@ -114,7 +118,11 @@ export class CatalogModule {
       {
         provide: CatalogShutdownLifecycle,
         useValue: new CatalogShutdownLifecycle(async () => {
-          await Promise.allSettled([ownedRepository?.close(), ownedCache?.close()]);
+          await Promise.allSettled([
+            ownedRepository?.close(),
+            ownedCache?.close(),
+            adminRepository.close(),
+          ]);
         }),
       },
     ];
@@ -126,7 +134,11 @@ export class CatalogModule {
         ...(options.pricingModule === undefined ? [] : [options.pricingModule]),
       ],
       providers,
-      exports: [CatalogService, ...(options.mediaModule === undefined ? [] : [MediaModule])],
+      exports: [
+        CatalogService,
+        AdminCatalogService,
+        ...(options.mediaModule === undefined ? [] : [MediaModule]),
+      ],
     };
   }
 }

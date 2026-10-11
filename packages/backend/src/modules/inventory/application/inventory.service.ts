@@ -1,4 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import {
+  adminPage,
+  adminPageInput,
+  type AdminPageInput,
+} from '../../../platform/domain/admin-page.js';
 
 import {
   ConflictAppError,
@@ -253,6 +258,14 @@ export class InventoryService {
     assertAdmin(principal, 'inventory:read');
     return this.repository.listLocations();
   }
+  async listLocationsPage(principal: AuthenticatedPrincipal, query: AdminPageInput) {
+    assertAdmin(principal, 'inventory:read');
+    const page = adminPageInput(query);
+    return adminPage(
+      await this.repository.listLocations({ ...page, limit: page.limit + 1 }),
+      page.limit,
+    );
+  }
 
   async getLocation(principal: AuthenticatedPrincipal, id: string): Promise<StockLocationRecord> {
     assertAdmin(principal, 'inventory:read');
@@ -334,14 +347,19 @@ export class InventoryService {
     principal: AuthenticatedPrincipal,
     variantId: string,
     stockLocationId: string,
-  ): Promise<InventoryItemRecord> {
+  ): Promise<InventoryItemRecord & Readonly<{ availableToSell: number }>> {
     assertAdmin(principal, 'inventory:read');
     const item = await this.repository.getItem(
       uuid(variantId, 'variantId'),
       uuid(stockLocationId, 'stockLocationId'),
     );
     if (item === null) throw new NotFoundAppError();
-    return item;
+    const location = await this.repository.getLocation(item.stockLocationId);
+    if (location === null) throw new NotFoundAppError();
+    return {
+      ...item,
+      availableToSell: location.isSellable ? Math.max(0, availableUnits(item)) : 0,
+    };
   }
 
   async listLedger(

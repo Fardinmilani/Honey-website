@@ -58,7 +58,7 @@ import {
   type SearchSort,
 } from '@honey/backend';
 import type { ApiConfig } from '../../config/api-config.js';
-import { Public, RequirePermissions } from '../../http/auth/authorization.js';
+import { Public, RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { requestMetadata, requestPrincipal } from '../../http/auth/request-principal.js';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
 
@@ -470,6 +470,33 @@ class MediaAttachmentUpdateDto {
   altTextByLocale!: Record<string, string>;
 }
 
+class AdminProductTranslationDto extends ProductTranslationWriteDto {
+  @ApiProperty({ type: String, format: 'uuid' }) id!: string;
+}
+class AdminVariantTranslationDto extends VariantTranslationWriteDto {
+  @ApiProperty({ type: String, format: 'uuid' }) id!: string;
+}
+class AdminVariantDto extends VariantWriteDto {
+  @ApiProperty({ type: String, format: 'uuid' }) id!: string;
+  @ApiProperty({ type: String, format: 'uuid' }) productId!: string;
+  @ApiProperty({ type: String, enum: CATALOG_STATUSES }) status!: string;
+  @ApiProperty({ type: Boolean }) isDefault!: boolean;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true }) deletedAt!: string | null;
+  @ApiProperty({ type: [AdminVariantTranslationDto] }) translations!: AdminVariantTranslationDto[];
+}
+class AdminCategoryAssignmentDto {
+  @ApiProperty({ type: String, format: 'uuid', description: 'Assigned category identifier.' })
+  id!: string;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true }) deletedAt!: string | null;
+}
+class AdminCollectionAssignmentDto {
+  @ApiProperty({ type: String, format: 'uuid', description: 'Assigned collection identifier.' })
+  id!: string;
+  @ApiProperty({ type: Number }) position!: number;
+}
+class AdminMediaAttachmentDto extends MediaAttachmentWriteDto {
+  @ApiProperty({ type: String, format: 'uuid' }) id!: string;
+}
 class AdminProductDto {
   @ApiProperty({ type: String, format: 'uuid' }) id!: string;
   @ApiProperty({ type: String, enum: CATALOG_STATUSES }) status!: string;
@@ -487,11 +514,12 @@ class AdminProductDto {
   @ApiProperty({ type: Number }) sortWeight!: number;
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) primaryCategoryId!: string | null;
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) defaultVariantId!: string | null;
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) translations!: readonly object[];
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) variants!: readonly object[];
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) categories!: readonly object[];
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) collections!: readonly object[];
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) media!: readonly object[];
+  @ApiProperty({ type: [AdminProductTranslationDto] }) translations!: AdminProductTranslationDto[];
+  @ApiProperty({ type: [AdminVariantDto] }) variants!: AdminVariantDto[];
+  @ApiProperty({ type: [AdminCategoryAssignmentDto] }) categories!: AdminCategoryAssignmentDto[];
+  @ApiProperty({ type: [AdminCollectionAssignmentDto] })
+  collections!: AdminCollectionAssignmentDto[];
+  @ApiProperty({ type: [AdminMediaAttachmentDto] }) media!: AdminMediaAttachmentDto[];
 }
 
 function meta(request: FastifyRequest, locale: string): MetaDto {
@@ -807,6 +835,7 @@ export class PublicCatalogController {
 }
 
 @ApiTags('Catalog Admin')
+@RequireStaffSession()
 @Controller('v1/admin/catalog')
 export class AdminCatalogController {
   constructor(@Inject(CatalogService) private readonly catalog: CatalogService) {}

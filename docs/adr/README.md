@@ -62,6 +62,10 @@ that costs, and what was rejected.
 | [0040](0040-shipment-line-allocation-provenance.md) | Shipment lines preserve exact consumed-reservation stock sources | Accepted |
 | [0041](0041-backup-verification-phase-boundary.md) | Backup verification orchestration in Phase 16; concrete verifier and activation in Phase 20 | Accepted |
 | [0042](0042-worker-system-execution-context.md) | Scheduled work uses a narrow explicit system context, not a fake staff user | Accepted |
+| [0043](0043-admin-order-note-permission.md) | Internal notes use `order:note`; SUPPORT does not gain shipment access | Accepted by human |
+| [0044](0044-admin-query-and-browser-boundary.md) | Module-owned admin queries, transactional audit port, scoped admin CSP | Accepted |
+| [0045](0045-admin-refund-retry-idempotency.md) | Browser admin refund retries use a durable payment-scoped key | Accepted |
+| [0046](0046-admin-refund-http-compatibility.md) | Add a keyed console refund operation while preserving the Phase 14 HTTP contract | Accepted |
 
 ### Supersession chain
 

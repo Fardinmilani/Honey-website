@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import {
@@ -20,23 +21,26 @@ import {
   ApiOperation,
   ApiParam,
   ApiProperty,
+  ApiPropertyOptional,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
-import { IsIn, IsInt, IsObject, IsUUID, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsObject, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import type { FastifyRequest } from 'fastify';
 
 import {
   MEDIA_MIME_TYPES,
   MEDIA_VISIBILITIES,
   MediaService,
+  AdminMediaService,
   type MediaAsset,
   type MediaVisibility,
 } from '@honey/backend';
-import { RequirePermissions } from '../../http/auth/authorization.js';
+import { RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { requestMetadata, requestPrincipal } from '../../http/auth/request-principal.js';
 import { ProblemDetailsDto } from '../../http/errors/problem-details.js';
+import { AdminPageQueryDto } from '../../http/admin/admin-query.dto.js';
 
 class MediaIdParamDto {
   @ApiProperty({ type: String, format: 'uuid' })
@@ -196,10 +200,40 @@ class PrivateMediaUrlDto {
   expiresAt!: string;
 }
 
+class MediaLibraryQueryDto extends AdminPageQueryDto {
+  @ApiPropertyOptional({ enum: ['IMAGE', 'VIDEO'] }) @IsOptional() @IsIn(['IMAGE', 'VIDEO']) kind?:
+    'IMAGE' | 'VIDEO';
+  @ApiPropertyOptional({ enum: MEDIA_VISIBILITIES })
+  @IsOptional()
+  @IsIn(MEDIA_VISIBILITIES)
+  visibility?: MediaVisibility;
+  @ApiPropertyOptional({ type: String, format: 'uuid' }) @IsOptional() @IsUUID() assetId?: string;
+}
+class MediaLibraryPageDto {
+  @ApiProperty({ type: [MediaAssetDto] }) items!: MediaAssetDto[];
+  @ApiProperty({ type: String, nullable: true }) nextCursor!: string | null;
+}
+
 @ApiTags('Media')
+@RequireStaffSession()
 @Controller('v1/admin/media')
 export class MediaController {
-  constructor(@Inject(MediaService) private readonly media: MediaService) {}
+  constructor(
+    @Inject(MediaService) private readonly media: MediaService,
+    @Inject(AdminMediaService) private readonly library: AdminMediaService,
+  ) {}
+
+  @Get()
+  @RequirePermissions('content:write')
+  @ApiOperation({
+    operationId: 'listAdminMedia',
+    summary: 'Read a bounded media library',
+    description: 'Staff-only trusted metadata; private assets have no permanent public URL.',
+  })
+  @ApiOkResponse({ type: MediaLibraryPageDto })
+  list(@Query() query: MediaLibraryQueryDto, @Req() request: FastifyRequest) {
+    return this.library.list(requestPrincipal(request), query);
+  }
 
   @Post('upload-intents')
   @RequirePermissions('content:write')

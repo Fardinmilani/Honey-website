@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { TransactionContext } from '../src/platform/domain/transaction.js';
 import { PaymentsService } from '../src/modules/payments/application/payments.service.js';
@@ -34,6 +34,7 @@ class MemoryPaymentsRepository implements PaymentsRepository {
   readonly transactions: AppendTransactionInput[] = [];
   readonly events = new Map<string, ProviderEventRecord>();
   readonly refunds = new Map<string, RefundRecord>();
+  readonly refundKeys = new Map<string, { id: string; requestHash: string }>();
   readonly alerts: MismatchAlertInput[] = [];
   readonly outbox: string[] = [];
   readonly idempotency = new Map<string, { requestHash: string; paymentId: string | null }>();
@@ -422,7 +423,20 @@ class MemoryPaymentsRepository implements PaymentsRepository {
       completedAt: null,
     };
     this.refunds.set(refund.id, refund);
+    if (input.idempotencyKey !== undefined && input.requestHash !== undefined) {
+      this.refundKeys.set(`${input.paymentId}:${input.idempotencyKey}`, {
+        id: refund.id,
+        requestHash: input.requestHash,
+      });
+    }
     return refund;
+  }
+
+  async findRefundByKey(paymentId: string, key: string, _transaction: TransactionContext) {
+    const record = this.refundKeys.get(`${paymentId}:${key}`);
+    if (record === undefined) return null;
+    const refund = this.refunds.get(record.id);
+    return refund === undefined ? null : { refund, requestHash: record.requestHash };
   }
 
   async markRefundOutcome(
@@ -792,6 +806,72 @@ describe('PaymentsService', () => {
         },
       ),
     ).rejects.toThrow('STEP_UP_REQUIRED');
+  });
+
+  it('replays a keyed partial refund without repeating the provider effect and rejects altered intent', async () => {
+    const { repository, provider, service } = setup({ partialRefund: true });
+    const userId = randomUUID();
+    const owner = { userId };
+    const payable = order(owner);
+    repository.seedOrder(payable, owner);
+    const started = await service.start(
+      { userId, anonymousId: null },
+      payable.number,
+      'phase17-payment-start-key',
+    );
+    provider.setOutcome(FakePaymentProvider.providerRefFor(started.payment.id), {
+      status: 'PAID',
+      providerTxnRef: 'phase17-paid',
+    });
+    await service.verifyReturn({ userId, anonymousId: null }, started.payment.id);
+    const refundEffect = vi.spyOn(provider, 'refund');
+    const staff = {
+      userId,
+      sessionId: randomUUID(),
+      kind: 'STAFF',
+      permissions: ['order:refund'],
+    } as const;
+    const input = { amountMinor: '20000', reason: 'Customer requested partial refund' };
+    const first = await service.requestStaffRefund(
+      staff,
+      started.payment.id,
+      input,
+      'phase17-refund-stable-key',
+    );
+    const replay = await service.requestStaffRefund(
+      staff,
+      started.payment.id,
+      input,
+      'phase17-refund-stable-key',
+    );
+    expect(replay).toEqual(first);
+    expect(refundEffect).toHaveBeenCalledTimes(1);
+    expect(repository.refunds.size).toBe(1);
+    await expect(
+      service.requestStaffRefund(
+        staff,
+        started.payment.id,
+        { ...input, amountMinor: '10000' },
+        'phase17-refund-stable-key',
+      ),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    expect(refundEffect).toHaveBeenCalledTimes(1);
+    await expect(
+      service.requestStaffRefund(
+        { ...staff, kind: 'CUSTOMER' },
+        started.payment.id,
+        input,
+        'phase17-refund-other-key',
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      service.requestStaffRefund(
+        { ...staff, permissions: ['order:read'] },
+        started.payment.id,
+        input,
+        'phase17-refund-other-key',
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('exposes applyPaymentOutcome as the single transition entry', async () => {

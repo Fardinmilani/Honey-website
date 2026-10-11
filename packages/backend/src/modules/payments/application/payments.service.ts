@@ -2,11 +2,13 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import {
   ConflictAppError,
+  ForbiddenAppError,
   DependencyUnavailableAppError,
   NotFoundAppError,
   ValidationAppError,
 } from '../../../errors/index.js';
 import type { TransactionRunner } from '../../../platform/domain/transaction.js';
+import type { AuthenticatedPrincipal } from '../../identity/index.js';
 import {
   decideTransition,
   timestampsFor,
@@ -140,6 +142,19 @@ type CreateClaim =
   | Readonly<{ state: 'IN_PROGRESS' }>
   | Readonly<{ state: 'CLAIMED'; payment: PaymentRecord; attemptId: string }>;
 
+type RefundClaim =
+  | Readonly<{ kind: 'REPLAY'; refund: RefundRecord; currency: string }>
+  | Readonly<{
+      kind: 'NEW';
+      refund: RefundRecord;
+      paymentId: string;
+      providerRef: string;
+      originalAmountMinor: bigint;
+      currency: string;
+      orderId: string;
+      providerCode: string;
+    }>;
+
 /**
  * Orchestrates the provider-neutral payment lifecycle. Owns no order or
  * identity persistence directly — `applyOutcome` is the single, monotonic,
@@ -156,6 +171,22 @@ export class PaymentsService {
     private readonly callbackBaseUrl: string,
     private readonly reconciliationMinAgeMs: number = DEFAULT_RECONCILIATION_MIN_AGE_MS,
   ) {}
+
+  async requestStaffRefund(
+    principal: AuthenticatedPrincipal,
+    id: string,
+    input: Readonly<{ amountMinor: string | null; reason: string }>,
+    key: string,
+  ) {
+    if (principal.kind !== 'STAFF' || !principal.permissions.includes('order:refund'))
+      throw new ForbiddenAppError();
+    return this.requestRefund(
+      id,
+      input,
+      { userId: principal.userId, sessionId: principal.sessionId },
+      idempotencyKey(key),
+    );
+  }
 
   async start(
     contextInput: PaymentRequestContext,
@@ -428,6 +459,7 @@ export class PaymentsService {
     idInput: string,
     input: Readonly<{ amountMinor: string | null; reason: string }>,
     actor: PaymentActor,
+    keyInput?: string,
   ): Promise<RefundProjection> {
     await this.stepUp.requireStepUp(actor.sessionId);
     const id = paymentId(idInput);
@@ -435,10 +467,27 @@ export class PaymentsService {
     if (reason.length < 3 || reason.length > 500)
       throw validation('reason', 'REFUND_REASON_INVALID');
     const requestedAmount = this.#parseOptionalAmount(input.amountMinor);
+    const key = keyInput === undefined ? undefined : idempotencyKey(keyInput);
+    const requestHash = requestHashFor(
+      JSON.stringify({
+        paymentId: id,
+        amount: requestedAmount?.toString() ?? null,
+        reason,
+        actor: actor.userId,
+      }),
+    );
 
-    const claim = await this.transactions.run(async (transaction) => {
+    const claim = await this.transactions.run<RefundClaim>(async (transaction) => {
       const snapshot = await this.repository.lockPaymentForRefund(id, transaction);
       if (snapshot === null) throw new NotFoundAppError();
+      if (key !== undefined) {
+        const replay = await this.repository.findRefundByKey(id, key, transaction);
+        if (replay !== null) {
+          if (replay.requestHash !== requestHash)
+            throw new ConflictAppError({ code: 'IDEMPOTENCY_KEY_REUSED' });
+          return { kind: 'REPLAY', refund: replay.refund, currency: snapshot.payment.currency };
+        }
+      }
       if (snapshot.payment.status !== 'PAID' && snapshot.payment.status !== 'PARTIALLY_REFUNDED') {
         throw new ConflictAppError({ code: 'PAYMENT_NOT_REFUNDABLE' });
       }
@@ -464,10 +513,12 @@ export class PaymentsService {
           reason,
           requestedBy: actor.userId,
           actorUserId: actor.userId,
+          ...(key === undefined ? {} : { idempotencyKey: key, requestHash }),
         },
         transaction,
       );
       return {
+        kind: 'NEW',
         refund,
         paymentId: snapshot.payment.id,
         providerRef: snapshot.payment.providerRef,
@@ -477,6 +528,8 @@ export class PaymentsService {
         providerCode: provider.code,
       };
     });
+
+    if (claim.kind === 'REPLAY') return this.#refundProjection(claim.refund, claim.currency);
 
     const provider = this.#provider(claim.providerCode);
     let outcome;

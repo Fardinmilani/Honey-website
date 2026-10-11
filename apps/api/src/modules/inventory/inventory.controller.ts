@@ -1,5 +1,14 @@
 import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiProperty,
+  ApiPropertyOptional,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AdminPageQueryDto } from '../../http/admin/admin-query.dto.js';
+import { StockLocationPageDto } from '../../http/admin/stock-query.dto.js';
 import {
   IsBoolean,
   IsIn,
@@ -13,7 +22,7 @@ import {
 import type { FastifyRequest } from 'fastify';
 
 import { ADJUSTMENT_REASONS, InventoryService, STOCK_LOCATION_TYPES } from '@honey/backend';
-import { RequirePermissions } from '../../http/auth/authorization.js';
+import { RequirePermissions, RequireStaffSession } from '../../http/auth/authorization.js';
 import { requestMetadata, requestPrincipal } from '../../http/auth/request-principal.js';
 
 class IdParamDto {
@@ -75,14 +84,31 @@ class ReconcileBodyDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() repair?: boolean;
 }
 
+class LocationPageQueryDto extends AdminPageQueryDto {}
 function operation(operationId: string, summary: string) {
   return { operationId, summary, description: `${summary}.` };
 }
 
 @ApiTags('Inventory Admin')
+@RequireStaffSession()
 @Controller('v1/admin/inventory')
 export class AdminInventoryController {
   constructor(@Inject(InventoryService) private readonly inventory: InventoryService) {}
+
+  @Get('locations/page')
+  @RequirePermissions('inventory:read')
+  @ApiOperation({
+    operationId: 'listAdminStockLocations',
+    summary: 'Read bounded stock locations',
+    description: 'Staff-only cursor query over inventory-owned locations.',
+  })
+  @ApiOkResponse({ type: StockLocationPageDto })
+  locationPage(
+    @Query() query: LocationPageQueryDto,
+    @Req() request: FastifyRequest,
+  ): Promise<StockLocationPageDto> {
+    return this.inventory.listLocationsPage(requestPrincipal(request), query);
+  }
 
   @Get('locations')
   @RequirePermissions('inventory:read')

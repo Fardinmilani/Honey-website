@@ -823,6 +823,8 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
           reason: input.reason,
           status: 'REQUESTED',
           requestedBy: input.requestedBy,
+          idempotencyKey: input.idempotencyKey ?? null,
+          requestHash: input.requestHash ?? null,
           createdBy: input.actorUserId,
           updatedBy: input.actorUserId,
         },
@@ -846,6 +848,14 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
       }
       throw error;
     }
+  }
+
+  async findRefundByKey(paymentId: string, key: string, transaction: TransactionContext) {
+    const row = await asPrismaTransaction(transaction).refund.findUnique({
+      where: { paymentId_idempotencyKey: { paymentId, idempotencyKey: key } },
+    });
+    if (row === null || row.requestHash === null) return null;
+    return { refund: mapRefund(row), requestHash: row.requestHash };
   }
 
   async markRefundOutcome(

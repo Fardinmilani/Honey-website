@@ -1,6 +1,6 @@
 import type { Type } from '@nestjs/common';
 
-import { PUBLIC_ROUTE, REQUIRED_PERMISSIONS } from './authorization.js';
+import { PUBLIC_ROUTE, REQUIRED_PERMISSIONS, REQUIRED_STAFF_SESSION } from './authorization.js';
 
 const METHOD_METADATA = 'method';
 
@@ -11,6 +11,14 @@ export function assertControllerAuthorizationPolicies(
 ): void {
   const violations: string[] = [];
   for (const controller of controllers) {
+    const path: unknown = Reflect.getMetadata('path', controller);
+    if (
+      typeof path === 'string' &&
+      path.startsWith('v1/admin/') &&
+      Reflect.getMetadata(REQUIRED_STAFF_SESSION, controller) !== true
+    ) {
+      violations.push(`${controller.name}:STAFF_REQUIRED`);
+    }
     for (const name of Object.getOwnPropertyNames(controller.prototype)) {
       if (name === 'constructor') continue;
       const descriptor = Object.getOwnPropertyDescriptor(controller.prototype, name);

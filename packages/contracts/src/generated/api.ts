@@ -39,6 +39,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/audit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read safe filtered audit metadata without secret-bearing JSON
+     * @description STAFF audit:read query with keyset paging and validated actor, subject, action and date-range filters. Raw audit JSON and network metadata are omitted.
+     */
+    get: operations['listAdminAudit'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/catalog/categories': {
     parameters: {
       query?: never;
@@ -46,7 +66,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Read bounded category hierarchy and translations
+     * @description STAFF catalog:read query returning owned category hierarchy and all translations, optionally filtered by UUID.
+     */
+    get: operations['listAdminCategories'];
     put?: never;
     /**
      * Create a catalog category
@@ -126,7 +150,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Read bounded collections and translations
+     * @description STAFF catalog:read query returning collection publication state and translations, optionally filtered by UUID.
+     */
+    get: operations['listAdminCollections'];
     put?: never;
     /**
      * Create a draft catalog collection
@@ -226,7 +254,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Read products of all publication states with locale completeness inputs
+     * @description STAFF catalog:read query with bounded keyset pagination, SKU or localized-name search, and publication-state filtering.
+     */
+    get: operations['listAdminProducts'];
     put?: never;
     /**
      * Create a draft catalog product
@@ -567,6 +599,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/customers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Audited exact email or UUID customer lookup
+     * @description STAFF customer:read lookup excludes staff, credentials and sessions, masks phone numbers, and records only the result count in the audit.
+     */
+    get: operations['lookupAdminCustomers'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/fulfilment/orders/{orderId}': {
     parameters: {
       query?: never;
@@ -811,6 +863,26 @@ export interface paths {
     patch: operations['adminUpdateStockLocation'];
     trace?: never;
   };
+  '/v1/admin/inventory/locations/page': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read bounded stock locations
+     * @description Staff-only cursor query over inventory-owned locations.
+     */
+    get: operations['listAdminStockLocations'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/inventory/reconciliation': {
     parameters: {
       query?: never;
@@ -825,6 +897,26 @@ export interface paths {
      * @description Detect and optionally repair inventory drift.
      */
     post: operations['adminReconcileInventory'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/media': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read a bounded media library
+     * @description Staff-only trusted metadata; private assets have no permanent public URL.
+     */
+    get: operations['listAdminMedia'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -935,6 +1027,90 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/orders': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read a bounded staff order page
+     * @description STAFF order:read query with exact order-number or customer-email filters and keyset pagination.
+     */
+    get: operations['listAdminOrders'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/orders/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read immutable staff order snapshots
+     * @description Reads frozen order lines, addresses and stored totals. Requires STAFF order:read.
+     */
+    get: operations['getAdminOrder'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/orders/{id}/notes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read internal order notes
+     * @description Reads a bounded page of staff-only notes after checking the order exists.
+     */
+    get: operations['listAdminOrderNotes'];
+    put?: never;
+    /**
+     * Add one internal plain-text order note and audit atomically
+     * @description STAFF order:note write protected by CSRF. Stores bounded internal text and audit metadata in one transaction.
+     */
+    post: operations['addAdminOrderNote'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/payments/{paymentId}/refund-requests': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Request an idempotent staff refund with recent TOTP verification
+     * @description The key is mandatory. Same-key retries return the persisted refund; altered input conflicts. Server-owned provider capabilities, refundable cap and verified payment outcomes remain authoritative.
+     */
+    post: operations['requestIdempotentAdminRefund'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/payments/{paymentId}/refunds': {
     parameters: {
       query?: never;
@@ -949,6 +1125,26 @@ export interface paths {
      * @description Rejects with a conflict unless the staff session has recently re-verified its TOTP via POST /v1/me/step-up. The server, not the caller, computes the refundable cap.
      */
     post: operations['requestPaymentRefund'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/payments/orders/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read bounded safe payment and refund records
+     * @description Returns stored amounts, provider capabilities and bounded refund history without provider credentials or references. API authorization is authoritative.
+     */
+    get: operations['listAdminOrderPayments'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -979,6 +1175,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/pricing/coupons/{id}/status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Change coupon status with a concurrency check
+     * @description Change coupon status with a concurrency check.
+     */
+    patch: operations['setAdminCouponStatus'];
+    trace?: never;
+  };
+  '/v1/admin/pricing/coupons/page': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read a bounded coupon page
+     * @description Read a bounded coupon page.
+     */
+    get: operations['pageAdminCoupons'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/pricing/tax-rates': {
     parameters: {
       query?: never;
@@ -1003,6 +1239,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/pricing/tax-rates/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Update a validated tax configuration record
+     * @description Update a validated tax configuration record.
+     */
+    put: operations['updateAdminTaxRate'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/pricing/tax-rates/page': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read a bounded tax configuration page
+     * @description Read a bounded tax configuration page.
+     */
+    get: operations['pageAdminTaxRates'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/pricing/variant-prices': {
     parameters: {
       query?: never;
@@ -1021,6 +1297,26 @@ export interface paths {
      * @description Create a validated variant price record.
      */
     post: operations['adminCreateVariantPrice'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/pricing/variant-prices/page': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read a bounded variant price page
+     * @description Read a bounded variant price page.
+     */
+    get: operations['pageAdminVariantPrices'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1367,6 +1663,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/sourcing/apiaries/page': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read bounded apiaries and translations
+     * @description Staff-only cursor query over sourcing-owned apiaries.
+     */
+    get: operations['listAdminApiaries'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/sourcing/harvest-batches': {
     parameters: {
       query?: never;
@@ -1423,6 +1739,26 @@ export interface paths {
      * @description List allocations for a harvest batch.
      */
     get: operations['adminListBatchAllocations'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/sourcing/harvest-batches/{id}/allocations/page': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read bounded packing allocations
+     * @description Staff-only cursor query that verifies the harvest batch exists.
+     */
+    get: operations['listAdminBatchAllocations'];
     put?: never;
     post?: never;
     delete?: never;
@@ -2207,12 +2543,65 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
+    AdminCategoryAssignmentDto: {
+      /** Format: date-time */
+      deletedAt: string | null;
+      /**
+       * Format: uuid
+       * @description Assigned category identifier.
+       */
+      id: string;
+    };
+    AdminCollectionAssignmentDto: {
+      /**
+       * Format: uuid
+       * @description Assigned collection identifier.
+       */
+      id: string;
+      position: number;
+    };
+    AdminMediaAttachmentDto: {
+      altTextByLocale: {
+        [key: string]: string;
+      };
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      mediaAssetId: string;
+      position: number;
+      /** @enum {string} */
+      role: 'GALLERY' | 'THUMBNAIL' | 'LIFESTYLE' | 'VIDEO';
+      /** Format: uuid */
+      variantId?: string | null;
+    };
+    AdminPaymentDto: {
+      amountMinor: string;
+      canRefund: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      currency: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      orderId: string;
+      /** Format: date-time */
+      paidAt: string | null;
+      partialRefund: boolean;
+      provider: string;
+      refunds: components['schemas']['AdminRefundDto'][];
+      remainingRefundableMinor: string;
+      status: string;
+    };
+    AdminPaymentPageDto: {
+      items: components['schemas']['AdminPaymentDto'][];
+      nextCursor: string | null;
+    };
     AdminProductDto: {
       /** Format: uuid */
       apiaryId: string | null;
       brandLine: string | null;
-      categories: Record<string, never>[];
-      collections: Record<string, never>[];
+      categories: components['schemas']['AdminCategoryAssignmentDto'][];
+      collections: components['schemas']['AdminCollectionAssignmentDto'][];
       /** Format: uuid */
       defaultVariantId: string | null;
       floralSources: string[];
@@ -2220,7 +2609,7 @@ export interface components {
       honeyVarietal: string | null;
       /** Format: uuid */
       id: string;
-      media: Record<string, never>[];
+      media: components['schemas']['AdminMediaAttachmentDto'][];
       originAltitudeBand: string | null;
       originRegion: string | null;
       /** Format: uuid */
@@ -2232,8 +2621,153 @@ export interface components {
       sourcingType: 'OWN_PRODUCTION' | 'SELECTED_SUPPLIER';
       /** @enum {string} */
       status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-      translations: Record<string, never>[];
-      variants: Record<string, never>[];
+      translations: components['schemas']['AdminProductTranslationDto'][];
+      variants: components['schemas']['AdminVariantDto'][];
+    };
+    AdminProductPageDto: {
+      items: components['schemas']['AdminProductSummaryDto'][];
+      nextCursor: string | null;
+    };
+    AdminProductSummaryDto: {
+      id: string;
+      sku: string | null;
+      /** @enum {string} */
+      status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      translations: components['schemas']['AdminTranslationSummaryDto'][];
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    AdminProductTranslationDto: {
+      description?: string | null;
+      /** Format: uuid */
+      id: string;
+      locale: string;
+      metaDescription?: string | null;
+      metaTitle?: string | null;
+      name: string;
+      pairingSuggestions?: string | null;
+      shortDescription?: string | null;
+      slug: string;
+      storyHtml?: string | null;
+      tastingNotes?: string | null;
+    };
+    AdminRefundDto: {
+      amountMinor: string;
+      /** Format: date-time */
+      completedAt: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      reason: string;
+      status: string;
+    };
+    AdminTaxonomyDto: {
+      id: string;
+      parentId: string | null;
+      path: string | null;
+      sortWeight: number;
+      status: string | null;
+      translations: components['schemas']['AdminTaxonomyTranslationDto'][];
+    };
+    AdminTaxonomyPageDto: {
+      items: components['schemas']['AdminTaxonomyDto'][];
+      nextCursor: string | null;
+    };
+    AdminTaxonomyTranslationDto: {
+      description?: string | null;
+      locale: string;
+      metaDescription?: string | null;
+      metaTitle?: string | null;
+      name: string;
+      slug: string;
+    };
+    AdminTranslationSummaryDto: {
+      locale: string;
+      name: string;
+      slug: string;
+    };
+    AdminVariantDto: {
+      barcode?: string | null;
+      /** Format: date-time */
+      deletedAt: string | null;
+      dimensionsMm: number[];
+      /** Format: uuid */
+      id: string;
+      isDefault: boolean;
+      jarSizeLabelKey: string;
+      netWeightGrams: number;
+      packagingTypeKey: string;
+      position: number;
+      /** Format: uuid */
+      productId: string;
+      sku: string;
+      /** @enum {string} */
+      status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      translations: components['schemas']['AdminVariantTranslationDto'][];
+      weightGramsShipping: number;
+    };
+    AdminVariantTranslationDto: {
+      /** Format: uuid */
+      id: string;
+      locale: string;
+      name: string;
+    };
+    AllocationPageDto: {
+      items: components['schemas']['AllocationQueryItemDto'][];
+      nextCursor: string | null;
+    };
+    AllocationQueryItemDto: {
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      harvestBatchId: string;
+      /** Format: uuid */
+      id: string;
+      notes: string | null;
+      /** Format: date-time */
+      packedAt: string;
+      quantityUnits: number;
+      /** Format: uuid */
+      variantId: string;
+    };
+    ApiaryPageDto: {
+      items: components['schemas']['ApiaryQueryItemDto'][];
+      nextCursor: string | null;
+    };
+    ApiaryQueryItemDto: {
+      altitudeBand: string | null;
+      code: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      isOwnOperation: boolean;
+      name: string;
+      notes: string | null;
+      region: string;
+      translations: components['schemas']['ApiaryTranslationDto'][];
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    ApiaryTranslationDto: {
+      description: string | null;
+      locale: string;
+      name: string;
+    };
+    AuditEntryDto: {
+      action: string;
+      actorUserId: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      id: string;
+      requestId: string | null;
+      subjectId: string;
+      subjectType: string;
+    };
+    AuditPageDto: {
+      items: components['schemas']['AuditEntryDto'][];
+      nextCursor: string | null;
     };
     AuthenticatedResponseDto: {
       /** @description Double-submit value for X-CSRF-Token. */
@@ -2338,6 +2872,10 @@ export interface components {
       /** @example HNY-2026-000123 */
       orderNumber: string;
     };
+    CouponPageDto: {
+      items: components['schemas']['CouponResponseDto'][];
+      nextCursor: string | null;
+    };
     CouponResponseDto: {
       /** @enum {string} */
       appliesTo: 'ALL' | 'CATEGORY' | 'COLLECTION' | 'VARIANT';
@@ -2360,12 +2898,32 @@ export interface components {
       usageLimitTotal: number | null;
       value: string;
     };
+    CouponStatusResponseDto: {
+      id: string;
+      /** @enum {string} */
+      status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'EXPIRED';
+    };
+    CustomerDto: {
+      /** Format: date-time */
+      createdAt: string;
+      displayName: string | null;
+      email: string;
+      emailVerified: boolean;
+      id: string;
+      phoneMasked: string | null;
+      preferredLocale: string;
+      status: string;
+    };
     CustomerOrderResponseDto: {
       grandTotal: components['schemas']['MoneyDto'];
       /** @example HNY-2026-000123 */
       number: string;
       shipments?: components['schemas']['CustomerShipmentResponseDto'][];
       status: string;
+    };
+    CustomerPageDto: {
+      items: components['schemas']['CustomerDto'][];
+      nextCursor: string | null;
     };
     CustomerShipmentResponseDto: {
       /** Format: date-time */
@@ -2451,6 +3009,10 @@ export interface components {
       variant: 'thumb' | 'card' | 'hero' | 'og';
       width: number;
     };
+    MediaLibraryPageDto: {
+      items: components['schemas']['MediaAssetDto'][];
+      nextCursor: string | null;
+    };
     MediaUploadIntentDto: {
       /** Format: uuid */
       assetId: string;
@@ -2469,6 +3031,111 @@ export interface components {
       amountMinor: string;
       /** @example IRR */
       currency: string;
+    };
+    NoteDto: {
+      actorUserId: string | null;
+      body: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+    };
+    NotePageDto: {
+      items: components['schemas']['NoteDto'][];
+      nextCursor: string | null;
+    };
+    OrderDetailDto: {
+      billingAddress: {
+        [key: string]: unknown;
+      };
+      currency: string;
+      customerId: string | null;
+      discountTotalMinor: string;
+      email: string;
+      fulfilmentStatus: string;
+      grandTotalMinor: string;
+      history: components['schemas']['OrderHistoryDto'][];
+      /** Format: uuid */
+      id: string;
+      lines: components['schemas']['OrderLineDto'][];
+      localeAtPurchase: string;
+      number: string;
+      paymentStatus: string;
+      phone: string | null;
+      /** Format: date-time */
+      placedAt: string;
+      refundedTotalMinor: string;
+      shippingAddress: {
+        [key: string]: unknown;
+      };
+      shippingMethod: {
+        [key: string]: unknown;
+      };
+      shippingTotalMinor: string;
+      /** @enum {string} */
+      status:
+        | 'PENDING_PAYMENT'
+        | 'PAID'
+        | 'PROCESSING'
+        | 'PARTIALLY_FULFILLED'
+        | 'FULFILLED'
+        | 'COMPLETED'
+        | 'CANCELLED'
+        | 'REFUNDED'
+        | 'PARTIALLY_REFUNDED'
+        | 'FAILED';
+      subtotalMinor: string;
+      taxTotalMinor: string;
+    };
+    OrderHistoryDto: {
+      /** Format: date-time */
+      createdAt: string;
+      fromStatus: string | null;
+      id: string;
+      toStatus: string;
+    };
+    OrderLineDto: {
+      discountMinor: string;
+      id: string;
+      productName: {
+        [key: string]: unknown;
+      };
+      quantity: number;
+      sku: string;
+      taxMinor: string;
+      totalMinor: string;
+      unitPriceMinor: string;
+      variantName: {
+        [key: string]: unknown;
+      };
+    };
+    OrderPageDto: {
+      items: components['schemas']['OrderSummaryDto'][];
+      nextCursor: string | null;
+    };
+    OrderSummaryDto: {
+      currency: string;
+      email: string;
+      fulfilmentStatus: string;
+      grandTotalMinor: string;
+      /** Format: uuid */
+      id: string;
+      number: string;
+      paymentStatus: string;
+      /** Format: date-time */
+      placedAt: string;
+      /** @enum {string} */
+      status:
+        | 'PENDING_PAYMENT'
+        | 'PAID'
+        | 'PROCESSING'
+        | 'PARTIALLY_FULFILLED'
+        | 'FULFILLED'
+        | 'COMPLETED'
+        | 'CANCELLED'
+        | 'REFUNDED'
+        | 'PARTIALLY_REFUNDED'
+        | 'FAILED';
     };
     PageDto: {
       hasMore: boolean;
@@ -2498,6 +3165,10 @@ export interface components {
         | 'EXPIRED'
         | 'REFUNDED'
         | 'PARTIALLY_REFUNDED';
+    };
+    PricePageDto: {
+      items: components['schemas']['VariantPriceResponseDto'][];
+      nextCursor: string | null;
     };
     PrivateMediaUrlDto: {
       /** Format: date-time */
@@ -2662,6 +3333,7 @@ export interface components {
         | 'procurement:write'
         | 'order:read'
         | 'order:write'
+        | 'order:note'
         | 'order:refund'
         | 'order:cancel'
         | 'customer:read'
@@ -2722,6 +3394,28 @@ export interface components {
       accepted: boolean;
       /** Format: date-time */
       expiresAt: string;
+    };
+    StockLocationDto: {
+      code: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      isDefault: boolean;
+      isSellable: boolean;
+      name: string;
+      /** @enum {string} */
+      type: 'WAREHOUSE' | 'STUDIO' | 'EXTERNAL';
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    StockLocationPageDto: {
+      items: components['schemas']['StockLocationDto'][];
+      nextCursor: string | null;
+    };
+    TaxPageDto: {
+      items: components['schemas']['TaxRateResponseDto'][];
+      nextCursor: string | null;
     };
     TaxRateResponseDto: {
       code: string;
@@ -2830,6 +3524,44 @@ export interface operations {
       };
     };
   };
+  listAdminAudit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuditPageDto'];
+        };
+      };
+    };
+  };
+  listAdminCategories: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminTaxonomyPageDto'];
+        };
+      };
+    };
+  };
   createCatalogCategory: {
     parameters: {
       query?: never;
@@ -2906,6 +3638,25 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  listAdminCollections: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminTaxonomyPageDto'];
+        };
       };
     };
   };
@@ -3004,6 +3755,25 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  listAdminProducts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminProductPageDto'];
+        };
       };
     };
   };
@@ -3403,6 +4173,25 @@ export interface operations {
       };
     };
   };
+  lookupAdminCustomers: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CustomerPageDto'];
+        };
+      };
+    };
+  };
   getFulfilmentOrder: {
     parameters: {
       query?: never;
@@ -3703,6 +4492,25 @@ export interface operations {
       };
     };
   };
+  listAdminStockLocations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StockLocationPageDto'];
+        };
+      };
+    };
+  };
   adminReconcileInventory: {
     parameters: {
       query?: never;
@@ -3717,6 +4525,25 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  listAdminMedia: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MediaLibraryPageDto'];
+        };
       };
     };
   };
@@ -4018,6 +4845,135 @@ export interface operations {
       };
     };
   };
+  listAdminOrders: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OrderPageDto'];
+        };
+      };
+    };
+  };
+  getAdminOrder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OrderDetailDto'];
+        };
+      };
+    };
+  };
+  listAdminOrderNotes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotePageDto'];
+        };
+      };
+    };
+  };
+  addAdminOrderNote: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NoteDto'];
+        };
+      };
+    };
+  };
+  requestIdempotentAdminRefund: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path: {
+        paymentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RefundResponseDto'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProblemDetailsDto'];
+        };
+      };
+    };
+  };
   requestPaymentRefund: {
     parameters: {
       query?: never;
@@ -4063,6 +5019,27 @@ export interface operations {
       };
     };
   };
+  listAdminOrderPayments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminPaymentPageDto'];
+        };
+      };
+    };
+  };
   adminListCoupons: {
     parameters: {
       query?: never;
@@ -4097,6 +5074,46 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CouponResponseDto'];
+        };
+      };
+    };
+  };
+  setAdminCouponStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CouponStatusResponseDto'];
+        };
+      };
+    };
+  };
+  pageAdminCoupons: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CouponPageDto'];
         };
       };
     };
@@ -4139,6 +5156,46 @@ export interface operations {
       };
     };
   };
+  updateAdminTaxRate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TaxRateResponseDto'];
+        };
+      };
+    };
+  };
+  pageAdminTaxRates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TaxPageDto'];
+        };
+      };
+    };
+  };
   adminListVariantPrices: {
     parameters: {
       query?: never;
@@ -4173,6 +5230,25 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['VariantPriceResponseDto'];
+        };
+      };
+    };
+  };
+  pageAdminVariantPrices: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PricePageDto'];
         };
       };
     };
@@ -4596,6 +5672,25 @@ export interface operations {
       };
     };
   };
+  listAdminApiaries: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiaryPageDto'];
+        };
+      };
+    };
+  };
   adminListHarvestBatches: {
     parameters: {
       query?: never;
@@ -4665,6 +5760,27 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  listAdminBatchAllocations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AllocationPageDto'];
+        };
       };
     };
   };

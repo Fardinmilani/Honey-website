@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 
 import { IdentityService } from './application/identity.service.js';
+import { AdminIdentityService } from './application/admin-identity.service.js';
+import { PrismaAdminIdentityRepository } from './infrastructure/prisma-admin-identity.repository.js';
 import type { IdentityConfig } from './domain/identity.js';
 import type {
   AuthStatePort,
@@ -105,19 +107,25 @@ export class IdentityModule {
       email,
       clock,
     });
+    const adminRepository = new PrismaAdminIdentityRepository(options.databaseUrl);
     const providers: Provider[] = [
+      {
+        provide: AdminIdentityService,
+        useValue: new AdminIdentityService(adminRepository, repository),
+      },
       { provide: IdentityService, useValue: service },
       {
         provide: IdentityShutdownLifecycle,
         useValue: new IdentityShutdownLifecycle(async () => {
           await Promise.allSettled([
             ownedRepository?.close(),
+            adminRepository.close(),
             ownedAuthState?.close(),
             Promise.resolve(ownedEmail?.close()),
           ]);
         }),
       },
     ];
-    return { module: IdentityModule, providers, exports: [IdentityService] };
+    return { module: IdentityModule, providers, exports: [IdentityService, AdminIdentityService] };
   }
 }

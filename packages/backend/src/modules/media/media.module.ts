@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 
 import { MediaService } from './application/media.service.js';
+import { AdminMediaService } from './application/admin-media.service.js';
+import { PrismaAdminMediaRepository } from './infrastructure/prisma-admin-media.repository.js';
 import type { ContentInspector } from './domain/content-inspector.port.js';
 import type { MediaConfig } from './domain/media.js';
 import type { MediaRepository } from './domain/media-repository.port.js';
@@ -87,7 +89,9 @@ export class MediaModule {
       audit,
       ...(options.overrides?.now === undefined ? {} : { now: options.overrides.now }),
     });
+    const adminRepository = new PrismaAdminMediaRepository(options.databaseUrl);
     const providers: Provider[] = [
+      { provide: AdminMediaService, useValue: new AdminMediaService(adminRepository, service) },
       { provide: MediaService, useValue: service },
       {
         provide: MediaShutdownLifecycle,
@@ -96,11 +100,12 @@ export class MediaModule {
             ownedStorage?.close(),
             ownedIntents?.close(),
             ownedRepository?.close(),
+            adminRepository.close(),
             ownedAudit?.close(),
           ]);
         }),
       },
     ];
-    return { module: MediaModule, providers, exports: [MediaService] };
+    return { module: MediaModule, providers, exports: [MediaService, AdminMediaService] };
   }
 }

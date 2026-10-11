@@ -13,7 +13,7 @@ function clientFor(client: PrismaClient, transaction: TransactionContext | undef
   return transaction === undefined ? client : asPrismaTransaction(transaction);
 }
 
-function mapPrice(row: {
+export function mapPrice(row: {
   id: string;
   variantId: string;
   currency: string;
@@ -33,7 +33,7 @@ function mapPrice(row: {
   };
 }
 
-function mapCoupon(row: {
+export function mapCoupon(row: {
   id: string;
   code: string;
   type: CouponRecord['type'];
@@ -69,7 +69,7 @@ function mapCoupon(row: {
   };
 }
 
-function mapTaxRate(row: {
+export function mapTaxRate(row: {
   id: string;
   code: string;
   rateBps: number;
